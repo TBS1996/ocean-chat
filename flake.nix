@@ -56,7 +56,7 @@
           packages = [
             # Extra dev packages.
           ];
-          RUST_SRC_PATH = "${rust-toolchain}/lib/rustlib/src/rust/library";
+          # RUST_SRC_PATH = "${rust-toolchain}/lib/rustlib/src/rust/library";
           LD_LIBRARY_PATH = lib.makeLibraryPath commonArgs.buildInputs;
         };
       }
