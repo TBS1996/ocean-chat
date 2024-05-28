@@ -39,13 +39,16 @@ impl Pairs {
     }
 
     fn remove(&mut self, id: UserId) {
-        let peer = self.get(id);
-        self.inner.remove(&id);
-        self.inner.remove(&peer);
+        if let Some(peer) = self.get(id) {
+            self.inner.remove(&id);
+            self.inner.remove(&peer);
+        } else {
+            eprintln!("attempted to delete absent pair: {}", id);
+        }
     }
 
-    fn get(&self, id: UserId) -> UserId {
-        self.inner.get(&id).unwrap().to_owned()
+    fn get(&self, id: UserId) -> Option<UserId> {
+        self.inner.get(&id).map(|id| id.to_owned())
     }
 }
 
@@ -175,8 +178,8 @@ impl State {
                 let mut lock = users.lock().unwrap();
 
                 while let Some((left, right)) = pair_pop(&mut lock) {
-                    left.callback.send(right.id).unwrap();
-                    right.callback.send(left.id).unwrap();
+                    let _ = left.callback.send(right.id);
+                    let _ = right.callback.send(left.id);
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(PAIR_WINDOW_MILLIS));
@@ -216,13 +219,20 @@ pub async fn connect_handler(
     eprintln!("attempting connection with: {}", &peer_id);
     let state = STATE.clone();
 
-    let peer_id: UserId = peer_id.parse().unwrap();
-    let caller_id = state.lock().unwrap().pairs.get(peer_id);
-
     ws.on_upgrade(move |socket| {
         let state = state.clone();
         async move {
             let mut state = state.lock().unwrap();
+
+            let Ok(peer_id) = peer_id.parse::<UserId>() else {
+                eprintln!("failed to parse id: {}", peer_id);
+                return;
+            };
+
+            let Some(caller_id) = state.pairs.get(peer_id) else {
+                eprintln!("failed to get caller id from peer: {}", peer_id);
+                return;
+            };
 
             match state.cons.remove(&caller_id) {
                 None => {
