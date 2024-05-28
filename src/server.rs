@@ -217,10 +217,8 @@ pub async fn connect_handler(
     Path(peer_id): Path<String>,
 ) -> impl IntoResponse {
     eprintln!("attempting connection with: {}", &peer_id);
-    let state = STATE.clone();
-
     ws.on_upgrade(move |socket| {
-        let state = state.clone();
+        let state = STATE.clone();
         async move {
             let mut state = state.lock().unwrap();
 
