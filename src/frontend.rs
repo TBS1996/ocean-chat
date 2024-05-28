@@ -28,19 +28,19 @@ impl Scores {
         let a: f32 = data.get("a")?.as_value().parse().ok()?;
         let n: f32 = data.get("n")?.as_value().parse().ok()?;
 
-        if o < 0. || o > 100. {
+        if !(0. ..=100.).contains(&o) {
             return None;
         }
-        if c < 0. || c > 100. {
+        if !(0. ..=100.).contains(&c) {
             return None;
         }
-        if e < 0. || e > 100. {
+        if !(0. ..=100.).contains(&e) {
             return None;
         }
-        if a < 0. || a > 100. {
+        if !(0. ..=100.).contains(&a) {
             return None;
         }
-        if n < 0. || n > 100. {
+        if !(0. ..=100.).contains(&n) {
             return None;
         }
 
@@ -149,19 +149,18 @@ async fn connect_to_peer(
 #[component]
 fn Chat(id: String) -> Element {
     let mut socket = use_signal(|| None);
-    let mut messages = use_signal(|| vec![]);
+    let mut messages = use_signal(std::vec::Vec::new);
 
     use_effect({
         let id = id.clone();
-        let mut socket = socket.clone();
-        let messages = messages.clone();
+        let mut socket = socket;
+        let messages = messages;
         move || {
             let id = id.clone();
             spawn_local(async move {
-                let sock = connect_to_peer(id.clone(), messages.clone()).await.unwrap();
+                let sock = connect_to_peer(id.clone(), messages).await.unwrap();
                 *socket.write() = Some(sock);
             });
-            (|| ())()
         }
     });
 

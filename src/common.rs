@@ -40,7 +40,6 @@ impl FromStr for Scores {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let values: Vec<&str> = s.split(',').collect();
-        if values.len() != 5 {}
 
         let o = values[0].parse()?;
         let c = values[1].parse()?;
