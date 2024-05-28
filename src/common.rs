@@ -1,15 +1,45 @@
+#![allow(dead_code)]
+
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
+use std::fs;
 use std::num::ParseFloatError;
+use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 
-#[allow(dead_code)]
-#[cfg(feature = "local")]
-pub const IP_ADDR: &'static str = "127.0.0.1";
+pub static CONFIG: Lazy<Arc<Config>> = Lazy::new(|| Arc::new(Config::load()));
 
-#[allow(dead_code)]
-#[cfg(not(feature = "local"))]
-pub const IP_ADDR: &'static str = "95.179.226.104";
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    pub backend_ip: String,
+    pub pair_interval_millis: u64,
+}
+
+impl Config {
+    pub fn load() -> Self {
+        let path = PathBuf::from("config.toml");
+
+        if !path.exists() {
+            let s: String = toml::to_string(&Self::default()).unwrap();
+            fs::write(&path, s.as_bytes()).unwrap();
+        }
+
+        let s: String = fs::read_to_string(&path).unwrap();
+
+        toml::from_str(&s).unwrap()
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            backend_ip: "127.0.0.1".to_string(),
+            pair_interval_millis: 1000,
+        }
+    }
+}
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Scores {

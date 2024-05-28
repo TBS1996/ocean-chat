@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::common::Scores;
-use crate::common::IP_ADDR;
+use crate::common::CONFIG;
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -66,7 +66,7 @@ async fn get_paired_user_id(scores: Scores) -> String {
     opts.mode(RequestMode::Cors);
     opts.body(Some(&wasm_bindgen::JsValue::from_str(&scores_json)));
 
-    let pair_url = format!("http://{}/pair", IP_ADDR);
+    let pair_url = format!("http://{}/pair", &CONFIG.backend_ip);
     let request = Request::new_with_str_and_init(&pair_url, &opts).unwrap();
     request
         .headers()
@@ -91,7 +91,7 @@ async fn get_paired_user_id(scores: Scores) -> String {
 
 async fn connect_to_peer(id: String) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
-    let url = format!("ws://{}:3000/connect/{}", IP_ADDR, id);
+    let url = format!("ws://{}:3000/connect/{}", &CONFIG.backend_ip, id);
 
     // Attempt to create the WebSocket
     let ws = web_sys::WebSocket::new(&url).map_err(|err| {

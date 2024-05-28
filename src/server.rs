@@ -7,6 +7,7 @@ use axum::{
 };
 
 use crate::common::Scores;
+use crate::common::CONFIG;
 use axum::extract::Path;
 use futures_util::StreamExt;
 use once_cell::sync::Lazy;
@@ -179,7 +180,9 @@ impl State {
                     right.callback.send(left.id).unwrap();
                 }
             }
-            std::thread::sleep(std::time::Duration::from_millis(PAIR_WINDOW_MILLIS));
+            std::thread::sleep(std::time::Duration::from_millis(
+                CONFIG.pair_interval_millis,
+            ));
         });
     }
 }

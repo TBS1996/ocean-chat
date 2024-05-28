@@ -1,9 +1,9 @@
 # Oceanchat
 
 
-for developing:
+for developing locally:
 
-run the backend with `cargo run --features server`.
+run the backend with `cargo run --features "server, local"`.
 
 open project in another terminal, do `dx serve`.
 open in yet another terminal, do `dx serve --port 8081` (or any free port other than first one)
