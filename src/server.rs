@@ -20,8 +20,6 @@ use uuid::Uuid;
 
 type UserId = Uuid;
 
-const PAIR_WINDOW_MILLIS: u64 = 1000;
-
 static STATE: Lazy<Arc<Mutex<State>>> = Lazy::new(|| {
     let s = State::new();
     Arc::new(Mutex::new(s))
