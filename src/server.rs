@@ -213,6 +213,7 @@ pub async fn connect_handler(
     ws: WebSocketUpgrade,
     Path(peer_id): Path<String>,
 ) -> impl IntoResponse {
+    eprintln!("attempting connection with: {}", &peer_id);
     let state = STATE.clone();
 
     let peer_id: UserId = peer_id.parse().unwrap();

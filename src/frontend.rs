@@ -87,7 +87,10 @@ async fn get_paired_user_id(scores: Scores) -> String {
     json["peer_id"].as_str().unwrap().to_string()
 }
 
-async fn connect_to_peer(id: String) -> Result<WebSocket, String> {
+async fn connect_to_peer(
+    id: String,
+    mut messages: Signal<Vec<(bool, String)>>,
+) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
     let url = format!("ws://127.0.0.1:3000/connect/{}", id);
 
@@ -110,6 +113,7 @@ async fn connect_to_peer(id: String) -> Result<WebSocket, String> {
     let onmessage_callback = Closure::wrap(Box::new(move |e: web_sys::MessageEvent| {
         if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
             let txt = txt.as_string().unwrap();
+            messages.write().push((false, txt.clone()));
             log_to_console(&format!("Received message: {}", txt));
         }
     }) as Box<dyn FnMut(_)>);
@@ -145,15 +149,26 @@ async fn connect_to_peer(id: String) -> Result<WebSocket, String> {
 #[component]
 fn Chat(id: String) -> Element {
     let mut socket = use_signal(|| None);
+    let mut messages = use_signal(|| vec![]);
 
-    spawn_local(async move {
-        let sock = connect_to_peer(id).await.unwrap();
-        *socket.write() = Some(sock);
+    use_effect({
+        let id = id.clone();
+        let mut socket = socket.clone();
+        let messages = messages.clone();
+        move || {
+            let id = id.clone();
+            spawn_local(async move {
+                let sock = connect_to_peer(id.clone(), messages.clone()).await.unwrap();
+                *socket.write() = Some(sock);
+            });
+            (|| ())()
+        }
     });
 
     rsx! {
-            form { onsubmit:  move |event| {
+            form { onsubmit:  move | event| {
                 let x = event.data().values().get("msg").unwrap().as_value();
+                messages.write().push((true, x.clone()));
                 if let Some(socket) = socket.write().as_mut() {
                     let res = socket.send_with_str(&x);
                     let res = format!("message submitted: {:?}", res);
@@ -161,6 +176,13 @@ fn Chat(id: String) -> Element {
 
                 }
             },
+
+
+        style { { include_str!("./styles.css") } }
+        div {
+            class: "chat-app",
+            MessageList { messages: messages.read().clone() }
+        }
 
 
 
@@ -181,9 +203,7 @@ fn Chat(id: String) -> Element {
 
 fn App() -> Element {
     use_context_provider(|| Signal::new(Option::<Scores>::None));
-    rsx! {
-        Router::<Route> {}
-    }
+    rsx!(Router::<Route> {})
 }
 
 // Call this function to log a message
@@ -243,4 +263,36 @@ fn Home() -> Element {
                 }
             }
         }
+}
+
+#[derive(Props, PartialEq, Clone)]
+struct MessageProps {
+    content: String,
+    is_me: bool, // true if the message is from you, false if from the peer
+}
+
+fn Message(msg: MessageProps) -> Element {
+    rsx!(
+        div {
+            class: if msg.is_me { "message me" } else { "message peer" },
+            strong { if msg.is_me { "You: " } else { "Peer: " } }
+            span { "{msg.content}" }
+        }
+    )
+}
+
+#[derive(Props, PartialEq, Clone)]
+struct MessageListProps {
+    messages: Vec<(bool, String)>, // (is_me, content)
+}
+
+fn MessageList(msgs: MessageListProps) -> Element {
+    rsx!(
+        div {
+            class: "message-list",
+            for (is_me, content) in &msgs.messages {
+                Message { is_me: *is_me, content: content.clone() }
+            }
+        }
+    )
 }

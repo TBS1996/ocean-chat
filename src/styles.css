@@ -1,0 +1,38 @@
+.message-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+
+.message {
+    margin-bottom: 5px;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.message.me {
+    background-color: #daf1da; /* Light green background from you */
+    text-align: left;
+}
+
+.message.peer {
+    background-color: #f1f1f1; /* Light grey from peer */
+    text-align: left;
+}
+
+.input-box {
+    display: flex;
+}
+
+.input-box input {
+    flex: 1;
+    padding: 5px;
+    margin-right: 5px;
+}
+
+.input-box button {
+    padding: 5px;
+}
+
