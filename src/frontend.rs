@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
-use crate::commmon::IP_ADDR;
 use crate::common::Scores;
+use crate::common::IP_ADDR;
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;

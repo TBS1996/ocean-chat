@@ -36,4 +36,6 @@ futures = "0.3"
 
 [features]
 server = ["axum", "tokio", "uuid"]
+local = []
+production = []
 

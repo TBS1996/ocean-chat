@@ -3,6 +3,12 @@ use std::fmt::{self, Display, Formatter};
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
+#[allow(dead_code)]
+#[cfg(feature = "local")]
+pub const IP_ADDR: &'static str = "127.0.0.1";
+
+#[allow(dead_code)]
+#[cfg(not(feature = "local"))]
 pub const IP_ADDR: &'static str = "95.179.226.104";
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
