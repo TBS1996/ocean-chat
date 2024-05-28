@@ -223,45 +223,55 @@ fn Home() -> Element {
     let navigator = use_navigator();
 
     rsx! {
-            form { onsubmit:  move |event| {
-                let scores = Scores::from_form(&event.data());
-                if let Some(scores) = scores {
-                    spawn_local(async move {
-                        let other = get_paired_user_id(scores).await;
-                        navigator.replace(Route::Chat{id: other});
-                    }) ;
-                } else {
-                    navigator.replace(Route::Invalid {});
-                }
-            },
+        main {
+            h1 { "🌊 Ocean Chat" }
 
+            form {
+                onsubmit: move |event| {
+                    let scores = Scores::from_form(&event.data());
+                    if let Some(scores) = scores {
+                        spawn_local(async move {
+                            let other = get_paired_user_id(scores).await;
+                            navigator.replace(Route::Chat{id: other});
+                        }) ;
+                    } else {
+                        navigator.replace(Route::Invalid {});
+                    }
+                },
 
-
-    div { class: "form-group",
+                div { class: "form-group",
                     label { "Openness: " }
-                    input { name: "o", value: "50"}
+                    input { name: "o", value: "50", r#type: "number" }
                 }
                 div { class: "form-group",
                     label { "Conscientiousness: " }
-                    input { name: "c" , value: "50"}
+                    input { name: "c", value: "50", r#type: "number" }
                 }
                 div { class: "form-group",
                     label { "Extraversion: " }
-                    input { name: "e", value: "50"}
+                    input { name: "e", value: "50", r#type: "number" }
                 }
                 div { class: "form-group",
                     label { "Agreeableness: " }
-                    input { name: "a" , value: "50"}
+                    input { name: "a", value: "50", r#type: "number" }
                 }
                 div { class: "form-group",
                     label { "Neuroticism: " }
-                    input { name: "n", value: "50"}
+                    input { name: "n", value: "50", r#type: "number" }
                 }
+
+                br {}
+                
                 div { class: "form-group",
-                    input { r#type: "submit", value: "Submit" }
+                    button {
+                        class: "confirm",
+                        r#type: "submit",
+                        h2 { "Pair" }
+                    }
                 }
             }
         }
+    }
 }
 
 #[derive(Props, PartialEq, Clone)]
