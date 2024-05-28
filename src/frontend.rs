@@ -1,9 +1,7 @@
 #![allow(non_snake_case)]
 
+use crate::common::Scores;
 use dioxus::prelude::*;
-use std::fmt::{self, Display, Formatter};
-use std::num::ParseFloatError;
-use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
@@ -18,38 +16,6 @@ use web_sys::WebSocket;
 #[wasm_bindgen(start)]
 pub fn run_app() {
     launch(App);
-}
-
-#[derive(PartialEq, Props, Clone, Debug)]
-struct Scores {
-    o: f32,
-    c: f32,
-    e: f32,
-    a: f32,
-    n: f32,
-}
-
-impl Display for Scores {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{},{},{},{}", self.o, self.c, self.e, self.a, self.n)
-    }
-}
-
-impl FromStr for Scores {
-    type Err = ParseFloatError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let values: Vec<&str> = s.split(',').collect();
-        if values.len() != 5 {}
-
-        let o = values[0].parse()?;
-        let c = values[1].parse()?;
-        let e = values[2].parse()?;
-        let a = values[3].parse()?;
-        let n = values[4].parse()?;
-
-        Ok(Self { o, c, e, a, n })
-    }
 }
 
 impl Scores {
@@ -92,12 +58,19 @@ enum Route {
     Chat { id: String },
 }
 
-async fn get_paired_user_id(_scores: Scores) -> String {
+async fn get_paired_user_id(scores: Scores) -> String {
+    let scores_json = serde_json::to_string(&scores).unwrap();
     let mut opts = RequestInit::new();
-    opts.method("GET");
+    opts.method("POST");
     opts.mode(RequestMode::Cors);
+    opts.body(Some(&wasm_bindgen::JsValue::from_str(&scores_json)));
 
     let request = Request::new_with_str_and_init("http://127.0.0.1:3000/pair", &opts).unwrap();
+    request
+        .headers()
+        .set("Content-Type", "application/json")
+        .unwrap();
+
     let window = web_sys::window().unwrap();
     let resp_value = JsFuture::from(window.fetch_with_request(&request))
         .await
@@ -106,6 +79,7 @@ async fn get_paired_user_id(_scores: Scores) -> String {
     let text = JsFuture::from(resp.text().unwrap()).await.unwrap();
     let text = text.as_string().unwrap();
 
+    log_to_console(&text);
     let json: serde_json::Value = serde_json::from_str(&text).unwrap();
 
     log_to_console(&json.to_string());
@@ -267,10 +241,6 @@ fn Home() -> Element {
                 div { class: "form-group",
                     input { r#type: "submit", value: "Submit" }
                 }
-
-
-
-
             }
         }
 }

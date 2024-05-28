@@ -1,6 +1,8 @@
 #[cfg(feature = "server")]
 mod server;
 
+mod common;
+
 #[cfg(feature = "server")]
 fn main() {
     server::run();
