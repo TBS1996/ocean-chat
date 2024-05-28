@@ -2,9 +2,11 @@ use axum::{
     extract::ws::{WebSocket, WebSocketUpgrade},
     response::{IntoResponse, Json},
     routing::get,
+    routing::post,
     Router,
 };
 
+use crate::common::Scores;
 use axum::extract::Path;
 use futures_util::StreamExt;
 use once_cell::sync::Lazy;
@@ -15,14 +17,16 @@ use tokio::sync::oneshot;
 use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
 
-type UsersWaiting = Arc<Mutex<Vec<(UserId, oneshot::Sender<UserId>)>>>;
 type UserId = Uuid;
+
+const PAIR_WINDOW_MILLIS: u64 = 1000;
 
 static STATE: Lazy<Arc<Mutex<State>>> = Lazy::new(|| {
     let s = State::new();
     Arc::new(Mutex::new(s))
 });
 
+/// Bi-directional mapping of all paired up users.
 #[derive(Clone, Default)]
 struct Pairs {
     inner: HashMap<UserId, UserId>,
@@ -45,44 +49,51 @@ impl Pairs {
     }
 }
 
+/// Response from server when frontend requests a peer.
 #[derive(Serialize)]
 struct PairResponse {
     peer_id: String,
 }
 
+/// Holds the client-server connections between two peers.
 struct Connection {
-    aws: WebSocket,
-    bws: WebSocket,
+    left: WebSocket,
+    right: WebSocket,
 }
 
 impl Connection {
-    async fn run(&mut self) {
+    pub fn new(left: WebSocket, right: WebSocket) -> Self {
+        Self { left, right }
+    }
+
+    /// Handles sending messages from one peer to another.
+    async fn run(mut self) {
         loop {
             tokio::select! {
-                Some(message) = self.aws.next() => {
+                Some(message) = self.left.next() => {
                     match message {
                         Ok(msg) => {
-                            if self.bws.send(msg).await.is_err() {
-                                eprintln!("Failed to send message to bws");
+                            if self.right.send(msg).await.is_err() {
+                                eprintln!("Failed to send message to right");
                                 break;
                             }
                         }
                         Err(e) => {
-                            eprintln!("Error receiving message from aws: {:?}", e);
+                            eprintln!("Error receiving message from left: {:?}", e);
                             break;
                         }
                     }
                 }
-                Some(message) = self.bws.next() => {
+                Some(message) = self.right.next() => {
                     match message {
                         Ok(msg) => {
-                            if self.aws.send(msg).await.is_err() {
-                                eprintln!("Failed to send message to aws");
+                            if self.left.send(msg).await.is_err() {
+                                eprintln!("Failed to send message to left");
                                 break;
                             }
                         }
                         Err(e) => {
-                            eprintln!("Error receiving message from bws: {:?}", e);
+                            eprintln!("Error receiving message from right: {:?}", e);
                             break;
                         }
                     }
@@ -96,12 +107,44 @@ impl Connection {
 #[derive(Default)]
 struct State {
     // The users who have clicked submit but have not yet been assigned a peer.
-    users_waiting: UsersWaiting,
+    users_waiting: Arc<Mutex<Vec<WaitingUser>>>,
     // Map of all pairs that have yet to establish a connection.
     pairs: Pairs,
     /// There's a brief period where one user has established a connection
     /// but his peer have not.
     cons: HashMap<UserId, WebSocket>,
+}
+
+struct WaitingUser {
+    id: UserId,
+    callback: oneshot::Sender<UserId>,
+    score: Scores,
+}
+
+/// If 2 or more users are present, it'll pop the longest-waiting user along with
+/// another user who has the closest personality.
+fn pair_pop(users: &mut Vec<WaitingUser>) -> Option<(WaitingUser, WaitingUser)> {
+    if users.len() < 2 {
+        return None;
+    }
+
+    // prioritize the user who waited the longest.
+    let left = users.remove(0);
+
+    let mut right_index = 0;
+    let mut closest = f32::MAX;
+
+    for (index, user) in users.iter().enumerate() {
+        let diff = left.score.distance(&user.score);
+        if diff < closest {
+            closest = diff;
+            right_index = index;
+        }
+    }
+
+    let right = users.remove(right_index);
+
+    Some((left, right))
 }
 
 impl State {
@@ -113,9 +156,14 @@ impl State {
 
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
-    fn queue(&self, id: UserId) -> oneshot::Receiver<UserId> {
+    fn queue(&self, id: UserId, score: Scores) -> oneshot::Receiver<UserId> {
         let (tx, rx) = oneshot::channel();
-        self.users_waiting.lock().unwrap().push((id, tx));
+        let user = WaitingUser {
+            id,
+            callback: tx,
+            score,
+        };
+        self.users_waiting.lock().unwrap().push(user);
         rx
     }
 
@@ -125,25 +173,26 @@ impl State {
         std::thread::spawn(move || loop {
             {
                 let mut lock = users.lock().unwrap();
-                if lock.len() > 1 {
-                    let (first_id, first_sender) = lock.pop().unwrap();
-                    let (sec_id, sec_sender) = lock.pop().unwrap();
-                    first_sender.send(sec_id).unwrap();
-                    sec_sender.send(first_id).unwrap();
+
+                while let Some((left, right)) = pair_pop(&mut lock) {
+                    left.callback.send(right.id).unwrap();
+                    right.callback.send(left.id).unwrap();
                 }
             }
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            std::thread::sleep(std::time::Duration::from_millis(PAIR_WINDOW_MILLIS));
         });
     }
 }
 
-pub async fn pair_handler() -> impl IntoResponse {
+// Returns the user with the closest personality score to the given scores argument.
+pub async fn pair_handler(Json(scores): Json<Scores>) -> impl IntoResponse {
     let user_id = Uuid::new_v4();
+
     println!("Generated UUID for new user: {}", user_id);
 
     let peer_id = {
         let state = STATE.lock().unwrap();
-        state.queue(user_id)
+        state.queue(user_id, scores)
     };
 
     let peer_id = peer_id.await.unwrap();
@@ -155,42 +204,49 @@ pub async fn pair_handler() -> impl IntoResponse {
     Json(PairResponse { peer_id })
 }
 
-pub async fn connect_handler(ws: WebSocketUpgrade, Path(id): Path<String>) -> impl IntoResponse {
+/// Sets up a websocket communication with the user and its peer.
+///
+/// If the peer has already connected, a [`Connection`] is set up and communication can start.
+/// If the peer has yet to connect, the caller's websocket is saved and waits for the peer to
+/// connect.
+pub async fn connect_handler(
+    ws: WebSocketUpgrade,
+    Path(peer_id): Path<String>,
+) -> impl IntoResponse {
     let state = STATE.clone();
 
-    let id: UserId = id.parse().unwrap();
-    let peer = state.lock().unwrap().pairs.get(id);
+    let peer_id: UserId = peer_id.parse().unwrap();
+    let caller_id = state.lock().unwrap().pairs.get(peer_id);
 
     ws.on_upgrade(move |socket| {
         let state = state.clone();
         async move {
             let mut state = state.lock().unwrap();
-            if let Some(peer_socket) = state.cons.remove(&peer) {
-                let mut con = Connection {
-                    aws: peer_socket,
-                    bws: socket,
-                };
 
-                state.pairs.remove(id);
-
-                tokio::spawn(async move {
-                    con.run().await;
-                });
-            } else {
-                state.cons.insert(id, socket);
+            match state.cons.remove(&caller_id) {
+                None => {
+                    state.cons.insert(peer_id, socket);
+                }
+                Some(peer_socket) => {
+                    state.pairs.remove(peer_id);
+                    tokio::spawn(async move {
+                        Connection::new(peer_socket, socket).run().await;
+                    });
+                }
             }
         }
     })
 }
 
 pub fn run() {
+    eprintln!("starting server");
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
         .allow_headers(Any);
 
     let app = Router::new()
-        .route("/pair", get(pair_handler))
+        .route("/pair", post(pair_handler))
         .route("/connect/:id", get(connect_handler))
         .layer(cors);
 
