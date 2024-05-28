@@ -1,9 +1,7 @@
 #![allow(non_snake_case)]
 
+use crate::common::Scores;
 use dioxus::prelude::*;
-use std::fmt::{self, Display, Formatter};
-use std::num::ParseFloatError;
-use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
@@ -20,38 +18,6 @@ pub fn run_app() {
     launch(App);
 }
 
-#[derive(PartialEq, Props, Clone, Debug)]
-struct Scores {
-    o: f32,
-    c: f32,
-    e: f32,
-    a: f32,
-    n: f32,
-}
-
-impl Display for Scores {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{},{},{},{}", self.o, self.c, self.e, self.a, self.n)
-    }
-}
-
-impl FromStr for Scores {
-    type Err = ParseFloatError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let values: Vec<&str> = s.split(',').collect();
-        if values.len() != 5 {}
-
-        let o = values[0].parse()?;
-        let c = values[1].parse()?;
-        let e = values[2].parse()?;
-        let a = values[3].parse()?;
-        let n = values[4].parse()?;
-
-        Ok(Self { o, c, e, a, n })
-    }
-}
-
 impl Scores {
     fn from_form(form: &FormData) -> Option<Self> {
         let data = form.values();
@@ -62,19 +28,19 @@ impl Scores {
         let a: f32 = data.get("a")?.as_value().parse().ok()?;
         let n: f32 = data.get("n")?.as_value().parse().ok()?;
 
-        if o < 0. || o > 100. {
+        if !(0. ..=100.).contains(&o) {
             return None;
         }
-        if c < 0. || c > 100. {
+        if !(0. ..=100.).contains(&c) {
             return None;
         }
-        if e < 0. || e > 100. {
+        if !(0. ..=100.).contains(&e) {
             return None;
         }
-        if a < 0. || a > 100. {
+        if !(0. ..=100.).contains(&a) {
             return None;
         }
-        if n < 0. || n > 100. {
+        if !(0. ..=100.).contains(&n) {
             return None;
         }
 
@@ -92,12 +58,19 @@ enum Route {
     Chat { id: String },
 }
 
-async fn get_paired_user_id(_scores: Scores) -> String {
+async fn get_paired_user_id(scores: Scores) -> String {
+    let scores_json = serde_json::to_string(&scores).unwrap();
     let mut opts = RequestInit::new();
-    opts.method("GET");
+    opts.method("POST");
     opts.mode(RequestMode::Cors);
+    opts.body(Some(&wasm_bindgen::JsValue::from_str(&scores_json)));
 
     let request = Request::new_with_str_and_init("http://127.0.0.1:3000/pair", &opts).unwrap();
+    request
+        .headers()
+        .set("Content-Type", "application/json")
+        .unwrap();
+
     let window = web_sys::window().unwrap();
     let resp_value = JsFuture::from(window.fetch_with_request(&request))
         .await
@@ -106,6 +79,7 @@ async fn get_paired_user_id(_scores: Scores) -> String {
     let text = JsFuture::from(resp.text().unwrap()).await.unwrap();
     let text = text.as_string().unwrap();
 
+    log_to_console(&text);
     let json: serde_json::Value = serde_json::from_str(&text).unwrap();
 
     log_to_console(&json.to_string());
@@ -113,7 +87,10 @@ async fn get_paired_user_id(_scores: Scores) -> String {
     json["peer_id"].as_str().unwrap().to_string()
 }
 
-async fn connect_to_peer(id: String) -> Result<WebSocket, String> {
+async fn connect_to_peer(
+    id: String,
+    mut messages: Signal<Vec<(bool, String)>>,
+) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
     let url = format!("ws://127.0.0.1:3000/connect/{}", id);
 
@@ -136,6 +113,7 @@ async fn connect_to_peer(id: String) -> Result<WebSocket, String> {
     let onmessage_callback = Closure::wrap(Box::new(move |e: web_sys::MessageEvent| {
         if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
             let txt = txt.as_string().unwrap();
+            messages.write().push((false, txt.clone()));
             log_to_console(&format!("Received message: {}", txt));
         }
     }) as Box<dyn FnMut(_)>);
@@ -171,15 +149,25 @@ async fn connect_to_peer(id: String) -> Result<WebSocket, String> {
 #[component]
 fn Chat(id: String) -> Element {
     let mut socket = use_signal(|| None);
+    let mut messages = use_signal(std::vec::Vec::new);
 
-    spawn_local(async move {
-        let sock = connect_to_peer(id).await.unwrap();
-        *socket.write() = Some(sock);
+    use_effect({
+        let id = id.clone();
+        let mut socket = socket;
+        let messages = messages;
+        move || {
+            let id = id.clone();
+            spawn_local(async move {
+                let sock = connect_to_peer(id.clone(), messages).await.unwrap();
+                *socket.write() = Some(sock);
+            });
+        }
     });
 
     rsx! {
-            form { onsubmit:  move |event| {
+            form { onsubmit:  move | event| {
                 let x = event.data().values().get("msg").unwrap().as_value();
+                messages.write().push((true, x.clone()));
                 if let Some(socket) = socket.write().as_mut() {
                     let res = socket.send_with_str(&x);
                     let res = format!("message submitted: {:?}", res);
@@ -187,6 +175,13 @@ fn Chat(id: String) -> Element {
 
                 }
             },
+
+
+        style { { include_str!("./styles.css") } }
+        div {
+            class: "chat-app",
+            MessageList { messages: messages.read().clone() }
+        }
 
 
 
@@ -207,9 +202,7 @@ fn Chat(id: String) -> Element {
 
 fn App() -> Element {
     use_context_provider(|| Signal::new(Option::<Scores>::None));
-    rsx! {
-        Router::<Route> {}
-    }
+    rsx!(Router::<Route> {})
 }
 
 // Call this function to log a message
@@ -267,10 +260,38 @@ fn Home() -> Element {
                 div { class: "form-group",
                     input { r#type: "submit", value: "Submit" }
                 }
-
-
-
-
             }
         }
+}
+
+#[derive(Props, PartialEq, Clone)]
+struct MessageProps {
+    content: String,
+    is_me: bool, // true if the message is from you, false if from the peer
+}
+
+fn Message(msg: MessageProps) -> Element {
+    rsx!(
+        div {
+            class: if msg.is_me { "message me" } else { "message peer" },
+            strong { if msg.is_me { "You: " } else { "Peer: " } }
+            span { "{msg.content}" }
+        }
+    )
+}
+
+#[derive(Props, PartialEq, Clone)]
+struct MessageListProps {
+    messages: Vec<(bool, String)>, // (is_me, content)
+}
+
+fn MessageList(msgs: MessageListProps) -> Element {
+    rsx!(
+        div {
+            class: "message-list",
+            for (is_me, content) in &msgs.messages {
+                Message { is_me: *is_me, content: content.clone() }
+            }
+        }
+    )
 }
