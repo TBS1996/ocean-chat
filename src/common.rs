@@ -3,6 +3,8 @@ use std::fmt::{self, Display, Formatter};
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
+pub const IP_ADDR: &'static str = "95.179.226.104";
+
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Scores {
     pub o: f32,

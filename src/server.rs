@@ -238,6 +238,12 @@ pub async fn connect_handler(
     })
 }
 
+/// just for debugging
+async fn ping_handler() -> &'static str {
+    println!("Ping received");
+    "pong"
+}
+
 pub fn run() {
     eprintln!("starting server");
     let cors = CorsLayer::new()
@@ -248,9 +254,10 @@ pub fn run() {
     let app = Router::new()
         .route("/pair", post(pair_handler))
         .route("/connect/:id", get(connect_handler))
+        .route("/ping", get(ping_handler))
         .layer(cors);
 
-    let addr = "127.0.0.1:3000".parse().unwrap();
+    let addr = "0.0.0.0:3000".parse().unwrap();
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
         axum::Server::bind(&addr)
