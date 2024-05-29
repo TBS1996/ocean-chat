@@ -41,7 +41,31 @@ impl Default for Config {
     }
 }
 
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[cfg(feature = "server")]
+use axum::extract::ws::Message;
+
+/// The type that gets sent from server to client through socket.
+#[derive(Serialize, Deserialize)]
+pub enum SocketMessage {
+    User(String),
+    Info(String),
+}
+
+impl SocketMessage {
+    #[cfg(feature = "server")]
+    pub fn user_msg(msg: String) -> Message {
+        let s = serde_json::to_string(&Self::User(msg)).unwrap();
+        Message::Text(s)
+    }
+
+    #[cfg(feature = "server")]
+    pub fn info_msg(msg: String) -> Message {
+        let s = serde_json::to_string(&Self::Info(msg)).unwrap();
+        Message::Text(s)
+    }
+}
+
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Scores {
     pub o: f32,
     pub c: f32,
@@ -78,7 +102,6 @@ impl FromStr for Scores {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let values: Vec<&str> = s.split(',').collect();
-        if values.len() != 5 {}
 
         let o = values[0].parse()?;
         let c = values[1].parse()?;
