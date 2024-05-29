@@ -20,6 +20,12 @@ struct State {
     inner: Arc<Mutex<InnerState>>,
 }
 
+#[derive(Default)]
+struct InnerState {
+    scores: Option<Scores>,
+    socket: Option<WebSocket>,
+}
+
 impl State {
     fn set_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().scores = Some(scores);
@@ -42,12 +48,6 @@ impl State {
             false
         }
     }
-}
-
-#[derive(Default)]
-struct InnerState {
-    scores: Option<Scores>,
-    socket: Option<WebSocket>,
 }
 
 impl Scores {
@@ -173,7 +173,6 @@ fn Chat() -> Element {
 
     use_effect({
         let state = state.clone();
-        let messages = messages;
         move || {
             let state = state.clone();
             spawn_local(async move {
@@ -217,7 +216,7 @@ fn Chat() -> Element {
 }
 
 fn App() -> Element {
-    use_context_provider(|| State::default());
+    use_context_provider(State::default);
     rsx!(Router::<Route> {})
 }
 
