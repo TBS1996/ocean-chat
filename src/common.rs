@@ -3,6 +3,29 @@ use std::fmt::{self, Display, Formatter};
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
+#[cfg(feature = "server")]
+use axum::extract::ws::Message;
+
+#[derive(Serialize, Deserialize)]
+pub enum SocketMessage {
+    User(String),
+    Info(String),
+}
+
+impl SocketMessage {
+    #[cfg(feature = "server")]
+    pub fn user_msg(msg: String) -> Message {
+        let s = serde_json::to_string(&Self::User(msg)).unwrap();
+        Message::Text(s)
+    }
+
+    #[cfg(feature = "server")]
+    pub fn info_msg(msg: String) -> Message {
+        let s = serde_json::to_string(&Self::Info(msg)).unwrap();
+        Message::Text(s)
+    }
+}
+
 #[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Scores {
     pub o: f32,

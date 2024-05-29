@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::common::Scores;
+use crate::common::SocketMessage;
 use dioxus::prelude::*;
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
@@ -30,14 +31,6 @@ impl State {
 
     fn set_socket(&self, socket: WebSocket) {
         self.inner.lock().unwrap().socket = Some(socket);
-    }
-
-    fn _has_socket(&self) -> bool {
-        self.inner.lock().unwrap().socket.is_some()
-    }
-
-    fn _has_scores(&self) -> bool {
-        self.inner.lock().unwrap().scores.is_some()
     }
 
     fn send_message(&self, msg: &str) -> bool {
@@ -99,7 +92,7 @@ enum Route {
 
 async fn connect_to_peer(
     scores: Scores,
-    mut messages: Signal<Vec<(bool, String)>>,
+    mut messages: Signal<Vec<Message>>,
 ) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
     let url = format!("ws://127.0.0.1:3000/pair/{}", scores);
@@ -123,7 +116,14 @@ async fn connect_to_peer(
     let onmessage_callback = Closure::wrap(Box::new(move |e: web_sys::MessageEvent| {
         if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
             let txt = txt.as_string().unwrap();
-            messages.write().push((false, txt.clone()));
+
+            let message = match serde_json::from_str(&txt).unwrap() {
+                SocketMessage::User(msg) => Message::new(Origin::Peer, msg),
+                SocketMessage::Info(msg) => Message::new(Origin::Info, msg),
+            };
+
+            messages.write().push(message);
+
             log_to_console(&format!("Received message: {}", txt));
         }
     }) as Box<dyn FnMut(_)>);
@@ -161,11 +161,15 @@ fn Chat() -> Element {
     let state = use_context::<State>();
 
     let Some(scores) = state.scores() else {
-        use_navigator().replace(Route::Chat {});
-        return rsx! {};
+        return Invalid();
     };
 
-    let mut messages = use_signal(std::vec::Vec::new);
+    let mut messages = use_signal(|| {
+        vec![Message {
+            origin: Origin::Info,
+            content: "searching for peer...".to_string(),
+        }]
+    });
 
     use_effect({
         let state = state.clone();
@@ -182,7 +186,7 @@ fn Chat() -> Element {
     rsx! {
             form { onsubmit:  move | event| {
                 let x = event.data().values().get("msg").unwrap().as_value();
-                messages.write().push((true, x.clone()));
+                messages.write().push(Message::new(Origin::Me, x.clone()));
                 if state.send_message(&x) {
                     log_to_console("message submitted");
                 }
@@ -275,17 +279,55 @@ fn Home() -> Element {
         }
 }
 
+#[derive(PartialEq, Clone)]
+enum Origin {
+    Me,
+    Peer,
+    Info,
+}
+
+impl Origin {
+    fn class(&self) -> &'static str {
+        match self {
+            Self::Me => "message me",
+            Self::Peer => "message peer",
+            Self::Info => "message info",
+        }
+    }
+
+    fn str(&self) -> &'static str {
+        match self {
+            Self::Me => "You: ",
+            Self::Peer => "Peer: ",
+            Self::Info => "Info: ",
+        }
+    }
+}
+
+#[derive(PartialEq, Clone)]
+pub struct Message {
+    origin: Origin,
+    content: String,
+}
+
+impl Message {
+    fn new(origin: Origin, content: String) -> Self {
+        Self { origin, content }
+    }
+}
+
 #[derive(Props, PartialEq, Clone)]
 struct MessageProps {
     content: String,
-    is_me: bool, // true if the message is from you, false if from the peer
+    class: &'static str,
+    sender: &'static str,
 }
 
 fn Message(msg: MessageProps) -> Element {
     rsx!(
         div {
-            class: if msg.is_me { "message me" } else { "message peer" },
-            strong { if msg.is_me { "You: " } else { "Peer: " } }
+            class: "{msg.class}",
+            strong { "{msg.sender}" }
             span { "{msg.content}" }
         }
     )
@@ -293,15 +335,15 @@ fn Message(msg: MessageProps) -> Element {
 
 #[derive(Props, PartialEq, Clone)]
 struct MessageListProps {
-    messages: Vec<(bool, String)>, // (is_me, content)
+    messages: Vec<Message>,
 }
 
 fn MessageList(msgs: MessageListProps) -> Element {
     rsx!(
         div {
             class: "message-list",
-            for (is_me, content) in &msgs.messages {
-                Message { is_me: *is_me, content: content.clone() }
+            for msg in msgs.messages {
+                Message {class: msg.origin.class(), sender: msg.origin.str(), content: msg.content}
             }
         }
     )

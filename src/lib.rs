@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[cfg(not(feature = "server"))]
 mod frontend;
 

@@ -1,4 +1,5 @@
 use axum::{
+    extract::ws::Message,
     extract::ws::{WebSocket, WebSocketUpgrade},
     extract::Extension,
     extract::Path,
@@ -8,6 +9,8 @@ use axum::{
 };
 
 use crate::common::Scores;
+use crate::common::SocketMessage;
+use futures_util::SinkExt;
 use futures_util::StreamExt;
 use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
@@ -26,39 +29,53 @@ impl Connection {
     }
 
     /// Handles sending messages from one peer to another.
-    async fn run(mut self) {
+    pub async fn run(self) {
         eprintln!("communication starting between a pair");
+        let msg = "connected to peer!".to_string();
+
+        let (mut left_tx, mut left_rx) = self.left.split();
+        let (mut right_tx, mut right_rx) = self.right.split();
+
+        let _ = right_tx.send(SocketMessage::info_msg(msg.clone())).await;
+        let _ = left_tx.send(SocketMessage::info_msg(msg)).await;
+
         loop {
             tokio::select! {
-                Some(message) = self.left.next() => {
-                    match message {
-                        Ok(msg) => {
-                            if self.right.send(msg).await.is_err() {
+                Some(Ok(msg)) = right_rx.next() => {
+                    match msg {
+                        Message::Close(_) => {
+                            let _ = left_tx.send(SocketMessage::info_msg("Peer disconnected".to_string())).await;
+                            break;
+                        },
+                        Message::Text(msg) => {
+                            if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
                                 eprintln!("Failed to send message to right");
                                 break;
                             }
-                        }
-                        Err(e) => {
-                            eprintln!("Error receiving message from left: {:?}", e);
-                            break;
-                        }
+                        },
+                        _ => {}
                     }
                 }
-                Some(message) = self.right.next() => {
-                    match message {
-                        Ok(msg) => {
-                            if self.left.send(msg).await.is_err() {
-                                eprintln!("Failed to send message to left");
+                Some(Ok(msg)) = left_rx.next() => {
+                    match msg {
+                        Message::Close(_) => {
+                            let _ = right_tx.send(SocketMessage::info_msg("Peer disconnected".to_string())).await;
+                            break;
+                        },
+                        Message::Text(msg) => {
+                            if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
+                                eprintln!("Failed to send message to right");
                                 break;
                             }
-                        }
-                        Err(e) => {
-                            eprintln!("Error receiving message from right: {:?}", e);
-                            break;
-                        }
+                        },
+                        _ => {}
                     }
                 }
-                else => break,
+                else => {
+                    let _ = left_tx.send(SocketMessage::user_msg("unexpected error occured".to_string())).await;
+                    let _ = right_tx.send(SocketMessage::user_msg("unexpected error occured".to_string())).await;
+                    break;
+                }
             }
         }
     }
