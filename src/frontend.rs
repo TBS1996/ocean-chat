@@ -2,20 +2,59 @@
 
 use crate::common::Scores;
 use dioxus::prelude::*;
+use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
-use wasm_bindgen_futures::JsFuture;
 use web_sys::console;
-use web_sys::Request;
-use web_sys::RequestInit;
-use web_sys::RequestMode;
-use web_sys::Response;
 use web_sys::WebSocket;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
     launch(App);
+}
+
+#[derive(Clone, Default)]
+struct State {
+    inner: Arc<Mutex<InnerState>>,
+}
+
+impl State {
+    fn set_scores(&self, scores: Scores) {
+        self.inner.lock().unwrap().scores = Some(scores);
+    }
+
+    fn scores(&self) -> Option<Scores> {
+        self.inner.lock().unwrap().scores
+    }
+
+    fn set_socket(&self, socket: WebSocket) {
+        self.inner.lock().unwrap().socket = Some(socket);
+    }
+
+    fn _has_socket(&self) -> bool {
+        self.inner.lock().unwrap().socket.is_some()
+    }
+
+    fn _has_scores(&self) -> bool {
+        self.inner.lock().unwrap().scores.is_some()
+    }
+
+    fn send_message(&self, msg: &str) -> bool {
+        if let Some(socket) = &self.inner.lock().unwrap().socket {
+            let _ = socket.send_with_str(msg);
+            true
+        } else {
+            log_to_console("attempted to send msg without a socket configured");
+            false
+        }
+    }
+}
+
+#[derive(Default)]
+struct InnerState {
+    scores: Option<Scores>,
+    socket: Option<WebSocket>,
 }
 
 impl Scores {
@@ -54,45 +93,16 @@ enum Route {
     Home {},
     #[route("/invalid")]
     Invalid {},
-    #[route("/chat/:id")]
-    Chat { id: String },
-}
-
-async fn get_paired_user_id(scores: Scores) -> String {
-    let scores_json = serde_json::to_string(&scores).unwrap();
-    let mut opts = RequestInit::new();
-    opts.method("POST");
-    opts.mode(RequestMode::Cors);
-    opts.body(Some(&wasm_bindgen::JsValue::from_str(&scores_json)));
-
-    let request = Request::new_with_str_and_init("http://127.0.0.1:3000/pair", &opts).unwrap();
-    request
-        .headers()
-        .set("Content-Type", "application/json")
-        .unwrap();
-
-    let window = web_sys::window().unwrap();
-    let resp_value = JsFuture::from(window.fetch_with_request(&request))
-        .await
-        .unwrap();
-    let resp: Response = resp_value.dyn_into().unwrap();
-    let text = JsFuture::from(resp.text().unwrap()).await.unwrap();
-    let text = text.as_string().unwrap();
-
-    log_to_console(&text);
-    let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-
-    log_to_console(&json.to_string());
-
-    json["peer_id"].as_str().unwrap().to_string()
+    #[route("/chat")]
+    Chat {},
 }
 
 async fn connect_to_peer(
-    id: String,
+    scores: Scores,
     mut messages: Signal<Vec<(bool, String)>>,
 ) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
-    let url = format!("ws://127.0.0.1:3000/connect/{}", id);
+    let url = format!("ws://127.0.0.1:3000/pair/{}", scores);
 
     // Attempt to create the WebSocket
     let ws = web_sys::WebSocket::new(&url).map_err(|err| {
@@ -147,19 +157,24 @@ async fn connect_to_peer(
 }
 
 #[component]
-fn Chat(id: String) -> Element {
-    let mut socket = use_signal(|| None);
+fn Chat() -> Element {
+    let state = use_context::<State>();
+
+    let Some(scores) = state.scores() else {
+        use_navigator().replace(Route::Chat {});
+        return rsx! {};
+    };
+
     let mut messages = use_signal(std::vec::Vec::new);
 
     use_effect({
-        let id = id.clone();
-        let mut socket = socket;
+        let state = state.clone();
         let messages = messages;
         move || {
-            let id = id.clone();
+            let state = state.clone();
             spawn_local(async move {
-                let sock = connect_to_peer(id.clone(), messages).await.unwrap();
-                *socket.write() = Some(sock);
+                let sock = connect_to_peer(scores, messages).await.unwrap();
+                state.set_socket(sock);
             });
         }
     });
@@ -168,11 +183,8 @@ fn Chat(id: String) -> Element {
             form { onsubmit:  move | event| {
                 let x = event.data().values().get("msg").unwrap().as_value();
                 messages.write().push((true, x.clone()));
-                if let Some(socket) = socket.write().as_mut() {
-                    let res = socket.send_with_str(&x);
-                    let res = format!("message submitted: {:?}", res);
-                    log_to_console(&res);
-
+                if state.send_message(&x) {
+                    log_to_console("message submitted");
                 }
             },
 
@@ -201,7 +213,7 @@ fn Chat(id: String) -> Element {
 }
 
 fn App() -> Element {
-    use_context_provider(|| Signal::new(Option::<Scores>::None));
+    use_context_provider(|| State::default());
     rsx!(Router::<Route> {})
 }
 
@@ -221,15 +233,14 @@ fn Invalid() -> Element {
 #[component]
 fn Home() -> Element {
     let navigator = use_navigator();
+    let state = use_context::<State>();
 
     rsx! {
             form { onsubmit:  move |event| {
                 let scores = Scores::from_form(&event.data());
                 if let Some(scores) = scores {
-                    spawn_local(async move {
-                        let other = get_paired_user_id(scores).await;
-                        navigator.replace(Route::Chat{id: other});
-                    }) ;
+                    state.set_scores(scores);
+                    navigator.replace(Route::Chat{});
                 } else {
                     navigator.replace(Route::Invalid {});
                 }

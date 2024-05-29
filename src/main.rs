@@ -4,8 +4,9 @@ mod server;
 mod common;
 
 #[cfg(feature = "server")]
-fn main() {
-    server::run();
+#[tokio::main]
+async fn main() {
+    server::run().await;
 }
 
 #[cfg(not(feature = "server"))]

@@ -3,7 +3,7 @@ use std::fmt::{self, Display, Formatter};
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Scores {
     pub o: f32,
     pub c: f32,
