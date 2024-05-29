@@ -11,39 +11,10 @@ use axum::{
 use crate::common::Scores;
 use crate::common::SocketMessage;
 use crate::common::CONFIG;
-use axum::extract::Path;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
-
-static STATE: Lazy<Arc<Mutex<State>>> = Lazy::new(|| {
-    let s = State::new();
-    Arc::new(Mutex::new(s))
-});
-
-/// Bi-directional mapping of all paired up users.
-#[derive(Clone, Default)]
-struct Pairs {
-    inner: HashMap<UserId, UserId>,
-}
-
-impl Pairs {
-    fn insert(&mut self, a: UserId, b: UserId) {
-        self.inner.insert(a, b);
-        self.inner.insert(b, a);
-    }
-
-    fn remove(&mut self, id: UserId) {
-        let peer = self.get(id);
-        self.inner.remove(&id);
-        self.inner.remove(&peer);
-    }
-
-    fn get(&self, id: UserId) -> UserId {
-        self.inner.get(&id).unwrap().to_owned()
-    }
-}
 
 /// Holds the client-server connections between two peers.
 struct Connection {
@@ -175,7 +146,10 @@ impl State {
                         });
                     }
                 }
-                tokio::time::sleep(std::time::Duration::from_millis(PAIR_WINDOW_MILLIS)).await;
+                tokio::time::sleep(std::time::Duration::from_millis(
+                    CONFIG.pair_interval_millis,
+                ))
+                .await;
             }
         });
     }
