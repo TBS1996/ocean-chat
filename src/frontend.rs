@@ -50,34 +50,32 @@ impl State {
     }
 }
 
-impl Scores {
-    fn from_form(form: &FormData) -> Option<Self> {
-        let data = form.values();
+fn scores_from_formdata(form: &FormData) -> Option<Scores> {
+    let data = form.values();
 
-        let o: f32 = data.get("o")?.as_value().parse().ok()?;
-        let c: f32 = data.get("c")?.as_value().parse().ok()?;
-        let e: f32 = data.get("e")?.as_value().parse().ok()?;
-        let a: f32 = data.get("a")?.as_value().parse().ok()?;
-        let n: f32 = data.get("n")?.as_value().parse().ok()?;
+    let o: f32 = data.get("o")?.as_value().parse().ok()?;
+    let c: f32 = data.get("c")?.as_value().parse().ok()?;
+    let e: f32 = data.get("e")?.as_value().parse().ok()?;
+    let a: f32 = data.get("a")?.as_value().parse().ok()?;
+    let n: f32 = data.get("n")?.as_value().parse().ok()?;
 
-        if !(0. ..=100.).contains(&o) {
-            return None;
-        }
-        if !(0. ..=100.).contains(&c) {
-            return None;
-        }
-        if !(0. ..=100.).contains(&e) {
-            return None;
-        }
-        if !(0. ..=100.).contains(&a) {
-            return None;
-        }
-        if !(0. ..=100.).contains(&n) {
-            return None;
-        }
-
-        Some(Self { o, c, e, a, n })
+    if !(0. ..=100.).contains(&o) {
+        return None;
     }
+    if !(0. ..=100.).contains(&c) {
+        return None;
+    }
+    if !(0. ..=100.).contains(&e) {
+        return None;
+    }
+    if !(0. ..=100.).contains(&a) {
+        return None;
+    }
+    if !(0. ..=100.).contains(&n) {
+        return None;
+    }
+
+    Some(Scores { o, c, e, a, n })
 }
 
 #[derive(Clone, Routable, Debug, PartialEq)]
@@ -239,21 +237,22 @@ fn Home() -> Element {
     let state = use_context::<State>();
 
     rsx! {
-            form { onsubmit:  move |event| {
-                let scores = Scores::from_form(&event.data());
-                if let Some(scores) = scores {
-                    state.set_scores(scores);
-                    navigator.replace(Route::Chat{});
-                } else {
-                    navigator.replace(Route::Invalid {});
-                }
-            },
+    form { onsubmit:  move |event| {
+         match scores_from_formdata(&event.data()) {
+             Some(scores) => {
+                 state.set_scores(scores);
+                 navigator.replace(Route::Chat{});
+             }
+             None => {
+                 navigator.replace(Route::Invalid {});
+             }
 
+         }
 
-
+    },
     div { class: "form-group",
-                    label { "Openness: " }
-                    input { name: "o", value: "50"}
+                label { "Openness: " }
+                input { name: "o", value: "50"}
                 }
                 div { class: "form-group",
                     label { "Conscientiousness: " }
@@ -273,9 +272,9 @@ fn Home() -> Element {
                 }
                 div { class: "form-group",
                     input { r#type: "submit", value: "Submit" }
-                }
             }
         }
+    }
 }
 
 #[derive(PartialEq, Clone)]

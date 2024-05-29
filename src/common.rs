@@ -6,6 +6,7 @@ use std::str::FromStr;
 #[cfg(feature = "server")]
 use axum::extract::ws::Message;
 
+/// The type that gets sent from server to client through socket.
 #[derive(Serialize, Deserialize)]
 pub enum SocketMessage {
     User(String),

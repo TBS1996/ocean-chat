@@ -117,7 +117,7 @@ fn pair_pop(users: &mut Vec<WaitingUser>) -> Option<(WaitingUser, WaitingUser)> 
 
 #[derive(Default, Clone)]
 struct State {
-    // The users who have clicked submit but have not yet been assigned a peer.
+    // Users waiting to be matched with a peer.
     users_waiting: Arc<Mutex<Vec<WaitingUser>>>,
 }
 
@@ -129,7 +129,7 @@ impl State {
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
     fn queue(&self, score: Scores, socket: WebSocket) {
-        println!("user queued ");
+        eprintln!("user queued ");
         let user = WaitingUser { score, socket };
         self.users_waiting.lock().unwrap().push(user);
     }
