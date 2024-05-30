@@ -33,9 +33,9 @@ impl State {
 
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
-    async fn queue(&self, score: Scores, socket: WebSocket) {
+    async fn queue(&self, scores: Scores, socket: WebSocket) {
         tracing::info!("user queued ");
-        let user = WaitingUser { score, socket };
+        let user = WaitingUser { scores, socket };
         self.waiting_users.queue(user).await;
     }
 
@@ -47,7 +47,7 @@ impl State {
                 {
                     while let Some((left, right)) = users.pop_pair().await {
                         tokio::spawn(async move {
-                            Connection::new(left.socket, right.socket).run().await;
+                            Connection::new(left, right).run().await;
                         });
                     }
                 }

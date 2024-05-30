@@ -29,7 +29,7 @@ impl WaitingUsers {
         let mut closest = f32::MAX;
 
         for (index, user) in users.iter().enumerate() {
-            let diff = left.score.distance(&user.score);
+            let diff = left.scores.distance(&user.scores);
             if diff < closest {
                 closest = diff;
                 right_index = index;
@@ -44,6 +44,6 @@ impl WaitingUsers {
 }
 
 pub struct WaitingUser {
-    pub score: Scores,
+    pub scores: Scores,
     pub socket: WebSocket,
 }

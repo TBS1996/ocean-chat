@@ -1,16 +1,17 @@
 use crate::common::SocketMessage;
-use axum::{extract::ws::Message, extract::ws::WebSocket};
+use crate::server::waiting_users::WaitingUser;
+use axum::extract::ws::Message;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 
 /// Holds the client-server connections between two peers.
 pub struct Connection {
-    left: WebSocket,
-    right: WebSocket,
+    left: WaitingUser,
+    right: WaitingUser,
 }
 
 impl Connection {
-    pub fn new(left: WebSocket, right: WebSocket) -> Self {
+    pub fn new(left: WaitingUser, right: WaitingUser) -> Self {
         Self { left, right }
     }
 
@@ -19,11 +20,17 @@ impl Connection {
         tracing::info!("communication starting between a pair");
         let msg = "connected to peer!".to_string();
 
-        let (mut left_tx, mut left_rx) = self.left.split();
-        let (mut right_tx, mut right_rx) = self.right.split();
+        let (mut left_tx, mut left_rx) = self.left.socket.split();
+        let (mut right_tx, mut right_rx) = self.right.socket.split();
 
         let _ = right_tx.send(SocketMessage::info_msg(msg.clone())).await;
         let _ = left_tx.send(SocketMessage::info_msg(msg)).await;
+        let _ = right_tx
+            .send(SocketMessage::peer_scores(self.left.scores))
+            .await;
+        let _ = left_tx
+            .send(SocketMessage::peer_scores(self.right.scores))
+            .await;
 
         loop {
             tokio::select! {
