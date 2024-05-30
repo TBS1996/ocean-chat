@@ -6,6 +6,8 @@ use std::num::ParseFloatError;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub static CONFIG: Lazy<Arc<Config>> = Lazy::new(|| Arc::new(Config::load()));
 
@@ -13,6 +15,7 @@ pub static CONFIG: Lazy<Arc<Config>> = Lazy::new(|| Arc::new(Config::load()));
 pub struct Config {
     pub backend_ip: String,
     pub pair_interval_millis: u64,
+    pub wait_len_secs: u64,
 }
 
 impl Config {
@@ -35,8 +38,13 @@ impl Default for Config {
         Config {
             backend_ip: "127.0.0.1".to_string(),
             pair_interval_millis: 1000,
+            wait_len_secs: 10,
         }
     }
+}
+
+pub fn current_unix() -> Duration {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap()
 }
 
 #[cfg(feature = "server")]

@@ -8,12 +8,14 @@ use axum::{
     Router,
 };
 
+use crate::common;
 use crate::common::Scores;
 use crate::common::SocketMessage;
 use crate::common::CONFIG;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tower_http::cors::{Any, CorsLayer};
 
 /// Holds the client-server connections between two peers.
@@ -81,6 +83,7 @@ impl Connection {
 }
 
 struct WaitingUser {
+    time_added: Duration,
     score: Scores,
     socket: WebSocket,
 }
@@ -129,8 +132,43 @@ impl State {
     /// you will receive the peer ID when pairing has completed.
     fn queue(&self, score: Scores, socket: WebSocket) {
         eprintln!("user queued ");
-        let user = WaitingUser { score, socket };
+        let time_added = common::current_unix();
+        let user = WaitingUser {
+            score,
+            socket,
+            time_added,
+        };
         self.users_waiting.lock().unwrap().push(user);
+    }
+
+    async fn queue_zapper(&self) {
+        eprintln!("queue zapper started");
+        let users = Arc::clone(&self.users_waiting);
+        let loop_pause = (CONFIG.wait_len_secs / 10).max(1);
+        tokio::spawn(async move {
+            loop {
+                let current_time = common::current_unix();
+                {
+                    let mut lock = users.lock().unwrap();
+
+                    let idx = lock.iter().position(|user| {
+                        current_time.as_secs() - user.time_added.as_secs() >= CONFIG.wait_len_secs
+                    });
+
+                    if let Some(index) = idx {
+                        let mut expired_users: Vec<WaitingUser> = lock.drain(index..).collect();
+                        drop(lock);
+                        for user in &mut expired_users {
+                            user.socket
+                                .send(SocketMessage::info_msg("timed out: no peer found".into()))
+                                .await;
+                        }
+                    }
+                }
+
+                tokio::time::sleep(std::time::Duration::from_millis(loop_pause)).await;
+            }
+        });
     }
 
     async fn start_pairing(&self) {
@@ -174,6 +212,7 @@ async fn pair_handler(
 pub async fn run() {
     let state = State::new();
     state.start_pairing().await;
+    state.queue_zapper().await;
 
     eprintln!("starting server ");
     let cors = CorsLayer::new()
