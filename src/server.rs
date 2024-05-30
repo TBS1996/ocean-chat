@@ -90,9 +90,7 @@ struct WaitingUser {
 /// If 2 or more users are present, it'll pop the longest-waiting user along with
 /// another user who has the closest personality.
 fn pair_pop(users: &mut Vec<WaitingUser>) -> Option<(WaitingUser, WaitingUser)> {
-    let len = users.len();
-    eprintln!("users waiting {}", len);
-    if len < 2 {
+    if users.len() < 2 {
         return None;
     }
 
@@ -112,7 +110,10 @@ fn pair_pop(users: &mut Vec<WaitingUser>) -> Option<(WaitingUser, WaitingUser)> 
 
     let right = users.remove(right_index);
 
-    eprintln!("two users paired up!");
+    eprintln!(
+        "two users paired up! remaining users waiting: {}",
+        users.len()
+    );
     Some((left, right))
 }
 
@@ -130,9 +131,11 @@ impl State {
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
     fn queue(&self, score: Scores, socket: WebSocket) {
-        eprintln!("user queued ");
+        eprintln!("queing user..");
         let user = WaitingUser { score, socket };
-        self.users_waiting.lock().unwrap().push(user);
+        let mut users = self.users_waiting.lock().unwrap();
+        users.push(user);
+        eprintln!("users waiting: {}", users.len());
     }
 
     async fn start_pairing(&self) {
