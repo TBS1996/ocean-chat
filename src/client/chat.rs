@@ -92,6 +92,7 @@ async fn connect_to_peer(
 #[component]
 pub fn Chat() -> Element {
     let state = use_context::<State>();
+    let mut input = use_signal(String::new);
 
     let Some(scores) = state.scores() else {
         return Invalid();
@@ -117,37 +118,57 @@ pub fn Chat() -> Element {
         }
     });
 
+    let the_state = state.clone();
     rsx! {
-            form { onsubmit:  move | event| {
-                let x = event.data().values().get("msg").unwrap().as_value();
-                messages.write().push(Message::new(Origin::Me, x.clone()));
-                if state.send_message(&x) {
+        form {
+            onsubmit: move |event| {
+                let msg = event.data().values().get("msg").unwrap().as_value();
+                input.set(String::new());
+                let state = the_state.clone();
+                messages.write().push(Message::new(Origin::Me, msg.clone()));
+                if state.send_message(&msg) {
                     log_to_console("message submitted");
                 }
             },
-
-
-        style { { include_str!("../styles.css") } }
-        div {
-            class: "chat-app",
-            MessageList { messages: messages.read().clone() }
-        }
-
-
-
-    div { class: "form-group",
-                    label { "chat msg" }
-                    input { name: "msg" }
-                }
-                div { class: "form-group",
+            style { { include_str!("../styles.css") } }
+            div {
+                class: "chat-app",
+                MessageList { messages: messages.read().clone() }
+            }
+            div { class: "form-group",
+                div { class: "input-group",
+                    input {
+                        r#type: "text",
+                        name: "msg",
+                        value: "{input}",
+                        oninput: move |event| input.set(event.value()),
+                    }
                     input { r#type: "submit", value: "Submit" }
+                    button {
+                        prevent_default: "onclick",
+                        onclick: move |_| {
+                            messages.write().clear();
+                            state.clear_peer();
+                            let state = state.clone();
+                            spawn_local(async move {
+                                let state = state.clone();
+                                let socket = connect_to_peer(scores, messages, state.clone())
+                                    .await
+                                    .unwrap();
+                                state.set_socket(socket);
+                            });
+                            let msg = Message {
+                                origin: Origin::Info,
+                                content: "searching for peer...".to_string()};
+                            messages.write().push(msg);
+                            input.set(String::new());
+                        },
+                        "New peer"
+                    }
                 }
-
-
-
-
             }
         }
+    }
 }
 
 #[derive(PartialEq, Clone)]

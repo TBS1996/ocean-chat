@@ -54,6 +54,15 @@ impl State {
             false
         }
     }
+
+    fn clear_peer(&self) {
+        let mut lock = self.inner.lock().unwrap();
+        if let Some(socket) = &lock.socket {
+            socket.close().unwrap();
+        }
+        lock.peer_scores = None;
+        lock.socket = None;
+    }
 }
 
 #[derive(Clone, Routable, Debug, PartialEq)]

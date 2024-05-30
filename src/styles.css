@@ -17,7 +17,6 @@
     text-align: left;
 }
 
-
 .message.info {
     background-color: #c5c9c7;
     text-align: left;
@@ -40,5 +39,25 @@
 
 .input-box button {
     padding: 5px;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+}
+
+.input-group input[type="text"] {
+    flex: 1;
+    margin-right: 8px;
+    height: 30px;
+}
+
+.input-group input[type="submit"],
+.input-group button {
+    flex: 0;
+    margin-left: 8px; 
+    height: 30px; 
+    min-width: 100px; 
+    white-space: nowrap; 
 }
 
