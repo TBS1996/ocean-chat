@@ -10,7 +10,6 @@ use axum::{
 use crate::common::Scores;
 use crate::common::CONFIG;
 use crate::server::connection::Connection;
-use crate::server::waiting_users::WaitingUser;
 use crate::server::waiting_users::WaitingUsers;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
@@ -19,6 +18,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod connection;
 mod waiting_users;
+
+pub struct User {
+    pub scores: Scores,
+    pub socket: WebSocket,
+}
 
 #[derive(Default, Clone)]
 struct State {
@@ -33,9 +37,9 @@ impl State {
 
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
-    async fn queue(&self, score: Scores, socket: WebSocket) {
+    async fn queue(&self, scores: Scores, socket: WebSocket) {
         tracing::info!("user queued ");
-        let user = WaitingUser { score, socket };
+        let user = User { scores, socket };
         self.waiting_users.queue(user).await;
     }
 
@@ -47,7 +51,7 @@ impl State {
                 {
                     while let Some((left, right)) = users.pop_pair().await {
                         tokio::spawn(async move {
-                            Connection::new(left.socket, right.socket).run().await;
+                            Connection::new(left, right).run().await;
                         });
                     }
                 }
@@ -87,10 +91,10 @@ pub async fn run() {
         .init();
     let tracing_layer = TraceLayer::new_for_http();
 
+    tracing::info!("starting server ");
     let state = State::new();
     state.start_pairing().await;
 
-    tracing::info!("starting server ");
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)

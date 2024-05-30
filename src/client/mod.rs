@@ -24,12 +24,17 @@ struct State {
 #[derive(Default)]
 struct InnerState {
     scores: Option<Scores>,
+    peer_scores: Option<Scores>,
     socket: Option<WebSocket>,
 }
 
 impl State {
     fn set_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().scores = Some(scores);
+    }
+
+    fn set_peer_scores(&self, scores: Scores) {
+        self.inner.lock().unwrap().peer_scores = Some(scores);
     }
 
     fn scores(&self) -> Option<Scores> {

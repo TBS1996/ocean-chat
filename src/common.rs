@@ -67,6 +67,7 @@ use axum::extract::ws::Message;
 pub enum SocketMessage {
     User(String),
     Info(String),
+    PeerScores(Scores),
 }
 
 impl SocketMessage {
@@ -79,6 +80,12 @@ impl SocketMessage {
     #[cfg(feature = "server")]
     pub fn info_msg(msg: String) -> Message {
         let s = serde_json::to_string(&Self::Info(msg)).unwrap();
+        Message::Text(s)
+    }
+
+    #[cfg(feature = "server")]
+    pub fn peer_scores(scores: Scores) -> Message {
+        let s = serde_json::to_string(&Self::PeerScores(scores)).unwrap();
         Message::Text(s)
     }
 }

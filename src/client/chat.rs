@@ -15,6 +15,7 @@ use web_sys::WebSocket;
 async fn connect_to_peer(
     scores: Scores,
     mut messages: Signal<Vec<Message>>,
+    state: State,
 ) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
     let url = format!("{}/pair/{}", CONFIG.server_address(), scores);
@@ -34,14 +35,26 @@ async fn connect_to_peer(
     ws.set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
     onopen_callback.forget();
 
+    let the_state = state.clone();
     // Handle WebSocket message event
     let onmessage_callback = Closure::wrap(Box::new(move |e: web_sys::MessageEvent| {
+        let state = the_state.clone();
         if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
             let txt = txt.as_string().unwrap();
 
             let message = match serde_json::from_str(&txt).unwrap() {
                 SocketMessage::User(msg) => Message::new(Origin::Peer, msg),
                 SocketMessage::Info(msg) => Message::new(Origin::Info, msg),
+                SocketMessage::PeerScores(peer_scores) => {
+                    state.set_peer_scores(peer_scores);
+                    let diff = scores.distance(&peer_scores);
+                    let msg = format!(
+                        "Your peer's personality has a difference-score of {} compared to you!",
+                        diff
+                    );
+
+                    Message::new(Origin::Info, msg)
+                }
             };
 
             messages.write().push(message);
@@ -73,8 +86,6 @@ async fn connect_to_peer(
     }) as Box<dyn FnMut(JsValue)>);
     ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
     onclose_callback.forget();
-
-    log_to_console("Returning WebSocket");
     Ok(ws)
 }
 
@@ -98,8 +109,10 @@ pub fn Chat() -> Element {
         move || {
             let state = state.clone();
             spawn_local(async move {
-                let sock = connect_to_peer(scores, messages).await.unwrap();
-                state.set_socket(sock);
+                let socket = connect_to_peer(scores, messages, state.clone())
+                    .await
+                    .unwrap();
+                state.set_socket(socket);
             });
         }
     });
