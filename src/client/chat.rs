@@ -10,8 +10,13 @@ use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
+use web_sys::WebSocket;
 
-async fn connect_to_peer(scores: Scores, mut messages: Signal<Vec<Message>>, state: State) {
+async fn connect_to_peer(
+    scores: Scores,
+    mut messages: Signal<Vec<Message>>,
+    state: State,
+) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
     let url = format!("{}/pair/{}", CONFIG.server_address(), scores);
 
@@ -83,7 +88,7 @@ async fn connect_to_peer(scores: Scores, mut messages: Signal<Vec<Message>>, sta
     }) as Box<dyn FnMut(JsValue)>);
     ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
     onclose_callback.forget();
-    state.set_socket(ws);
+    Ok(ws)
 }
 
 #[component]
@@ -106,7 +111,10 @@ pub fn Chat() -> Element {
         move || {
             let state = state.clone();
             spawn_local(async move {
-                connect_to_peer(scores, messages, state).await;
+                let socket = connect_to_peer(scores, messages, state.clone())
+                    .await
+                    .unwrap();
+                state.set_socket(socket);
             });
         }
     });
