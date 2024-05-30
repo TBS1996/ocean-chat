@@ -1,19 +1,18 @@
-use crate::common::Scores;
-use axum::extract::ws::WebSocket;
+use crate::server::User;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Default, Clone)]
-pub struct WaitingUsers(Arc<Mutex<Vec<WaitingUser>>>);
+pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
-    pub async fn queue(&self, user: WaitingUser) {
+    pub async fn queue(&self, user: User) {
         self.0.lock().await.push(user);
     }
 
     /// If 2 or more users are present, it'll pop the longest-waiting user along with
     /// another user who has the closest personality.
-    pub async fn pop_pair(&self) -> Option<(WaitingUser, WaitingUser)> {
+    pub async fn pop_pair(&self) -> Option<(User, User)> {
         let mut users = self.0.lock().await;
 
         let len = users.len();
@@ -41,9 +40,4 @@ impl WaitingUsers {
         tracing::info!("two users paired up!");
         Some((left, right))
     }
-}
-
-pub struct WaitingUser {
-    pub scores: Scores,
-    pub socket: WebSocket,
 }

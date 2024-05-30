@@ -10,7 +10,6 @@ use axum::{
 use crate::common::Scores;
 use crate::common::CONFIG;
 use crate::server::connection::Connection;
-use crate::server::waiting_users::WaitingUser;
 use crate::server::waiting_users::WaitingUsers;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
@@ -19,6 +18,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod connection;
 mod waiting_users;
+
+pub struct User {
+    pub scores: Scores,
+    pub socket: WebSocket,
+}
 
 #[derive(Default, Clone)]
 struct State {
@@ -35,7 +39,7 @@ impl State {
     /// you will receive the peer ID when pairing has completed.
     async fn queue(&self, scores: Scores, socket: WebSocket) {
         tracing::info!("user queued ");
-        let user = WaitingUser { scores, socket };
+        let user = User { scores, socket };
         self.waiting_users.queue(user).await;
     }
 

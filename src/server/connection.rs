@@ -1,17 +1,17 @@
 use crate::common::SocketMessage;
-use crate::server::waiting_users::WaitingUser;
+use crate::server::User;
 use axum::extract::ws::Message;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 
 /// Holds the client-server connections between two peers.
 pub struct Connection {
-    left: WaitingUser,
-    right: WaitingUser,
+    left: User,
+    right: User,
 }
 
 impl Connection {
-    pub fn new(left: WaitingUser, right: WaitingUser) -> Self {
+    pub fn new(left: User, right: User) -> Self {
         Self { left, right }
     }
 
