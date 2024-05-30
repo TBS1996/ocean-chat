@@ -238,36 +238,43 @@ fn Home() -> Element {
                         navigator.replace(Route::Invalid {});
                     }
                 },
+                
+                div {
+                    class: "spread-around",
+                    label { r#for: "o", "Openness: " }
+                    input { id: "o", name: "o", value: "50", r#type: "number" }
+                }
 
-                div { class: "form-group",
-                    label { "Openness: " }
-                    input { name: "o", value: "50", r#type: "number" }
+                div {
+                    class: "spread-around",
+                    label { r#for: "c", "Conscientiousness: " }
+                    input { id: "c", name: "c", value: "50", r#type: "number" }
                 }
-                div { class: "form-group",
-                    label { "Conscientiousness: " }
-                    input { name: "c", value: "50", r#type: "number" }
+
+                div {
+                    class: "spread-around",
+                    label { r#for: "e", "Extraversion: " }
+                    input { id: "e", name: "e", value: "50", r#type: "number" }
                 }
-                div { class: "form-group",
-                    label { "Extraversion: " }
-                    input { name: "e", value: "50", r#type: "number" }
+                
+                div {
+                    class: "spread-around",
+                    label { r#for: "a", "Agreeableness: " }
+                    input { id: "a", name: "a", value: "50", r#type: "number" }
                 }
-                div { class: "form-group",
-                    label { "Agreeableness: " }
-                    input { name: "a", value: "50", r#type: "number" }
-                }
-                div { class: "form-group",
-                    label { "Neuroticism: " }
-                    input { name: "n", value: "50", r#type: "number" }
+
+                div {
+                    class: "spread-around",
+                    label { r#for: "n", "Neuroticism: " }
+                    input { id: "n", name: "n", value: "50", r#type: "number" }
                 }
 
                 br {}
                 
-                div { class: "form-group",
-                    button {
-                        class: "confirm",
-                        r#type: "submit",
-                        h2 { "Pair" }
-                    }
+                button {
+                    class: "confirm",
+                    r#type: "submit",
+                    h2 { "Pair" }
                 }
             }
         }

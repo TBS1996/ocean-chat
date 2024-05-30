@@ -4,7 +4,9 @@ body {
 }
 
 main {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
 }
 
 button {
@@ -20,14 +22,35 @@ input[type=number]::-webkit-inner-spin-button {
 }
 
 input[type=number] {
-    max-width: 25px;
     -moz-appearance: textfield;
     appearance: textfield;
+
+    max-width: 50px;
+    text-align: center;
+    border-radius: 1vh;
+    border-color: lightskyblue;
+    border-style: solid;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+}
+
+label {
+    margin-right: 10px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
 }
 
 .confirm {
     background-color: lightgreen;
 }
-h1, h2, h3, h4, h5, h6 {
-    margin: 0;
+
+.spread-around {
+    display: flex;
+    justify-content: space-between;
 }
