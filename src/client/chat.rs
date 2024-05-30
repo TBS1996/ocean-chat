@@ -117,37 +117,50 @@ pub fn Chat() -> Element {
         }
     });
 
+    let the_state = state.clone();
     rsx! {
-            form { onsubmit:  move | event| {
+        form {
+            onsubmit: move |event| {
+                let state = the_state.clone();
                 let x = event.data().values().get("msg").unwrap().as_value();
                 messages.write().push(Message::new(Origin::Me, x.clone()));
                 if state.send_message(&x) {
                     log_to_console("message submitted");
                 }
             },
-
-
-        style { { include_str!("../styles.css") } }
-        div {
-            class: "chat-app",
-            MessageList { messages: messages.read().clone() }
-        }
-
-
-
-    div { class: "form-group",
-                    label { "chat msg" }
+            style { { include_str!("../styles.css") } }
+            div {
+                class: "chat-app",
+                MessageList { messages: messages.read().clone() }
+            }
+            div { class: "form-group",
+                div { class: "input-group",
                     input { name: "msg" }
-                }
-                div { class: "form-group",
                     input { r#type: "submit", value: "Submit" }
+                    button {
+                        prevent_default: "onclick",
+                        onclick: move |_| {
+                            messages.write().clear();
+                            state.clear_peer();
+                            let foo = state.clone();
+                            spawn_local(async move {
+                                let state = foo.clone();
+                                let socket = connect_to_peer(scores, messages, state.clone())
+                                    .await
+                                    .unwrap();
+                                state.set_socket(socket);
+                            });
+                            let msg = Message {
+                                origin: Origin::Info,
+                                content: "searching for peer...".to_string()};
+                            messages.write().push(msg);
+                        },
+                        "New peer"
+                    }
                 }
-
-
-
-
             }
         }
+    }
 }
 
 #[derive(PartialEq, Clone)]

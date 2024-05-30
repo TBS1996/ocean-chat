@@ -42,3 +42,23 @@
     padding: 5px;
 }
 
+.input-group {
+    display: flex;
+    align-items: center;
+}
+
+.input-group input[type="text"] {
+    flex: 1;
+    margin-right: 8px;
+    height: 30px; /* Set a fixed height */
+}
+
+.input-group input[type="submit"],
+.input-group button {
+    flex: 0;
+    margin-left: 8px; /* Ensure there is space between the buttons */
+    height: 30px; /* Match the height of the input field */
+    min-width: 100px; /* Set a minimum width to prevent text wrapping */
+    white-space: nowrap; /* Prevent text from wrapping */
+}
+
