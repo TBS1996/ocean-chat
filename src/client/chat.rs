@@ -21,13 +21,11 @@ async fn connect_to_peer(
     let url = format!("{}/pair/{}", CONFIG.server_address(), scores);
 
     // Attempt to create the WebSocket
-    let ws = web_sys::WebSocket::new(&url)
-        .map_err(|err| {
-            let err_msg = format!("Failed to create WebSocket: {:?}", err);
-            log_to_console(&err_msg);
-            err_msg
-        })
-        .unwrap();
+    let ws = web_sys::WebSocket::new(&url).map_err(|err| {
+        let err_msg = format!("Failed to create WebSocket: {:?}", err);
+        log_to_console(&err_msg);
+        err_msg
+    })?;
     log_to_console("WebSocket created");
 
     // Handle WebSocket open event
