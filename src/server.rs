@@ -13,8 +13,10 @@ use crate::common::SocketMessage;
 use crate::common::CONFIG;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
+use std::env;
 use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 
 /// Holds the client-server connections between two peers.
 struct Connection {
@@ -29,7 +31,7 @@ impl Connection {
 
     /// Handles sending messages from one peer to another.
     pub async fn run(self) {
-        eprintln!("communication starting between a pair");
+        tracing::info!("communication starting between a pair");
         let msg = "connected to peer!".to_string();
 
         let (mut left_tx, mut left_rx) = self.left.split();
@@ -49,7 +51,7 @@ impl Connection {
                         Message::Text(msg) => {
                             eprintln!("right->left: {}", &msg);
                             if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
-                                eprintln!("Failed to send message to right");
+                                tracing::error!("Failed to send message to right");
                                 break;
                             }
                         },
@@ -65,7 +67,7 @@ impl Connection {
                         Message::Text(msg) => {
                             eprintln!("left->right: {}", &msg);
                             if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
-                                eprintln!("Failed to send message to right");
+                                tracing::error!("Failed to send message to right");
                                 break;
                             }
                         },
@@ -139,7 +141,7 @@ impl State {
     }
 
     async fn start_pairing(&self) {
-        eprintln!("pairing started");
+        tracing::info!("pairing started");
         let users = Arc::clone(&self.users_waiting);
         tokio::spawn(async move {
             loop {
@@ -165,7 +167,7 @@ async fn pair_handler(
     ws: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
 ) -> impl IntoResponse {
-    eprintln!("pair handling!");
+    tracing::info!("pair handling!");
     let scores: Scores = scores.parse().unwrap();
     ws.on_upgrade(move |socket| {
         let state = state.clone();
@@ -177,10 +179,15 @@ async fn pair_handler(
 }
 
 pub async fn run() {
+    env::set_var("RUST_BACKTRACE", "1");
+    env::set_var("RUST_LOG", "tower_http=debug,ocean_chat=debug");
+    tracing_subscriber::fmt::init();
+    let tracing_layer = TraceLayer::new_for_http();
+
     let state = State::new();
     state.start_pairing().await;
 
-    eprintln!("starting server ");
+    tracing::info!("starting server ");
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -188,6 +195,7 @@ pub async fn run() {
 
     let app = Router::new()
         .route("/pair/:scores", get(pair_handler))
+        .layer(tracing_layer)
         .layer(cors)
         .layer(Extension(Arc::new(state)));
 
