@@ -49,7 +49,7 @@ impl Connection {
                             break;
                         },
                         Message::Text(msg) => {
-                            eprintln!("right->left: {}", &msg);
+                            tracing::info!("right->left: {}", &msg);
                             if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
                                 tracing::error!("Failed to send message to right");
                                 break;
@@ -65,7 +65,7 @@ impl Connection {
                             break;
                         },
                         Message::Text(msg) => {
-                            eprintln!("left->right: {}", &msg);
+                            tracing::info!("left->right: {}", &msg);
                             if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
                                 tracing::error!("Failed to send message to right");
                                 break;
@@ -112,7 +112,7 @@ fn pair_pop(users: &mut Vec<WaitingUser>) -> Option<(WaitingUser, WaitingUser)> 
 
     let right = users.remove(right_index);
 
-    eprintln!(
+    tracing::info!(
         "two users paired up! remaining users waiting: {}",
         users.len()
     );
@@ -133,11 +133,11 @@ impl State {
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
     fn queue(&self, score: Scores, socket: WebSocket) {
-        eprintln!("queing user..");
+        tracing::info!("queing user..");
         let user = WaitingUser { score, socket };
         let mut users = self.users_waiting.lock().unwrap();
         users.push(user);
-        eprintln!("users waiting: {}", users.len());
+        tracing::info!("users waiting: {}", users.len());
     }
 
     async fn start_pairing(&self) {
