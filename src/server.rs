@@ -7,13 +7,13 @@ use axum::{
     routing::get,
     Router,
 };
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::common::Scores;
 use crate::common::SocketMessage;
 use crate::common::CONFIG;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
-use std::env;
 use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -179,9 +179,14 @@ async fn pair_handler(
 }
 
 pub async fn run() {
-    env::set_var("RUST_BACKTRACE", "1");
-    env::set_var("RUST_LOG", "tower_http=debug,ocean_chat=debug");
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()  
+        .with(  
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {  
+                "ocean_chat=debug,tower_http=debug,axum::rejection=trace".into()  
+            }),  
+        )  
+        .with(tracing_subscriber::fmt::layer())  
+        .init(); 
     let tracing_layer = TraceLayer::new_for_http();
 
     let state = State::new();

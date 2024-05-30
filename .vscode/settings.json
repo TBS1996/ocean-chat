@@ -1,5 +1,4 @@
 {
   "rust-analyzer.linkedProjects": ["./Cargo.toml"],
-  "editor.inlayHints.enabled": "offUnlessPressed",
   "rust-analyzer.cargo.features": "all"
 }
