@@ -14,8 +14,9 @@ use crate::common::SocketMessage;
 use crate::common::CONFIG;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 use tower_http::cors::{Any, CorsLayer};
 
 /// Holds the client-server connections between two peers.
@@ -49,6 +50,7 @@ impl Connection {
                             break;
                         },
                         Message::Text(msg) => {
+                            eprintln!("right->left: {}", &msg);
                             if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
                                 eprintln!("Failed to send message to right");
                                 break;
@@ -64,6 +66,7 @@ impl Connection {
                             break;
                         },
                         Message::Text(msg) => {
+                            eprintln!("left->right: {}", &msg);
                             if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
                                 eprintln!("Failed to send message to right");
                                 break;
@@ -91,9 +94,7 @@ struct WaitingUser {
 /// If 2 or more users are present, it'll pop the longest-waiting user along with
 /// another user who has the closest personality.
 fn pair_pop(users: &mut Vec<WaitingUser>) -> Option<(WaitingUser, WaitingUser)> {
-    let len = users.len();
-    eprintln!("users waiting {}", len);
-    if len < 2 {
+    if users.len() < 2 {
         return None;
     }
 
@@ -113,7 +114,10 @@ fn pair_pop(users: &mut Vec<WaitingUser>) -> Option<(WaitingUser, WaitingUser)> 
 
     let right = users.remove(right_index);
 
-    eprintln!("two users paired up!");
+    eprintln!(
+        "two users paired up! remaining users waiting: {}",
+        users.len()
+    );
     Some((left, right))
 }
 
@@ -130,43 +134,53 @@ impl State {
 
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
-    fn queue(&self, score: Scores, socket: WebSocket) {
-        eprintln!("user queued ");
+    async fn queue(&self, score: Scores, socket: WebSocket) {
+        eprintln!("queing user..");
         let time_added = common::current_unix();
         let user = WaitingUser {
             score,
             socket,
             time_added,
         };
-        self.users_waiting.lock().unwrap().push(user);
+        let mut users = self.users_waiting.lock().await;
+        users.push(user);
+        eprintln!("users waiting: {}", users.len());
     }
 
-    async fn queue_zapper(&self) {
+    async fn queue_purger(&self) {
         eprintln!("queue zapper started");
         let users = Arc::clone(&self.users_waiting);
-        let loop_pause = (CONFIG.wait_len_secs / 10).max(1);
+        let loop_pause = (CONFIG.max_wait_len_secs / 10).max(1);
         tokio::spawn(async move {
             loop {
                 let current_time = common::current_unix();
                 {
-                    let mut lock = users.lock().unwrap();
+                    let mut lock = users.lock().await;
+                    let user_qty = lock.len();
 
                     let idx = lock.iter().position(|user| {
-                        current_time.as_secs() - user.time_added.as_secs() >= CONFIG.wait_len_secs
+                        current_time.as_secs() - user.time_added.as_secs()
+                            < CONFIG.max_wait_len_secs
                     });
 
-                    if let Some(index) = idx {
-                        let mut expired_users: Vec<WaitingUser> = lock.drain(index..).collect();
-                        drop(lock);
-                        for user in &mut expired_users {
-                            user.socket
-                                .send(SocketMessage::info_msg("timed out: no peer found".into()))
-                                .await;
-                        }
+                    let index = idx.unwrap_or(user_qty);
+
+                    if index == 0 {
+                        continue;
+                    }
+
+                    let mut expired_users: Vec<WaitingUser> = lock.drain(..index).collect();
+                    drop(lock);
+                    eprintln!("zapping {} users..", expired_users.len());
+                    for user in &mut expired_users {
+                        let _ = user
+                            .socket
+                            .send(SocketMessage::info_msg("timed out: no peer found".into()))
+                            .await;
                     }
                 }
 
-                tokio::time::sleep(std::time::Duration::from_millis(loop_pause)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(loop_pause)).await;
             }
         });
     }
@@ -177,7 +191,7 @@ impl State {
         tokio::spawn(async move {
             loop {
                 {
-                    let mut lock = users.lock().unwrap();
+                    let mut lock = users.lock().await;
                     while let Some((left, right)) = pair_pop(&mut lock) {
                         tokio::spawn(async move {
                             Connection::new(left.socket, right.socket).run().await;
@@ -204,7 +218,7 @@ async fn pair_handler(
         let state = state.clone();
         async move {
             let state = state.clone();
-            state.queue(scores, socket);
+            state.queue(scores, socket).await;
         }
     })
 }
@@ -225,7 +239,7 @@ pub async fn run() {
         .layer(cors)
         .layer(Extension(Arc::new(state)));
 
-    let addr = "127.0.0.1:3000".parse().unwrap();
+    let addr = "0.0.0.0:3000".parse().unwrap();
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
