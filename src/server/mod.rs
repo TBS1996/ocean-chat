@@ -89,7 +89,7 @@ pub async fn run() {
         .layer(cors)
         .layer(Extension(Arc::new(state)));
 
-    let addr = "127.0.0.1:3000".parse().unwrap();
+    let addr = "0.0.0.0:3000".parse().unwrap();
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
