@@ -28,9 +28,12 @@
     text-align: left;
 }
 
+
+
 .input-box {
     display: flex;
 }
+
 
 .input-box input {
     flex: 1;
@@ -50,15 +53,15 @@
 .input-group input[type="text"] {
     flex: 1;
     margin-right: 8px;
-    height: 30px; /* Set a fixed height */
+    height: 30px;
 }
 
 .input-group input[type="submit"],
 .input-group button {
     flex: 0;
-    margin-left: 8px; /* Ensure there is space between the buttons */
-    height: 30px; /* Match the height of the input field */
-    min-width: 100px; /* Set a minimum width to prevent text wrapping */
-    white-space: nowrap; /* Prevent text from wrapping */
+    margin-left: 8px; 
+    height: 30px; 
+    min-width: 100px; 
+    white-space: nowrap; 
 }
 

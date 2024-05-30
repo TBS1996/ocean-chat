@@ -130,7 +130,6 @@ pub fn Chat() -> Element {
                     log_to_console("message submitted");
                 }
             },
-           // prevent_default: "onsubmit",
             style { { include_str!("../styles.css") } }
             div {
                 class: "chat-app",
@@ -150,9 +149,9 @@ pub fn Chat() -> Element {
                         onclick: move |_| {
                             messages.write().clear();
                             state.clear_peer();
-                            let foo = state.clone();
+                            let state = state.clone();
                             spawn_local(async move {
-                                let state = foo.clone();
+                                let state = state.clone();
                                 let socket = connect_to_peer(scores, messages, state.clone())
                                     .await
                                     .unwrap();
