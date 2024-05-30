@@ -1,3 +1,4 @@
+use dioxus::prelude::*;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
@@ -134,5 +135,28 @@ impl FromStr for Scores {
         let n = values[4].parse()?;
 
         Ok(Self { o, c, e, a, n })
+    }
+}
+
+impl TryFrom<&FormData> for Scores {
+    type Error = ();
+
+    fn try_from(form: &FormData) -> Result<Self, Self::Error> {
+        let data = form.values();
+
+        let o: f32 = data.get("o").unwrap().as_value().parse().map_err(|_| ())?;
+        let c: f32 = data.get("c").unwrap().as_value().parse().map_err(|_| ())?;
+        let e: f32 = data.get("e").unwrap().as_value().parse().map_err(|_| ())?;
+        let a: f32 = data.get("a").unwrap().as_value().parse().map_err(|_| ())?;
+        let n: f32 = data.get("n").unwrap().as_value().parse().map_err(|_| ())?;
+
+        if [o, c, e, a, n]
+            .iter()
+            .all(|&score| (0.0..=100.0).contains(&score))
+        {
+            Ok(Scores { o, c, e, a, n })
+        } else {
+            Err(())
+        }
     }
 }
