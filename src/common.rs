@@ -1,9 +1,7 @@
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
-use std::fs;
 use std::num::ParseFloatError;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -16,17 +14,30 @@ pub struct Config {
 }
 
 impl Config {
+    /// Loads the config file.
+    ///
+    /// Behaviour is different between backend and frontend.
+    /// In the backend we load the config from file, creating new if it doesn't exist.
+    ///
+    /// The frontend however, needs to package the config into the binary since it doesn't
+    /// have access to the backend's file system. We use include_str which will make the program
+    /// fail to compile if we haven't configured a config yet. This means in practice that if you
+    /// didn't manually add a config file, you need to run the backend at least once before
+    /// you build the frontend.
     pub fn load() -> Self {
-        let path = PathBuf::from("config.toml");
+        #[cfg(not(feature = "server"))]
+        let config_str = include_str!("../config.toml");
+        #[cfg(feature = "server")]
+        let config_str = {
+            let config_path = std::path::PathBuf::from("config.toml");
+            if !config_path.exists() {
+                let s: String = toml::to_string(&Self::default()).unwrap();
+                std::fs::write(&config_path, s.as_bytes()).unwrap();
+            }
+            std::fs::read_to_string(&config_path).unwrap()
+        };
 
-        if !path.exists() {
-            let s: String = toml::to_string(&Self::default()).unwrap();
-            fs::write(&path, s.as_bytes()).unwrap();
-        }
-
-        let s: String = fs::read_to_string(&path).unwrap();
-
-        toml::from_str(&s).unwrap()
+        toml::from_str(&config_str).unwrap()
     }
 }
 
