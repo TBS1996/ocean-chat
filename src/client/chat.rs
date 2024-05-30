@@ -92,6 +92,7 @@ async fn connect_to_peer(
 #[component]
 pub fn Chat() -> Element {
     let state = use_context::<State>();
+    let mut input = use_signal(String::new);
 
     let Some(scores) = state.scores() else {
         return Invalid();
@@ -121,13 +122,15 @@ pub fn Chat() -> Element {
     rsx! {
         form {
             onsubmit: move |event| {
+                let msg = event.data().values().get("msg").unwrap().as_value();
+                input.set(String::new());
                 let state = the_state.clone();
-                let x = event.data().values().get("msg").unwrap().as_value();
-                messages.write().push(Message::new(Origin::Me, x.clone()));
-                if state.send_message(&x) {
+                messages.write().push(Message::new(Origin::Me, msg.clone()));
+                if state.send_message(&msg) {
                     log_to_console("message submitted");
                 }
             },
+           // prevent_default: "onsubmit",
             style { { include_str!("../styles.css") } }
             div {
                 class: "chat-app",
@@ -135,7 +138,12 @@ pub fn Chat() -> Element {
             }
             div { class: "form-group",
                 div { class: "input-group",
-                    input { name: "msg" }
+                    input {
+                        r#type: "text",
+                        name: "msg",
+                        value: "{input}",
+                        oninput: move |event| input.set(event.value()),
+                    }
                     input { r#type: "submit", value: "Submit" }
                     button {
                         prevent_default: "onclick",
@@ -154,6 +162,7 @@ pub fn Chat() -> Element {
                                 origin: Origin::Info,
                                 content: "searching for peer...".to_string()};
                             messages.write().push(msg);
+                            input.set(String::new());
                         },
                         "New peer"
                     }

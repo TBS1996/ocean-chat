@@ -24,7 +24,7 @@ title = "web"
 reload_html = true
 
 # which files or dirs will be watcher monitoring
-watch_path = ["assets", "src"]
+watch_path = ["assets"]
 
 # include `assets` in web platform
 [web.resource]
