@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
+use crate::client::log_to_console;
+use crate::client::Invalid;
+use crate::client::State;
 use crate::common::Scores;
 use crate::common::SocketMessage;
 use crate::common::CONFIG;
-use crate::frontend::log_to_console;
-use crate::frontend::Invalid;
-use crate::frontend::State;
 use dioxus::prelude::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
