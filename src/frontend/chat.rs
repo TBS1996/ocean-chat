@@ -2,6 +2,7 @@
 
 use crate::common::Scores;
 use crate::common::SocketMessage;
+use crate::common::CONFIG;
 use crate::frontend::log_to_console;
 use crate::frontend::Invalid;
 use crate::frontend::State;
@@ -16,7 +17,7 @@ async fn connect_to_peer(
     mut messages: Signal<Vec<Message>>,
 ) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
-    let url = format!("ws://127.0.0.1:3000/pair/{}", scores);
+    let url = format!("{}/pair/{}", CONFIG.server_address(), scores);
 
     // Attempt to create the WebSocket
     let ws = web_sys::WebSocket::new(&url).map_err(|err| {
