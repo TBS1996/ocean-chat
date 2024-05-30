@@ -3,6 +3,7 @@
 use crate::common::Scores;
 use chat::Chat;
 use dioxus::prelude::*;
+use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
 use web_sys::console;
@@ -50,34 +51,6 @@ impl State {
     }
 }
 
-fn scores_from_formdata(form: &FormData) -> Option<Scores> {
-    let data = form.values();
-
-    let o: f32 = data.get("o")?.as_value().parse().ok()?;
-    let c: f32 = data.get("c")?.as_value().parse().ok()?;
-    let e: f32 = data.get("e")?.as_value().parse().ok()?;
-    let a: f32 = data.get("a")?.as_value().parse().ok()?;
-    let n: f32 = data.get("n")?.as_value().parse().ok()?;
-
-    if !(0. ..=100.).contains(&o) {
-        return None;
-    }
-    if !(0. ..=100.).contains(&c) {
-        return None;
-    }
-    if !(0. ..=100.).contains(&e) {
-        return None;
-    }
-    if !(0. ..=100.).contains(&a) {
-        return None;
-    }
-    if !(0. ..=100.).contains(&n) {
-        return None;
-    }
-
-    Some(Scores { o, c, e, a, n })
-}
-
 #[derive(Clone, Routable, Debug, PartialEq)]
 enum Route {
     #[route("/")]
@@ -113,12 +86,12 @@ fn Home() -> Element {
 
     rsx! {
     form { onsubmit:  move |event| {
-         match scores_from_formdata(&event.data()) {
-             Some(scores) => {
+         match Scores::try_from(event.data().deref()) {
+             Ok(scores) => {
                  state.set_scores(scores);
                  navigator.replace(Route::Chat{});
              }
-             None => {
+             Err(_) => {
                  navigator.replace(Route::Invalid {});
              }
 
