@@ -14,6 +14,8 @@ use crate::server::waiting_users::WaitingUser;
 use crate::server::waiting_users::WaitingUsers;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod connection;
 mod waiting_users;
@@ -32,13 +34,13 @@ impl State {
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
     async fn queue(&self, score: Scores, socket: WebSocket) {
-        eprintln!("user queued ");
+        tracing::info!("user queued ");
         let user = WaitingUser { score, socket };
         self.waiting_users.queue(user).await;
     }
 
     async fn start_pairing(&self) {
-        eprintln!("pairing started");
+        tracing::info!("pairing started");
         let users = self.waiting_users.clone();
         tokio::spawn(async move {
             loop {
@@ -63,7 +65,7 @@ async fn pair_handler(
     ws: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
 ) -> impl IntoResponse {
-    eprintln!("pair handling!");
+    tracing::info!("pair handling!");
     let scores: Scores = scores.parse().unwrap();
     ws.on_upgrade(move |socket| {
         let state = state.clone();
@@ -75,10 +77,20 @@ async fn pair_handler(
 }
 
 pub async fn run() {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "ocean_chat=debug,tower_http=debug,axum::rejection=trace".into()
+            }),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+    let tracing_layer = TraceLayer::new_for_http();
+
     let state = State::new();
     state.start_pairing().await;
 
-    eprintln!("starting server ");
+    tracing::info!("starting server ");
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -87,6 +99,7 @@ pub async fn run() {
     let app = Router::new()
         .route("/pair/:scores", get(pair_handler))
         .layer(cors)
+        .layer(tracing_layer)
         .layer(Extension(Arc::new(state)));
 
     let addr = "0.0.0.0:3000".parse().unwrap();

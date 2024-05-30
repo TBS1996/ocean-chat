@@ -16,7 +16,7 @@ impl Connection {
 
     /// Handles sending messages from one peer to another.
     pub async fn run(self) {
-        eprintln!("communication starting between a pair");
+        tracing::info!("communication starting between a pair");
         let msg = "connected to peer!".to_string();
 
         let (mut left_tx, mut left_rx) = self.left.split();
@@ -35,7 +35,7 @@ impl Connection {
                         },
                         Message::Text(msg) => {
                             if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
-                                eprintln!("Failed to send message to right");
+                                tracing::error!("Failed to send message to left");
                                 break;
                             }
                         },
@@ -50,7 +50,7 @@ impl Connection {
                         },
                         Message::Text(msg) => {
                             if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
-                                eprintln!("Failed to send message to right");
+                                tracing::error!("Failed to send message to right");
                                 break;
                             }
                         },

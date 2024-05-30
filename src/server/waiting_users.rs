@@ -17,7 +17,7 @@ impl WaitingUsers {
         let mut users = self.0.lock().await;
 
         let len = users.len();
-        eprintln!("users waiting {}", len);
+        tracing::info!("users waiting {}", len);
         if len < 2 {
             return None;
         }
@@ -38,7 +38,7 @@ impl WaitingUsers {
 
         let right = users.remove(right_index);
 
-        eprintln!("two users paired up!");
+        tracing::info!("two users paired up!");
         Some((left, right))
     }
 }
