@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
 #[cfg(not(feature = "server"))]
-mod frontend;
+mod client;
 
 mod common;
 
 #[cfg(not(feature = "server"))]
-pub use frontend::run_app;
+pub use client::run_app;
