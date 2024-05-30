@@ -47,6 +47,7 @@ impl Connection {
                             break;
                         },
                         Message::Text(msg) => {
+                            eprintln!("right->left: {}", &msg);
                             if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
                                 eprintln!("Failed to send message to right");
                                 break;
@@ -62,6 +63,7 @@ impl Connection {
                             break;
                         },
                         Message::Text(msg) => {
+                            eprintln!("left->right: {}", &msg);
                             if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
                                 eprintln!("Failed to send message to right");
                                 break;
