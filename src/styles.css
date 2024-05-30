@@ -17,7 +17,6 @@
     text-align: left;
 }
 
-
 .message.info {
     background-color: #c5c9c7;
     text-align: left;
@@ -28,12 +27,9 @@
     text-align: left;
 }
 
-
-
 .input-box {
     display: flex;
 }
-
 
 .input-box input {
     flex: 1;
