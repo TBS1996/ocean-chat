@@ -41,6 +41,7 @@ impl Connection {
                             break;
                         },
                         Message::Text(msg) => {
+                            tracing::info!("right->left: {}", &msg);
                             if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
                                 tracing::error!("Failed to send message to left");
                                 break;
@@ -56,6 +57,7 @@ impl Connection {
                             break;
                         },
                         Message::Text(msg) => {
+                            tracing::info!("left->right: {}", &msg);
                             if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
                                 tracing::error!("Failed to send message to right");
                                 break;

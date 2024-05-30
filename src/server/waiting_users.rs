@@ -7,7 +7,9 @@ pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
     pub async fn queue(&self, user: User) {
-        self.0.lock().await.push(user);
+        let mut lock = self.0.lock().await;
+        lock.push(user);
+        tracing::info!("users waiting for peer: {}", lock.len());
     }
 
     /// If 2 or more users are present, it'll pop the longest-waiting user along with
@@ -16,7 +18,6 @@ impl WaitingUsers {
         let mut users = self.0.lock().await;
 
         let len = users.len();
-        tracing::info!("users waiting {}", len);
         if len < 2 {
             return None;
         }
@@ -38,6 +39,8 @@ impl WaitingUsers {
         let right = users.remove(right_index);
 
         tracing::info!("two users paired up!");
+        tracing::info!("remaining users: {}", users.len());
+
         Some((left, right))
     }
 }

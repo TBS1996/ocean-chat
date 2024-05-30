@@ -91,10 +91,10 @@ pub async fn run() {
         .init();
     let tracing_layer = TraceLayer::new_for_http();
 
+    tracing::info!("starting server ");
     let state = State::new();
     state.start_pairing().await;
 
-    tracing::info!("starting server ");
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
