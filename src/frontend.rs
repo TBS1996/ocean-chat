@@ -94,7 +94,7 @@ async fn connect_to_peer(
     mut messages: Signal<Vec<Message>>,
 ) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
-    let url = format!("ws://{}:3000/pair/{}", &CONFIG.backend_ip, scores);
+    let url = format!("{}/pair/{}", CONFIG.server_address(), scores);
 
     // Attempt to create the WebSocket
     let ws = web_sys::WebSocket::new(&url).map_err(|err| {

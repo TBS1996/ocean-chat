@@ -9,7 +9,7 @@ pub static CONFIG: Lazy<Arc<Config>> = Lazy::new(|| Arc::new(Config::load()));
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
-    pub backend_ip: String,
+    pub local: bool,
     pub pair_interval_millis: u64,
 }
 
@@ -39,12 +39,20 @@ impl Config {
 
         toml::from_str(&config_str).unwrap()
     }
+
+    pub fn server_address(&self) -> &'static str {
+        if self.local {
+            "ws://127.0.0.1:3000"
+        } else {
+            "wss://oceanchat.app"
+        }
+    }
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
-            backend_ip: "127.0.0.1".to_string(),
+            local: true,
             pair_interval_millis: 1000,
         }
     }
