@@ -7,6 +7,7 @@ use axum::{
     routing::get,
     Router,
 };
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::common::Scores;
 use crate::common::SocketMessage;
@@ -15,6 +16,7 @@ use futures_util::SinkExt;
 use futures_util::StreamExt;
 use std::sync::{Arc, Mutex};
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 
 /// Holds the client-server connections between two peers.
 struct Connection {
@@ -29,7 +31,7 @@ impl Connection {
 
     /// Handles sending messages from one peer to another.
     pub async fn run(self) {
-        eprintln!("communication starting between a pair");
+        tracing::info!("communication starting between a pair");
         let msg = "connected to peer!".to_string();
 
         let (mut left_tx, mut left_rx) = self.left.split();
@@ -47,9 +49,9 @@ impl Connection {
                             break;
                         },
                         Message::Text(msg) => {
-                            eprintln!("right->left: {}", &msg);
+                            tracing::info!("right->left: {}", &msg);
                             if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
-                                eprintln!("Failed to send message to right");
+                                tracing::error!("Failed to send message to right");
                                 break;
                             }
                         },
@@ -63,9 +65,9 @@ impl Connection {
                             break;
                         },
                         Message::Text(msg) => {
-                            eprintln!("left->right: {}", &msg);
+                            tracing::info!("left->right: {}", &msg);
                             if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
-                                eprintln!("Failed to send message to right");
+                                tracing::error!("Failed to send message to right");
                                 break;
                             }
                         },
@@ -110,7 +112,7 @@ fn pair_pop(users: &mut Vec<WaitingUser>) -> Option<(WaitingUser, WaitingUser)> 
 
     let right = users.remove(right_index);
 
-    eprintln!(
+    tracing::info!(
         "two users paired up! remaining users waiting: {}",
         users.len()
     );
@@ -131,15 +133,15 @@ impl State {
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
     fn queue(&self, score: Scores, socket: WebSocket) {
-        eprintln!("queing user..");
+        tracing::info!("queing user..");
         let user = WaitingUser { score, socket };
         let mut users = self.users_waiting.lock().unwrap();
         users.push(user);
-        eprintln!("users waiting: {}", users.len());
+        tracing::info!("users waiting: {}", users.len());
     }
 
     async fn start_pairing(&self) {
-        eprintln!("pairing started");
+        tracing::info!("pairing started");
         let users = Arc::clone(&self.users_waiting);
         tokio::spawn(async move {
             loop {
@@ -165,7 +167,7 @@ async fn pair_handler(
     ws: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
 ) -> impl IntoResponse {
-    eprintln!("pair handling!");
+    tracing::info!("pair handling!");
     let scores: Scores = scores.parse().unwrap();
     ws.on_upgrade(move |socket| {
         let state = state.clone();
@@ -177,10 +179,20 @@ async fn pair_handler(
 }
 
 pub async fn run() {
+    tracing_subscriber::registry()  
+        .with(  
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {  
+                "ocean_chat=debug,tower_http=debug,axum::rejection=trace".into()  
+            }),  
+        )  
+        .with(tracing_subscriber::fmt::layer())  
+        .init(); 
+    let tracing_layer = TraceLayer::new_for_http();
+
     let state = State::new();
     state.start_pairing().await;
 
-    eprintln!("starting server ");
+    tracing::info!("starting server ");
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -188,6 +200,7 @@ pub async fn run() {
 
     let app = Router::new()
         .route("/pair/:scores", get(pair_handler))
+        .layer(tracing_layer)
         .layer(cors)
         .layer(Extension(Arc::new(state)));
 
