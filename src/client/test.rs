@@ -51,121 +51,36 @@ pub fn Test() -> Element {
     let mut curr_question = use_signal(|| QUESTIONS.lock().unwrap().last().copied().unwrap());
     let navigator = use_navigator();
 
-    // cant remember last time i wrote a dumber piece of code than this
-    let state1 = state.clone();
-    let state2 = state.clone();
-    let state3 = state.clone();
-    let state4 = state.clone();
-    let state5 = state.clone();
-
-    rsx! {  div {
+    rsx! {
+        div {
             style { { include_str!("../styles.css") } }
             h1 { "Personality Test" }
-              div { class: "input-group",
-                    "{curr_question}"
-              }
-              div { class: "buttons",
+            div { class: "input-group",
+                "{curr_question}"
+            }
+            div { class: "buttons",
+                for (answer, state) in Answer::ALL.iter().zip(std::iter::repeat(state.clone())) {
                     button {
                         prevent_default: "onclick",
                         onclick: move |_| {
-                            let answer = Answer::Disagree;
                             let question = QUESTIONS.lock().unwrap().pop().unwrap();
-                            tally.write().add_answer(question, answer);
-                            match QUESTIONS.lock().unwrap().last().copied(){
+                            tally.write().add_answer(question, *answer);
+                            match QUESTIONS.lock().unwrap().last().copied() {
                                 Some(next_question) => {
                                     *curr_question.write() = next_question;
                                 },
                                 None => {
                                     let scores = tally.write().into_scores();
-                                    state1.set_scores(scores);
+                                    state.set_scores(scores);
                                     navigator.replace(Route::Chat{});
                                 },
                             }
                         },
-                        "Disagree"
+                        "{answer}"
                     }
-                    button {
-                        prevent_default: "onclick",
-                        onclick: move |_| {
-                            let answer = Answer::SlightlyDisagree;
-                            let question = QUESTIONS.lock().unwrap().pop().unwrap();
-                            tally.write().add_answer(question, answer);
-                            match QUESTIONS.lock().unwrap().last().copied(){
-                                Some(next_question) => {
-                                    *curr_question.write() = next_question;
-                                },
-                                None => {
-                                    let scores = tally.write().into_scores();
-                                    state2.set_scores(scores);
-                                    navigator.replace(Route::Chat{});
-                                },
-                            }
-                        },
-                        "Slightly disagree"
-                    }
-                    button {
-                        prevent_default: "onclick",
-                        onclick: move |_| {
-                            let answer = Answer::Neutral;
-                            let question = QUESTIONS.lock().unwrap().pop().unwrap();
-                            tally.write().add_answer(question, answer);
-                            match QUESTIONS.lock().unwrap().last().copied(){
-                                Some(next_question) => {
-                                    *curr_question.write() = next_question;
-                                },
-                                None => {
-                                    let scores = tally.write().into_scores();
-                                    state3.set_scores(scores);
-                                    navigator.replace(Route::Chat{});
-                                },
-                            }
-                        },
-                        "Neutral"
-                    }
-                    button {
-                        prevent_default: "onclick",
-                        onclick: move |_| {
-                            let answer = Answer::SlightlyAgree;
-                            let question = QUESTIONS.lock().unwrap().pop().unwrap();
-                            tally.write().add_answer(question, answer);
-                            match QUESTIONS.lock().unwrap().last().copied(){
-                                Some(next_question) => {
-                                    *curr_question.write() = next_question;
-                                },
-                                None => {
-                                    let scores = tally.write().into_scores();
-                                    state4.set_scores(scores);
-                                    navigator.replace(Route::Chat{});
-                                },
-                            }
-
-                        },
-                        "Slightly agree"
-                    }
-                    button {
-                        prevent_default: "onclick",
-                        onclick: move |_| {
-                            let answer = Answer::Agree;
-                            let question = QUESTIONS.lock().unwrap().pop().unwrap();
-                            tally.write().add_answer(question, answer);
-                            match QUESTIONS.lock().unwrap().last().copied(){
-                                Some(next_question) => {
-                                    *curr_question.write() = next_question;
-                                },
-                                None => {
-                                    let scores = tally.write().into_scores();
-                                    state5.set_scores(scores);
-                                    navigator.replace(Route::Chat{});
-                                },
-                            }
-                        },
-                        "Agree"
-                    }
-
-
+                }
             }
         }
-
     }
 }
 
@@ -200,6 +115,7 @@ impl ScoreTally {
     }
 }
 
+#[derive(Clone, Copy)]
 enum Answer {
     Disagree,
     SlightlyDisagree,
@@ -208,7 +124,28 @@ enum Answer {
     Agree,
 }
 
+impl ToString for Answer {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Disagree => "Disagree",
+            Self::SlightlyDisagree => "Slightly disagree",
+            Self::Neutral => "Neutral",
+            Self::SlightlyAgree => "Slightly agree",
+            Self::Agree => "Agree",
+        }
+        .to_string()
+    }
+}
+
 impl Answer {
+    const ALL: [Answer; 5] = [
+        Answer::Disagree,
+        Answer::SlightlyDisagree,
+        Answer::Neutral,
+        Answer::SlightlyAgree,
+        Answer::Agree,
+    ];
+
     fn into_points(self) -> u32 {
         match self {
             Self::Disagree => 1,
