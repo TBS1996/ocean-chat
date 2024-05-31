@@ -114,6 +114,16 @@ impl Scores {
 
         diff_sum.sqrt()
     }
+
+    pub fn mid() -> Self {
+        Self {
+            o: 50.,
+            c: 50.,
+            e: 50.,
+            a: 50.,
+            n: 50.,
+        }
+    }
 }
 
 impl Display for Scores {
@@ -126,6 +136,11 @@ impl FromStr for Scores {
     type Err = ParseFloatError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s
+            .strip_prefix('"')
+            .and_then(|s| s.strip_suffix('"'))
+            .unwrap_or(s);
+
         let values: Vec<&str> = s.split(',').collect();
 
         let o = values[0].parse()?;

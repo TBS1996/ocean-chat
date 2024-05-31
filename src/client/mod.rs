@@ -3,13 +3,21 @@
 use crate::common::Scores;
 use chat::Chat;
 use dioxus::prelude::*;
+use futures::executor::block_on;
+use once_cell::sync::Lazy;
 use std::ops::Deref;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use web_sys::WebSocket;
 
 mod chat;
+
+static COOKIE: Lazy<Option<Scores>> = Lazy::new(|| {
+    let scores = block_on(fetch_scores_cookie());
+    scores
+});
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
@@ -81,8 +89,9 @@ fn App() -> Element {
 }
 
 // Call this function to log a message
-fn log_to_console(message: &str) {
-    console::log_1(&JsValue::from_str(message));
+fn log_to_console(message: impl std::fmt::Debug) {
+    let message = format!("{:?}", message);
+    console::log_1(&JsValue::from_str(&message));
 }
 
 #[component]
@@ -93,16 +102,37 @@ pub fn Invalid() -> Element {
     }
 }
 
+async fn fetch_scores_cookie() -> Option<Scores> {
+    let mut eval = eval(
+        r#"
+        let value = "; " + document.cookie;
+        let parts = value.split("; scores=");
+        if (parts.length == 2) {
+            let scores = parts.pop().split(";").shift();
+            dioxus.send(scores);
+        } else {
+            dioxus.send(null);
+        }
+        "#,
+    );
+
+    let cookies = eval.recv().await.unwrap().to_string();
+    log_to_console(&cookies);
+    Scores::from_str(&cookies).ok()
+}
+
 #[component]
 fn Home() -> Element {
     let navigator = use_navigator();
     let state = use_context::<State>();
+    let score = COOKIE.unwrap_or_else(Scores::mid);
 
     rsx! {
     form { onsubmit:  move |event| {
          match Scores::try_from(event.data().deref()) {
              Ok(scores) => {
                  state.set_scores(scores);
+                 save_scores(scores);
                  navigator.replace(Route::Chat{});
              }
              Err(_) => {
@@ -114,27 +144,37 @@ fn Home() -> Element {
     },
     div { class: "form-group",
                 label { "Openness: " }
-                input { name: "o", value: "50"}
+                input { name: "o", value: "{score.o}"}
                 }
                 div { class: "form-group",
                     label { "Conscientiousness: " }
-                    input { name: "c" , value: "50"}
+                    input { name: "c" , value: "{score.c}"}
                 }
                 div { class: "form-group",
                     label { "Extraversion: " }
-                    input { name: "e", value: "50"}
+                    input { name: "e", value: "{score.e}"}
                 }
                 div { class: "form-group",
                     label { "Agreeableness: " }
-                    input { name: "a" , value: "50"}
+                    input { name: "a" , value: "{score.a}"}
                 }
                 div { class: "form-group",
                     label { "Neuroticism: " }
-                    input { name: "n", value: "50"}
+                    input { name: "n", value: "{score.n}"}
                 }
                 div { class: "form-group",
                     input { r#type: "submit", value: "Submit" }
             }
         }
     }
+}
+
+fn save_scores(scores: Scores) {
+    let script = format!(
+        "document.cookie = 'scores={}; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/';",
+        scores
+    );
+
+    eval(&script);
+    log_to_console("storing scores cookie");
 }
