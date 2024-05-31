@@ -1,0 +1,154 @@
+#![allow(non_snake_case)]
+
+use crate::common::Scores;
+use chat::Chat;
+use dioxus::prelude::*;
+use std::ops::Deref;
+use std::sync::{Arc, Mutex};
+use wasm_bindgen::prelude::*;
+use web_sys::console;
+use web_sys::WebSocket;
+
+mod chat;
+
+#[wasm_bindgen(start)]
+pub fn run_app() {
+    launch(App);
+}
+
+#[derive(Clone, Default)]
+struct State {
+    inner: Arc<Mutex<InnerState>>,
+}
+
+#[derive(Default)]
+struct InnerState {
+    scores: Option<Scores>,
+    peer_scores: Option<Scores>,
+    socket: Option<WebSocket>,
+}
+
+impl State {
+    fn set_scores(&self, scores: Scores) {
+        self.inner.lock().unwrap().scores = Some(scores);
+    }
+
+    fn set_peer_scores(&self, scores: Scores) {
+        self.inner.lock().unwrap().peer_scores = Some(scores);
+    }
+
+    fn scores(&self) -> Option<Scores> {
+        self.inner.lock().unwrap().scores
+    }
+
+    fn set_socket(&self, socket: WebSocket) {
+        self.inner.lock().unwrap().socket = Some(socket);
+    }
+
+    fn send_message(&self, msg: &str) -> bool {
+        if let Some(socket) = &self.inner.lock().unwrap().socket {
+            let _ = socket.send_with_str(msg);
+            true
+        } else {
+            log_to_console("attempted to send msg without a socket configured");
+            false
+        }
+    }
+
+    fn clear_peer(&self) {
+        let mut lock = self.inner.lock().unwrap();
+        if let Some(socket) = &lock.socket {
+            socket.close().unwrap();
+        }
+        lock.peer_scores = None;
+        lock.socket = None;
+    }
+}
+
+#[derive(Clone, Routable, Debug, PartialEq)]
+enum Route {
+    #[route("/")]
+    Home {},
+    #[route("/invalid")]
+    Invalid {},
+    #[route("/chat")]
+    Chat {},
+}
+
+fn App() -> Element {
+    use_context_provider(State::default);
+    rsx!(Router::<Route> {})
+}
+
+// Call this function to log a message
+fn log_to_console(message: &str) {
+    console::log_1(&JsValue::from_str(message));
+}
+
+#[component]
+pub fn Invalid() -> Element {
+    rsx! {
+        "invalid input! all values must be between 0 and 100",
+        Link { to: Route::Home {}, "try again" }
+    }
+}
+
+#[component]
+fn Home() -> Element {
+    let navigator = use_navigator();
+    let state = use_context::<State>();
+
+    rsx! {
+        form {
+            onsubmit:  move |event| {
+                match Scores::try_from(event.data().deref()) {
+                    Ok(scores) => {
+                        state.set_scores(scores);
+                        navigator.replace(Route::Chat{});
+                    }
+                    Err(_) => {
+                        navigator.replace(Route::Invalid {});
+                    }
+                }
+            },
+
+            div {
+                class: "spread-around",
+                label { r#for: "o", "Openness: " }
+                input { id: "o", name: "o", value: "50", r#type: "number" }
+            }
+
+            div {
+                class: "spread-around",
+                label { r#for: "c", "Conscientiousness: " }
+                input { id: "c", name: "c", value: "50", r#type: "number" }
+            }
+
+            div {
+                class: "spread-around",
+                label { r#for: "e", "Extraversion: " }
+                input { id: "e", name: "e", value: "50", r#type: "number" }
+            }
+            
+            div {
+                class: "spread-around",
+                label { r#for: "a", "Agreeableness: " }
+                input { id: "a", name: "a", value: "50", r#type: "number" }
+            }
+
+            div {
+                class: "spread-around",
+                label { r#for: "n", "Neuroticism: " }
+                input { id: "n", name: "n", value: "50", r#type: "number" }
+            }
+
+            br {}
+            
+            button {
+                class: "confirm",
+                r#type: "submit",
+                h2 { "Pair" }
+            }
+        }
+    }
+}
