@@ -4,9 +4,11 @@ use crate::client::Route;
 use crate::client::State;
 use crate::common::Scores;
 use dioxus::prelude::*;
-use std::sync::{Arc, Mutex};
-
 use once_cell::sync::Lazy;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+use std::fmt;
+use std::sync::{Arc, Mutex};
 
 /// using statics everywhere because im too dumb to understand dioxus properly
 static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> =
@@ -183,8 +185,6 @@ impl Question {
     }
 }
 
-use std::fmt;
-
 impl fmt::Display for Question {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.question)
@@ -281,7 +281,7 @@ fn all_questions() -> Vec<Question> {
         ),
     ];
 
-    let questions: Vec<Question> = extraversion
+    let mut questions: Vec<Question> = extraversion
         .into_iter()
         .chain(neuroticism)
         .chain(agreeableness)
@@ -289,6 +289,8 @@ fn all_questions() -> Vec<Question> {
         .chain(openness)
         .map(|(question, trait_, flipped)| Question::new(question, trait_, flipped))
         .collect();
+
+    questions.shuffle(&mut thread_rng());
 
     questions
 }
