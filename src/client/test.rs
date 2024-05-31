@@ -5,8 +5,6 @@ use crate::client::State;
 use crate::common::Scores;
 use dioxus::prelude::*;
 use once_cell::sync::Lazy;
-use rand::seq::SliceRandom;
-use rand::thread_rng;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
@@ -37,11 +35,11 @@ impl Converter {
         static CONVERTER: Lazy<Converter> = Lazy::new(|| Converter::new());
 
         Scores {
-            o: CONVERTER.o[tally.o as usize],
-            c: CONVERTER.c[tally.c as usize],
-            e: CONVERTER.e[tally.e as usize],
-            a: CONVERTER.a[tally.a as usize],
-            n: CONVERTER.n[tally.n as usize],
+            o: CONVERTER.o[tally.o as usize - 10],
+            c: CONVERTER.c[tally.c as usize - 10],
+            e: CONVERTER.e[tally.e as usize - 10],
+            a: CONVERTER.a[tally.a as usize - 10],
+            n: CONVERTER.n[tally.n as usize - 10],
         }
     }
 }
@@ -281,7 +279,7 @@ fn all_questions() -> Vec<Question> {
         ),
     ];
 
-    let mut questions: Vec<Question> = extraversion
+    let questions: Vec<Question> = extraversion
         .into_iter()
         .chain(neuroticism)
         .chain(agreeableness)
@@ -289,8 +287,6 @@ fn all_questions() -> Vec<Question> {
         .chain(openness)
         .map(|(question, trait_, flipped)| Question::new(question, trait_, flipped))
         .collect();
-
-    questions.shuffle(&mut thread_rng());
 
     questions
 }

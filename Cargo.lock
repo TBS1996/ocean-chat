@@ -1517,7 +1517,6 @@ dependencies = [
  "http 1.1.0",
  "js-sys",
  "once_cell",
- "rand",
  "serde",
  "serde_json",
  "tokio",
