@@ -12,45 +12,36 @@ use once_cell::sync::Lazy;
 static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> =
     Lazy::new(|| Arc::new(Mutex::new(all_questions())));
 
-fn o_perc(score: u32) -> f32 {
-    static MAP: Lazy<Vec<f32>> = Lazy::new(|| {
-        let s = include_str!("../../files/o_map");
-        serde_json::from_str(&s).unwrap()
-    });
-
-    MAP[score as usize - 10]
+struct Converter {
+    o: Vec<f32>,
+    c: Vec<f32>,
+    e: Vec<f32>,
+    a: Vec<f32>,
+    n: Vec<f32>,
 }
-fn c_perc(score: u32) -> f32 {
-    static MAP: Lazy<Vec<f32>> = Lazy::new(|| {
-        let s = include_str!("../../files/c_map");
-        serde_json::from_str(&s).unwrap()
-    });
 
-    MAP[score as usize - 10]
-}
-fn e_perc(score: u32) -> f32 {
-    static MAP: Lazy<Vec<f32>> = Lazy::new(|| {
-        let s = include_str!("../../files/e_map");
-        serde_json::from_str(&s).unwrap()
-    });
+impl Converter {
+    fn new() -> Self {
+        Self {
+            o: serde_json::from_str(&include_str!("../../files/o_map")).unwrap(),
+            c: serde_json::from_str(&include_str!("../../files/c_map")).unwrap(),
+            e: serde_json::from_str(&include_str!("../../files/e_map")).unwrap(),
+            a: serde_json::from_str(&include_str!("../../files/a_map")).unwrap(),
+            n: serde_json::from_str(&include_str!("../../files/n_map")).unwrap(),
+        }
+    }
 
-    MAP[score as usize - 10]
-}
-fn a_perc(score: u32) -> f32 {
-    static MAP: Lazy<Vec<f32>> = Lazy::new(|| {
-        let s = include_str!("../../files/a_map");
-        serde_json::from_str(&s).unwrap()
-    });
+    fn convert(tally: ScoreTally) -> Scores {
+        static CONVERTER: Lazy<Converter> = Lazy::new(|| Converter::new());
 
-    MAP[score as usize - 10]
-}
-fn n_perc(score: u32) -> f32 {
-    static MAP: Lazy<Vec<f32>> = Lazy::new(|| {
-        let s = include_str!("../../files/n_map");
-        serde_json::from_str(&s).unwrap()
-    });
-
-    MAP[score as usize - 10]
+        Scores {
+            o: CONVERTER.o[tally.o as usize],
+            c: CONVERTER.c[tally.c as usize],
+            e: CONVERTER.e[tally.e as usize],
+            a: CONVERTER.a[tally.a as usize],
+            n: CONVERTER.n[tally.n as usize],
+        }
+    }
 }
 
 #[component]
@@ -205,13 +196,7 @@ impl ScoreTally {
     }
 
     fn into_scores(self) -> Scores {
-        let mut s = Scores::default();
-        s.o = o_perc(self.o);
-        s.c = c_perc(self.c);
-        s.e = e_perc(self.e);
-        s.a = a_perc(self.a);
-        s.n = n_perc(self.n);
-        s
+        Converter::convert(self)
     }
 }
 
