@@ -81,7 +81,7 @@ fn App() -> Element {
 }
 
 // Call this function to log a message
-pub fn log_to_console(message: &str) {
+fn log_to_console(message: &str) {
     console::log_1(&JsValue::from_str(message));
 }
 
