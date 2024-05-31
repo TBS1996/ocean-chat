@@ -4,6 +4,7 @@
 mod server;
 
 mod common;
+mod data;
 
 #[cfg(feature = "server")]
 #[tokio::main]
