@@ -8,6 +8,21 @@ use std::sync::Arc;
 
 pub static CONFIG: Lazy<Arc<Config>> = Lazy::new(|| Arc::new(Config::load()));
 
+pub static SCORES: Lazy<Vec<Scores>> = Lazy::new(|| {
+    let s = include_str!("scores");
+    let mut scores = vec![];
+    for row in s.split("\n") {
+        if row.is_empty() {
+            continue;
+        }
+
+        let s = Scores::from_str(&row).unwrap();
+        scores.push(s);
+    }
+
+    scores
+});
+
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     pub local: bool,
@@ -114,6 +129,17 @@ impl Scores {
 
         diff_sum.sqrt()
     }
+
+    /// Returns the percentage of people who are more similar than the given peer.
+    pub fn percentage_similarity(self, other: Scores) -> f32 {
+        let distance = self.distance(&other);
+        let closer = SCORES
+            .iter()
+            .filter(|score| score.distance(&self) < distance)
+            .count();
+        let ratio = closer as f32 / SCORES.len() as f32;
+        ratio * 100.
+    }
 }
 
 impl Display for Scores {
@@ -128,11 +154,11 @@ impl FromStr for Scores {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let values: Vec<&str> = s.split(',').collect();
 
-        let o = values[0].parse()?;
-        let c = values[1].parse()?;
-        let e = values[2].parse()?;
-        let a = values[3].parse()?;
-        let n = values[4].parse()?;
+        let o = values[0].trim().parse()?;
+        let c = values[1].trim().parse()?;
+        let e = values[2].trim().parse()?;
+        let a = values[3].trim().parse()?;
+        let n = values[4].trim().parse()?;
 
         Ok(Self { o, c, e, a, n })
     }

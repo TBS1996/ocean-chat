@@ -47,9 +47,9 @@ async fn connect_to_peer(
                 SocketMessage::Info(msg) => Message::new(Origin::Info, msg),
                 SocketMessage::PeerScores(peer_scores) => {
                     state.set_peer_scores(peer_scores);
-                    let diff = scores.distance(&peer_scores);
+                    let diff = scores.percentage_similarity(peer_scores);
                     let msg = format!(
-                        "Your peer's personality has a difference-score of {} compared to you!",
+                        "{:.1}% of people are more similar to you than your peer",
                         diff
                     );
 
