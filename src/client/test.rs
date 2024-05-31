@@ -1,5 +1,8 @@
 #![allow(non_snake_case)]
 
+use crate::client::Route;
+use crate::client::State;
+use crate::common::Scores;
 use dioxus::prelude::*;
 use std::sync::{Arc, Mutex};
 
@@ -9,10 +12,60 @@ use once_cell::sync::Lazy;
 static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> =
     Lazy::new(|| Arc::new(Mutex::new(all_questions())));
 
+fn o_perc(score: u32) -> f32 {
+    static MAP: Lazy<Vec<f32>> = Lazy::new(|| {
+        let s = include_str!("../../files/o_map");
+        serde_json::from_str(&s).unwrap()
+    });
+
+    MAP[score as usize - 10]
+}
+fn c_perc(score: u32) -> f32 {
+    static MAP: Lazy<Vec<f32>> = Lazy::new(|| {
+        let s = include_str!("../../files/c_map");
+        serde_json::from_str(&s).unwrap()
+    });
+
+    MAP[score as usize - 10]
+}
+fn e_perc(score: u32) -> f32 {
+    static MAP: Lazy<Vec<f32>> = Lazy::new(|| {
+        let s = include_str!("../../files/e_map");
+        serde_json::from_str(&s).unwrap()
+    });
+
+    MAP[score as usize - 10]
+}
+fn a_perc(score: u32) -> f32 {
+    static MAP: Lazy<Vec<f32>> = Lazy::new(|| {
+        let s = include_str!("../../files/a_map");
+        serde_json::from_str(&s).unwrap()
+    });
+
+    MAP[score as usize - 10]
+}
+fn n_perc(score: u32) -> f32 {
+    static MAP: Lazy<Vec<f32>> = Lazy::new(|| {
+        let s = include_str!("../../files/n_map");
+        serde_json::from_str(&s).unwrap()
+    });
+
+    MAP[score as usize - 10]
+}
+
 #[component]
 pub fn Test() -> Element {
+    let state = use_context::<State>();
     let mut tally = use_signal(ScoreTally::default);
     let mut curr_question = use_signal(|| QUESTIONS.lock().unwrap().last().copied().unwrap());
+    let navigator = use_navigator();
+
+    // cant remember last time i wrote a dumber piece of code than this
+    let state1 = state.clone();
+    let state2 = state.clone();
+    let state3 = state.clone();
+    let state4 = state.clone();
+    let state5 = state.clone();
 
     rsx! {  div {
             style { { include_str!("../styles.css") } }
@@ -27,8 +80,16 @@ pub fn Test() -> Element {
                             let answer = Answer::Disagree;
                             let question = QUESTIONS.lock().unwrap().pop().unwrap();
                             tally.write().add_answer(question, answer);
-                            let next_question = QUESTIONS.lock().unwrap().last().copied().unwrap();
-                            *curr_question.write() = next_question;
+                            match QUESTIONS.lock().unwrap().last().copied(){
+                                Some(next_question) => {
+                                    *curr_question.write() = next_question;
+                                },
+                                None => {
+                                    let scores = tally.write().into_scores();
+                                    state1.set_scores(scores);
+                                    navigator.replace(Route::Chat{});
+                                },
+                            }
                         },
                         "Disagree"
                     }
@@ -38,8 +99,16 @@ pub fn Test() -> Element {
                             let answer = Answer::SlightlyDisagree;
                             let question = QUESTIONS.lock().unwrap().pop().unwrap();
                             tally.write().add_answer(question, answer);
-                            let next_question = QUESTIONS.lock().unwrap().last().copied().unwrap();
-                            *curr_question.write() = next_question;
+                            match QUESTIONS.lock().unwrap().last().copied(){
+                                Some(next_question) => {
+                                    *curr_question.write() = next_question;
+                                },
+                                None => {
+                                    let scores = tally.write().into_scores();
+                                    state2.set_scores(scores);
+                                    navigator.replace(Route::Chat{});
+                                },
+                            }
                         },
                         "Slightly disagree"
                     }
@@ -49,8 +118,16 @@ pub fn Test() -> Element {
                             let answer = Answer::Neutral;
                             let question = QUESTIONS.lock().unwrap().pop().unwrap();
                             tally.write().add_answer(question, answer);
-                            let next_question = QUESTIONS.lock().unwrap().last().copied().unwrap();
-                            *curr_question.write() = next_question;
+                            match QUESTIONS.lock().unwrap().last().copied(){
+                                Some(next_question) => {
+                                    *curr_question.write() = next_question;
+                                },
+                                None => {
+                                    let scores = tally.write().into_scores();
+                                    state3.set_scores(scores);
+                                    navigator.replace(Route::Chat{});
+                                },
+                            }
                         },
                         "Neutral"
                     }
@@ -60,8 +137,16 @@ pub fn Test() -> Element {
                             let answer = Answer::SlightlyAgree;
                             let question = QUESTIONS.lock().unwrap().pop().unwrap();
                             tally.write().add_answer(question, answer);
-                            let next_question = QUESTIONS.lock().unwrap().last().copied().unwrap();
-                            *curr_question.write() = next_question;
+                            match QUESTIONS.lock().unwrap().last().copied(){
+                                Some(next_question) => {
+                                    *curr_question.write() = next_question;
+                                },
+                                None => {
+                                    let scores = tally.write().into_scores();
+                                    state4.set_scores(scores);
+                                    navigator.replace(Route::Chat{});
+                                },
+                            }
 
                         },
                         "Slightly agree"
@@ -72,8 +157,16 @@ pub fn Test() -> Element {
                             let answer = Answer::Agree;
                             let question = QUESTIONS.lock().unwrap().pop().unwrap();
                             tally.write().add_answer(question, answer);
-                            let next_question = QUESTIONS.lock().unwrap().last().copied().unwrap();
-                            *curr_question.write() = next_question;
+                            match QUESTIONS.lock().unwrap().last().copied(){
+                                Some(next_question) => {
+                                    *curr_question.write() = next_question;
+                                },
+                                None => {
+                                    let scores = tally.write().into_scores();
+                                    state5.set_scores(scores);
+                                    navigator.replace(Route::Chat{});
+                                },
+                            }
                         },
                         "Agree"
                     }
@@ -85,7 +178,7 @@ pub fn Test() -> Element {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 struct ScoreTally {
     o: u32,
     c: u32,
@@ -109,6 +202,16 @@ impl ScoreTally {
             Trait::Agree => self.a += points,
             Trait::Neurotic => self.n += points,
         }
+    }
+
+    fn into_scores(self) -> Scores {
+        let mut s = Scores::default();
+        s.o = o_perc(self.o);
+        s.c = c_perc(self.c);
+        s.e = e_perc(self.e);
+        s.a = a_perc(self.a);
+        s.n = n_perc(self.n);
+        s
     }
 }
 
@@ -256,7 +359,7 @@ fn all_questions() -> Vec<Question> {
         ),
     ];
 
-    let mut questions: Vec<Question> = extraversion
+    let questions: Vec<Question> = extraversion
         .into_iter()
         .chain(neuroticism)
         .chain(agreeableness)

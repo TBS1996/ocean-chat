@@ -31,23 +31,23 @@ struct InnerState {
 }
 
 impl State {
-    fn set_scores(&self, scores: Scores) {
+    pub fn set_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().scores = Some(scores);
     }
 
-    fn set_peer_scores(&self, scores: Scores) {
+    pub fn set_peer_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().peer_scores = Some(scores);
     }
 
-    fn scores(&self) -> Option<Scores> {
+    pub fn scores(&self) -> Option<Scores> {
         self.inner.lock().unwrap().scores
     }
 
-    fn set_socket(&self, socket: WebSocket) {
+    pub fn set_socket(&self, socket: WebSocket) {
         self.inner.lock().unwrap().socket = Some(socket);
     }
 
-    fn send_message(&self, msg: &str) -> bool {
+    pub fn send_message(&self, msg: &str) -> bool {
         if let Some(socket) = &self.inner.lock().unwrap().socket {
             let _ = socket.send_with_str(msg);
             true
@@ -57,7 +57,7 @@ impl State {
         }
     }
 
-    fn clear_peer(&self) {
+    pub fn clear_peer(&self) {
         let mut lock = self.inner.lock().unwrap();
         if let Some(socket) = &lock.socket {
             socket.close().unwrap();

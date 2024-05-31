@@ -90,7 +90,7 @@ impl SocketMessage {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize, Default)]
 pub struct Scores {
     pub o: f32,
     pub c: f32,
