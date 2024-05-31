@@ -14,11 +14,6 @@ use web_sys::WebSocket;
 
 mod chat;
 
-static COOKIE: Lazy<Option<Scores>> = Lazy::new(|| {
-    let scores = block_on(fetch_scores_cookie());
-    scores
-});
-
 #[wasm_bindgen(start)]
 pub fn run_app() {
     launch(App);
@@ -102,6 +97,15 @@ pub fn Invalid() -> Element {
     }
 }
 
+fn default_scores() -> Scores {
+    static COOKIE: Lazy<Option<Scores>> = Lazy::new(|| {
+        let scores = block_on(fetch_scores_cookie());
+        scores
+    });
+
+    COOKIE.unwrap_or_else(Scores::mid)
+}
+
 async fn fetch_scores_cookie() -> Option<Scores> {
     let mut eval = eval(
         r#"
@@ -125,7 +129,7 @@ async fn fetch_scores_cookie() -> Option<Scores> {
 fn Home() -> Element {
     let navigator = use_navigator();
     let state = use_context::<State>();
-    let score = COOKIE.unwrap_or_else(Scores::mid);
+    let score = default_scores();
 
     rsx! {
     form { onsubmit:  move |event| {
