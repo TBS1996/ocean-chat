@@ -5,11 +5,13 @@ use chat::Chat;
 use dioxus::prelude::*;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
+use test::Test;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use web_sys::WebSocket;
 
 mod chat;
+mod test;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
@@ -17,7 +19,7 @@ pub fn run_app() {
 }
 
 #[derive(Clone, Default)]
-struct State {
+pub struct State {
     inner: Arc<Mutex<InnerState>>,
 }
 
@@ -66,13 +68,15 @@ impl State {
 }
 
 #[derive(Clone, Routable, Debug, PartialEq)]
-enum Route {
+pub enum Route {
     #[route("/")]
     Home {},
     #[route("/invalid")]
     Invalid {},
     #[route("/chat")]
     Chat {},
+    #[route("/test")]
+    Test {},
 }
 
 fn App() -> Element {
@@ -81,8 +85,9 @@ fn App() -> Element {
 }
 
 // Call this function to log a message
-fn log_to_console(message: &str) {
-    console::log_1(&JsValue::from_str(message));
+fn log_to_console(message: impl std::fmt::Debug) {
+    let message = format!("{:?}", message);
+    console::log_1(&JsValue::from_str(&message));
 }
 
 #[component]
