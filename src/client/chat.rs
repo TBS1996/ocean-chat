@@ -82,6 +82,7 @@ async fn connect_to_peer(
 
     // Handle WebSocket close event
     let onclose_callback = Closure::wrap(Box::new(move |_| {
+        state.clear_socket();
         log_to_console("WebSocket connection closed");
     }) as Box<dyn FnMut(JsValue)>);
     ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
@@ -119,6 +120,7 @@ pub fn Chat() -> Element {
     });
 
     let the_state = state.clone();
+    let disabled = !state.has_socket();
     rsx! {
         form {
             onsubmit: move |event| {
@@ -141,9 +143,11 @@ pub fn Chat() -> Element {
                         r#type: "text",
                         name: "msg",
                         value: "{input}",
+                        disabled: "{disabled}",
+                        autocomplete: "off",
                         oninput: move |event| input.set(event.value()),
                     }
-                    input { r#type: "submit", value: "Submit" }
+                    input { r#type: "submit", value: "Submit", disabled: "{disabled}" }
                     button {
                         prevent_default: "onclick",
                         onclick: move |_| {

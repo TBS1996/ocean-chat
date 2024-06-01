@@ -47,6 +47,14 @@ impl State {
         self.inner.lock().unwrap().socket = Some(socket);
     }
 
+    fn has_socket(&self) -> bool {
+        self.inner.lock().unwrap().socket.is_some()
+    }
+
+    fn clear_socket(&self) {
+        self.inner.lock().unwrap().socket = None;
+    }
+
     pub fn send_message(&self, msg: &str) -> bool {
         if let Some(socket) = &self.inner.lock().unwrap().socket {
             let _ = socket.send_with_str(msg);
