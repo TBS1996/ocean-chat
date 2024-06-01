@@ -2,7 +2,10 @@
 
 use crate::client;
 use crate::common;
+
+use client::save_scores;
 use client::Route;
+use client::Sidebar;
 use client::State;
 use common::Answer;
 use common::Question;
@@ -26,6 +29,9 @@ pub fn Test() -> Element {
 
     rsx! {
         div {
+        class: "layout",
+        Sidebar {},
+        div {
             style { { include_str!("../styles.css") } }
             h1 { "Personality Test" }
             div { class: "input-group",
@@ -44,6 +50,7 @@ pub fn Test() -> Element {
                                 },
                                 None => {
                                     let scores = DISTS.convert(*tally.read());
+                                    save_scores(scores);
                                     state.set_scores(scores);
                                     navigator.replace(Route::Chat{});
                                 },
@@ -54,5 +61,6 @@ pub fn Test() -> Element {
                 }
             }
         }
+    }
     }
 }

@@ -2,6 +2,7 @@
 
 use crate::common;
 use chat::Chat;
+use chat::Message;
 use common::Scores;
 use dioxus::prelude::*;
 use futures::executor::block_on;
@@ -32,9 +33,30 @@ struct InnerState {
     scores: Option<Scores>,
     peer_scores: Option<Scores>,
     socket: Option<WebSocket>,
+    messages: Signal<Vec<Message>>,
+    input: Signal<String>,
+    connected: Signal<bool>,
 }
 
 impl State {
+    pub fn insert_message(&self, message: Message) {
+        log_to_console("inserting msg");
+        log_to_console(&message);
+        self.inner.lock().unwrap().messages.push(message);
+    }
+
+    pub fn input(&self) -> Signal<String> {
+        self.inner.lock().unwrap().input.clone()
+    }
+
+    pub fn messages(&self) -> Signal<Vec<Message>> {
+        self.inner.lock().unwrap().messages.clone()
+    }
+
+    pub fn clear_messages(&self) {
+        self.inner.lock().unwrap().messages.clear();
+    }
+
     pub fn set_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().scores = Some(scores);
     }
@@ -47,16 +69,22 @@ impl State {
         self.inner.lock().unwrap().scores
     }
 
-    pub fn set_socket(&self, socket: WebSocket) {
-        self.inner.lock().unwrap().socket = Some(socket);
+    pub fn has_socket(&self) -> bool {
+        self.inner.lock().unwrap().socket.is_some()
     }
 
-    fn has_socket(&self) -> bool {
-        self.inner.lock().unwrap().socket.is_some()
+    pub fn set_socket(&self, socket: WebSocket) {
+        self.inner.lock().unwrap().socket = Some(socket);
+        *self.not_connected().write() = false;
+    }
+
+    fn not_connected(&self) -> Signal<bool> {
+        self.inner.lock().unwrap().connected.clone()
     }
 
     fn clear_socket(&self) {
         self.inner.lock().unwrap().socket = None;
+        *self.not_connected().write() = true;
     }
 
     pub fn send_message(&self, msg: &str) -> bool {
@@ -89,6 +117,8 @@ pub enum Route {
     Chat {},
     #[route("/test")]
     Test {},
+    #[route("/manual")]
+    Manual {},
 }
 
 fn App() -> Element {
@@ -97,35 +127,48 @@ fn App() -> Element {
 }
 
 // Call this function to log a message
-fn log_to_console(message: impl std::fmt::Debug) {
+pub fn log_to_console(message: impl std::fmt::Debug) {
     let message = format!("{:?}", message);
     console::log_1(&JsValue::from_str(&message));
 }
 
 #[component]
-pub fn Invalid() -> Element {
+pub fn Sidebar() -> Element {
     rsx! {
-        "invalid input! all values must be between 0 and 100",
-        Link { to: Route::Home {}, "try again" }
+        div {
+            class: "sidebar",
+            ul {
+                 li {
+                    Link { to: Route::Home {}, "Home" }
+                }
+                 li {
+                    Link { to: Route::Manual {}, "Enter scores manually" }
+                }
+                 li {
+                    Link { to: Route::Test {}, "Take the personality test" }
+                }
+                 li {
+                    Link { to: Route::Chat {}, "Start chatting" }
+                }
+            }
+        }
     }
 }
 
 fn default_scores() -> Scores {
     static COOKIE: Lazy<Option<Scores>> = Lazy::new(|| {
-        let scores = block_on(fetch_scores_cookie());
+        let scores = block_on(fetch_scores_storage());
         scores
     });
 
     COOKIE.unwrap_or_else(Scores::mid)
 }
 
-async fn fetch_scores_cookie() -> Option<Scores> {
+async fn fetch_scores_storage() -> Option<Scores> {
     let mut eval = eval(
         r#"
-        let value = "; " + document.cookie;
-        let parts = value.split("; scores=");
-        if (parts.length == 2) {
-            let scores = parts.pop().split(";").shift();
+        let scores = localStorage.getItem('scores');
+        if (scores) {
             dioxus.send(scores);
         } else {
             dioxus.send(null);
@@ -133,32 +176,37 @@ async fn fetch_scores_cookie() -> Option<Scores> {
         "#,
     );
 
-    let cookies = eval.recv().await.unwrap().to_string();
-    log_to_console(&cookies);
-    Scores::from_str(&cookies).ok()
+    let scores = eval.recv().await.unwrap().to_string();
+    log_to_console(&scores);
+    Scores::from_str(&scores).ok()
 }
 
 #[component]
-fn Home() -> Element {
+fn Manual() -> Element {
     let navigator = use_navigator();
     let state = use_context::<State>();
     let score = default_scores();
 
     rsx! {
-    form { onsubmit:  move |event| {
-         match Scores::try_from(event.data().deref()) {
-             Ok(scores) => {
-                 state.set_scores(scores);
-                 save_scores(scores);
-                 navigator.replace(Route::Chat{});
-             }
-             Err(_) => {
-                 navigator.replace(Route::Invalid {});
-             }
+            style { { include_str!("../styles.css") } }
+        div {
+            class: "layout",
+            Sidebar {},
+            div {
+            form { onsubmit:  move |event| {
+                 match Scores::try_from(event.data().deref()) {
+                     Ok(scores) => {
+                         state.set_scores(scores);
+                         save_scores(scores);
+                         navigator.replace(Route::Chat{});
+                     }
+                     Err(_) => {
+                         navigator.replace(Route::Invalid {});
+                     }
 
-         }
+                 }
 
-    },
+            },
     div { class: "form-group",
                 label { "Openness: " }
                 input { name: "o", value: "{score.o}"}
@@ -180,18 +228,54 @@ fn Home() -> Element {
                     input { name: "n", value: "{score.n}"}
                 }
                 div { class: "form-group",
-                    input { r#type: "submit", value: "Submit" }
+                    input { r#type: "submit", value: "Save" }
+            }
+        }
+            }
+    }
+    }
+}
+
+#[component]
+fn Home() -> Element {
+    rsx! {
+        style {
+            { include_str!("../styles.css") }
+        }
+        div {
+            class: "layout",
+            Sidebar {},
+            div {
+                class: "content",
+                h1 { "Hello! Welcome to Oceanchat!" }
+                p {
+                    "Start chatting with people similar to your personality here.
+                    First you must take the personality test, or manually input your Big 5 trait scores!"
+                }
             }
         }
     }
 }
 
-fn save_scores(scores: Scores) {
-    let script = format!(
-        "document.cookie = 'scores={}; expires=Fri, 31 Dec 9999 23:59:59 GMT; path=/';",
-        scores
-    );
+#[component]
+pub fn Invalid() -> Element {
+    rsx! {
+        div {
+            p {
+                "You have to either take the personality test, or manually submit a valid set of trait scores!"
+            }
+            div {
+                Link {
+                    to: Route::Home {},
+                    "Back to main page"
+                }
+            }
+        }
+    }
+}
 
+pub fn save_scores(scores: Scores) {
+    let script = format!("localStorage.setItem('scores', '{}');", scores);
     eval(&script);
-    log_to_console("storing scores cookie");
+    log_to_console("storing scores in local storage");
 }
