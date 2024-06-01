@@ -2,13 +2,14 @@
 
 use crate::client::Route;
 use crate::client::State;
-use crate::common::Answer;
-use crate::common::Question;
-use crate::common::ScoreTally;
+use crate::common::questions::Answer;
+use crate::common::questions::Question;
 use crate::common::DISTS;
 use dioxus::prelude::*;
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
+
+use crate::common::scores::ScoreTally;
 
 /// using statics everywhere because im too dumb to understand dioxus properly
 static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> =

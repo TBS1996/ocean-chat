@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::common::Scores;
+use crate::common::scores::Scores;
 use chat::Chat;
 use dioxus::prelude::*;
 use std::ops::Deref;
