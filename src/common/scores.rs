@@ -51,6 +51,16 @@ impl Scores {
         diff_sum.sqrt()
     }
 
+    pub fn mid() -> Self {
+        Self {
+            o: 50.,
+            c: 50.,
+            e: 50.,
+            a: 50.,
+            n: 50.,
+        }
+    }
+
     /// Returns the percentage of people who are more similar than the given peer.
     #[cfg(not(feature = "server"))]
     pub fn percentage_similarity(self, other: Scores) -> f32 {
@@ -78,6 +88,11 @@ impl FromStr for Scores {
     type Err = ParseFloatError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s
+            .strip_prefix('"')
+            .and_then(|s| s.strip_suffix('"'))
+            .unwrap_or(s);
+
         let values: Vec<&str> = s.split(',').collect();
 
         let o = values[0].trim().parse()?;
