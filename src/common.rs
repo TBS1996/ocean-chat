@@ -234,7 +234,7 @@ impl ScoreTally {
         for row in x {
             let cols = row.split("\t");
             let x: Vec<&str> = cols.collect();
-            let score = ScoreTally::from_row(&x);
+            let score = Self::from_row(&x);
             output.push(score);
         }
 
@@ -473,6 +473,7 @@ impl ScoreTally {
     }
 }
 
+#[derive(Debug)]
 pub struct Distributions {
     pub o: [f32; 41],
     pub c: [f32; 41],
@@ -566,12 +567,6 @@ impl Distributions {
 }
 
 fn calculate_percentiles(scores: &[u32]) -> [f32; 41] {
-    let mut raw = raw_percentiles(scores);
-    normalize(&mut raw);
-    raw
-}
-
-fn raw_percentiles(scores: &[u32]) -> [f32; 41] {
     let mut sorted_scores = scores.to_vec();
     sorted_scores.sort();
 
@@ -587,71 +582,6 @@ fn raw_percentiles(scores: &[u32]) -> [f32; 41] {
 
     for (idx, value) in percentiles {
         output[idx as usize - 10] = value;
-    }
-
-    output
-}
-
-fn normalize(scores: &mut [f32; 41]) {
-    let mut idx = scores.len() - 1;
-    loop {
-        if scores[idx] == 0. {
-            scores[idx] = 100.;
-        } else {
-            break;
-        }
-
-        idx -= 1;
-    }
-
-    idx = scores.iter().position(|num| *num != 0.).unwrap();
-    let mut inside = false;
-    let mut val_idx = idx;
-    let mut val = scores[idx];
-    let mut prev_val = val;
-    loop {
-        let curr_val = scores[idx];
-
-        match (curr_val == 0., inside) {
-            (true, true) => {}
-            (false, false) => {}
-            (true, false) => {
-                val = prev_val;
-                val_idx = idx - 1;
-                inside = true;
-            }
-            (false, true) => {
-                inside = false;
-                let steps = idx - val_idx - 1;
-                let from = val;
-                let to = curr_val;
-                let intrapolated = intrapolate(from, to, steps);
-
-                for (i, idx) in (val_idx + 1..idx).into_iter().enumerate() {
-                    scores[idx] = intrapolated[i];
-                }
-
-                val_idx = idx;
-                val = curr_val;
-            }
-        }
-        prev_val = curr_val;
-
-        idx += 1;
-
-        if idx == scores.len() {
-            break;
-        }
-    }
-}
-
-fn intrapolate(from: f32, to: f32, steps: usize) -> Vec<f32> {
-    let mut output = vec![];
-    let diff = to - from;
-    let interval = diff / (steps + 1) as f32;
-
-    for i in 1..=steps {
-        output.push(from + i as f32 * interval);
     }
 
     output
