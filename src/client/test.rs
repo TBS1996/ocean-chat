@@ -1,15 +1,16 @@
 #![allow(non_snake_case)]
 
-use crate::client::Route;
-use crate::client::State;
-use crate::common::questions::Answer;
-use crate::common::questions::Question;
-use crate::common::DISTS;
+use crate::client;
+use crate::common;
+use client::Route;
+use client::State;
+use common::Answer;
+use common::Question;
+use common::ScoreTally;
+use common::DISTS;
 use dioxus::prelude::*;
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
-
-use crate::common::scores::ScoreTally;
 
 /// using statics everywhere because im too dumb to understand dioxus properly
 static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> =
