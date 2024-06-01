@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use crate::client::chat::Message;
 use crate::common::Scores;
 use chat::Chat;
 use dioxus::prelude::*;
@@ -15,6 +16,12 @@ mod test;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
+    use std::panic;
+    use web_sys::console;
+
+    panic::set_hook(Box::new(console_error_panic_hook::hook));
+    console::log_1(&"Panic hook set!".into());
+
     launch(App);
 }
 
@@ -28,9 +35,29 @@ struct InnerState {
     scores: Option<Scores>,
     peer_scores: Option<Scores>,
     socket: Option<WebSocket>,
+    messages: Signal<Vec<Message>>,
+    input: Signal<String>,
 }
 
 impl State {
+    pub fn insert_message(&self, message: Message) {
+        log_to_console("inserting msg");
+        log_to_console(&message);
+        self.inner.lock().unwrap().messages.push(message);
+    }
+
+    pub fn input(&self) -> Signal<String> {
+        self.inner.lock().unwrap().input.clone()
+    }
+
+    pub fn messages(&self) -> Signal<Vec<Message>> {
+        self.inner.lock().unwrap().messages.clone()
+    }
+
+    pub fn clear_messages(&self) {
+        self.inner.lock().unwrap().messages.clear();
+    }
+
     pub fn set_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().scores = Some(scores);
     }
@@ -85,6 +112,8 @@ pub enum Route {
     Chat {},
     #[route("/test")]
     Test {},
+    #[route("/manual")]
+    Manual {},
 }
 
 fn App() -> Element {
@@ -93,7 +122,7 @@ fn App() -> Element {
 }
 
 // Call this function to log a message
-fn log_to_console(message: impl std::fmt::Debug) {
+pub fn log_to_console(message: impl std::fmt::Debug) {
     let message = format!("{:?}", message);
     console::log_1(&JsValue::from_str(&message));
 }
@@ -107,24 +136,53 @@ pub fn Invalid() -> Element {
 }
 
 #[component]
-fn Home() -> Element {
+pub fn Sidebar() -> Element {
+    rsx! {
+        div {
+            class: "sidebar",
+            ul {
+                 li {
+                    Link { to: Route::Home {}, "Home" }
+                }
+                 li {
+                    Link { to: Route::Manual {}, "Enter scores manually" }
+                }
+                 li {
+                    Link { to: Route::Test {}, "Take the personality test" }
+                }
+                 li {
+                    Link { to: Route::Chat {}, "Start chatting" }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn Manual() -> Element {
     let navigator = use_navigator();
     let state = use_context::<State>();
 
     rsx! {
-    form { onsubmit:  move |event| {
-         match Scores::try_from(event.data().deref()) {
-             Ok(scores) => {
-                 state.set_scores(scores);
-                 navigator.replace(Route::Chat{});
-             }
-             Err(_) => {
-                 navigator.replace(Route::Invalid {});
-             }
+            style { { include_str!("../styles.css") } }
+        div {
+            class: "layout",
+            Sidebar {},
+            div {
+                "hey write it!",
+            form { onsubmit:  move |event| {
+                 match Scores::try_from(event.data().deref()) {
+                     Ok(scores) => {
+                         state.set_scores(scores);
+                         navigator.replace(Route::Chat{});
+                     }
+                     Err(_) => {
+                         navigator.replace(Route::Invalid {});
+                     }
 
-         }
+                 }
 
-    },
+            },
     div { class: "form-group",
                 label { "Openness: " }
                 input { name: "o", value: "50"}
@@ -146,8 +204,24 @@ fn Home() -> Element {
                     input { name: "n", value: "50"}
                 }
                 div { class: "form-group",
-                    input { r#type: "submit", value: "Submit" }
+                    input { r#type: "submit", value: "Save" }
             }
         }
+            }
+    }
+    }
+}
+
+#[component]
+fn Home() -> Element {
+    rsx! {
+            style { { include_str!("../styles.css") } }
+        div {
+            class: "layout",
+            Sidebar {},
+            div {
+                "hey whats up :D"
+            }
+    }
     }
 }

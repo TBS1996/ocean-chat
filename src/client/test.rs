@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::client::Route;
+use crate::client::Sidebar;
 use crate::client::State;
 use crate::common::Scores;
 use dioxus::prelude::*;
@@ -53,6 +54,9 @@ pub fn Test() -> Element {
 
     rsx! {
         div {
+        class: "layout",
+        Sidebar {},
+        div {
             style { { include_str!("../styles.css") } }
             h1 { "Personality Test" }
             div { class: "input-group",
@@ -81,6 +85,7 @@ pub fn Test() -> Element {
                 }
             }
         }
+    }
     }
 }
 

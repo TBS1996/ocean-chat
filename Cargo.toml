@@ -20,6 +20,8 @@ web-sys = {version = "0.3.69"}
 http = "1.1.0"
 wasm-bindgen = "0.2.92"
 js-sys = "0.3"
+wasm-logger = "0.2"
+console_error_panic_hook = "0.1.6"
 
 once_cell = "1.19.0"
 
