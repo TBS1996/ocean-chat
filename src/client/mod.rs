@@ -8,11 +8,13 @@ use once_cell::sync::Lazy;
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use test::Test;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use web_sys::WebSocket;
 
 mod chat;
+mod test;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
@@ -20,7 +22,7 @@ pub fn run_app() {
 }
 
 #[derive(Clone, Default)]
-struct State {
+pub struct State {
     inner: Arc<Mutex<InnerState>>,
 }
 
@@ -32,23 +34,31 @@ struct InnerState {
 }
 
 impl State {
-    fn set_scores(&self, scores: Scores) {
+    pub fn set_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().scores = Some(scores);
     }
 
-    fn set_peer_scores(&self, scores: Scores) {
+    pub fn set_peer_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().peer_scores = Some(scores);
     }
 
-    fn scores(&self) -> Option<Scores> {
+    pub fn scores(&self) -> Option<Scores> {
         self.inner.lock().unwrap().scores
     }
 
-    fn set_socket(&self, socket: WebSocket) {
+    pub fn set_socket(&self, socket: WebSocket) {
         self.inner.lock().unwrap().socket = Some(socket);
     }
 
-    fn send_message(&self, msg: &str) -> bool {
+    fn has_socket(&self) -> bool {
+        self.inner.lock().unwrap().socket.is_some()
+    }
+
+    fn clear_socket(&self) {
+        self.inner.lock().unwrap().socket = None;
+    }
+
+    pub fn send_message(&self, msg: &str) -> bool {
         if let Some(socket) = &self.inner.lock().unwrap().socket {
             let _ = socket.send_with_str(msg);
             true
@@ -58,7 +68,7 @@ impl State {
         }
     }
 
-    fn clear_peer(&self) {
+    pub fn clear_peer(&self) {
         let mut lock = self.inner.lock().unwrap();
         if let Some(socket) = &lock.socket {
             socket.close().unwrap();
@@ -69,13 +79,15 @@ impl State {
 }
 
 #[derive(Clone, Routable, Debug, PartialEq)]
-enum Route {
+pub enum Route {
     #[route("/")]
     Home {},
     #[route("/invalid")]
     Invalid {},
     #[route("/chat")]
     Chat {},
+    #[route("/test")]
+    Test {},
 }
 
 fn App() -> Element {
