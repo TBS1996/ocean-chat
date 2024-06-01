@@ -2,7 +2,9 @@
 
 use crate::client;
 use crate::common;
+
 use client::Route;
+use client::Sidebar;
 use client::State;
 use common::Answer;
 use common::Question;
@@ -25,6 +27,9 @@ pub fn Test() -> Element {
     let navigator = use_navigator();
 
     rsx! {
+        div {
+        class: "layout",
+        Sidebar {},
         div {
             style { { include_str!("../styles.css") } }
             h1 { "Personality Test" }
@@ -54,5 +59,6 @@ pub fn Test() -> Element {
                 }
             }
         }
+    }
     }
 }
