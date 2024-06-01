@@ -17,12 +17,6 @@ mod test;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
-    use std::panic;
-    use web_sys::console;
-
-    panic::set_hook(Box::new(console_error_panic_hook::hook));
-    console::log_1(&"Panic hook set!".into());
-
     launch(App);
 }
 
