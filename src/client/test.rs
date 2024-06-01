@@ -11,10 +11,11 @@ use common::DISTS;
 use dioxus::prelude::*;
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
+use strum::IntoEnumIterator;
 
 /// using statics everywhere because im too dumb to understand dioxus properly
 static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(Question::all())));
+    Lazy::new(|| Arc::new(Mutex::new(Question::iter().collect())));
 
 #[component]
 pub fn Test() -> Element {

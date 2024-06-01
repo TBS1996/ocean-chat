@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
 use std::num::ParseFloatError;
 use std::str::FromStr;
+use strum::IntoEnumIterator;
 
 #[cfg(not(feature = "server"))]
 pub static SCORES: Lazy<Vec<Scores>> = Lazy::new(|| {
@@ -112,7 +113,7 @@ impl TryFrom<&FormData> for Scores {
     }
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct ScoreTally {
     pub o: u32,
     pub c: u32,
@@ -122,34 +123,30 @@ pub struct ScoreTally {
 }
 
 impl ScoreTally {
-    fn from_row(row: &[&str]) -> Self {
-        let questions = Question::all();
-        let mut f = ScoreTally::default();
-
-        for (idx, col) in row[7..].iter().enumerate() {
-            let val: u32 = col.trim().parse().unwrap();
-            let question = questions[idx];
-            let answer = Answer::from_val(val);
-            f.add_answer(question, answer);
-        }
-
-        f
-    }
-
     pub fn load() -> Vec<Self> {
         let s = include_str!("../../files/data.csv");
         let s = &s[..s.len() - 1];
 
         let mut output = vec![];
+        let mut rows = s.split("\n").into_iter();
 
-        let mut x = s.split("\n").into_iter();
-        x.next();
+        let column_names: Vec<&str> = rows.next().unwrap().split("\t").collect();
 
-        for row in x {
-            let cols = row.split("\t");
-            let x: Vec<&str> = cols.collect();
-            let score = Self::from_row(&x);
-            output.push(score);
+        for row in rows {
+            let columns: Vec<&str> = row.split("\t").collect();
+            let mut tally = ScoreTally::default();
+
+            for (idx, column) in columns.iter().enumerate() {
+                let column = column.trim_end_matches('\r');
+                let column_name = column_names[idx].trim_end_matches('\r');
+                if let Ok(question) = Question::from_str(column_name) {
+                    let answer_val: u32 = column.parse().unwrap();
+                    let answer = Answer::from_val(answer_val);
+                    tally.add_answer(question, answer);
+                }
+            }
+
+            output.push(tally);
         }
 
         output
@@ -184,13 +181,13 @@ impl FromStr for ScoreTally {
 
 impl ScoreTally {
     pub fn add_answer(&mut self, question: Question, answer: Answer) {
-        let points = if question.flipped {
+        let points = if question.is_flipped() {
             6 - answer.into_points()
         } else {
             answer.into_points()
         };
 
-        match question.trait_ {
+        match question.trait_() {
             Trait::Open => self.o += points,
             Trait::Con => self.c += points,
             Trait::Extro => self.e += points,
