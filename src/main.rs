@@ -1,5 +1,10 @@
 #![allow(dead_code)]
 
+use common::Distributions;
+use common::ScoreTally;
+use common::Scores;
+use std::io::Write;
+
 #[cfg(feature = "server")]
 mod server;
 
@@ -16,11 +21,6 @@ async fn main() {
 fn main() {
     ocean_chat::run_app();
 }
-
-use common::Distributions;
-use common::ScoreTally;
-use common::Scores;
-use std::io::Write;
 
 fn generate_files() {
     let tallies = ScoreTally::load();
