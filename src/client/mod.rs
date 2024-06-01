@@ -5,11 +5,13 @@ use chat::Chat;
 use dioxus::prelude::*;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
+use test::Test;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use web_sys::WebSocket;
 
 mod chat;
+mod test;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
@@ -17,7 +19,7 @@ pub fn run_app() {
 }
 
 #[derive(Clone, Default)]
-struct State {
+pub struct State {
     inner: Arc<Mutex<InnerState>>,
 }
 
@@ -29,19 +31,19 @@ struct InnerState {
 }
 
 impl State {
-    fn set_scores(&self, scores: Scores) {
+    pub fn set_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().scores = Some(scores);
     }
 
-    fn set_peer_scores(&self, scores: Scores) {
+    pub fn set_peer_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().peer_scores = Some(scores);
     }
 
-    fn scores(&self) -> Option<Scores> {
+    pub fn scores(&self) -> Option<Scores> {
         self.inner.lock().unwrap().scores
     }
 
-    fn set_socket(&self, socket: WebSocket) {
+    pub fn set_socket(&self, socket: WebSocket) {
         self.inner.lock().unwrap().socket = Some(socket);
     }
 
@@ -53,7 +55,7 @@ impl State {
         self.inner.lock().unwrap().socket = None;
     }
 
-    fn send_message(&self, msg: &str) -> bool {
+    pub fn send_message(&self, msg: &str) -> bool {
         if let Some(socket) = &self.inner.lock().unwrap().socket {
             let _ = socket.send_with_str(msg);
             true
@@ -63,7 +65,7 @@ impl State {
         }
     }
 
-    fn clear_peer(&self) {
+    pub fn clear_peer(&self) {
         let mut lock = self.inner.lock().unwrap();
         if let Some(socket) = &lock.socket {
             socket.close().unwrap();
@@ -74,13 +76,15 @@ impl State {
 }
 
 #[derive(Clone, Routable, Debug, PartialEq)]
-enum Route {
+pub enum Route {
     #[route("/")]
     Home {},
     #[route("/invalid")]
     Invalid {},
     #[route("/chat")]
     Chat {},
+    #[route("/test")]
+    Test {},
 }
 
 fn App() -> Element {
@@ -89,8 +93,9 @@ fn App() -> Element {
 }
 
 // Call this function to log a message
-fn log_to_console(message: &str) {
-    console::log_1(&JsValue::from_str(message));
+fn log_to_console(message: impl std::fmt::Debug) {
+    let message = format!("{:?}", message);
+    console::log_1(&JsValue::from_str(&message));
 }
 
 #[component]
