@@ -3,6 +3,7 @@
 use crate::client;
 use crate::common;
 
+use client::save_scores;
 use client::Route;
 use client::Sidebar;
 use client::State;
@@ -50,6 +51,7 @@ pub fn Test() -> Element {
                                     },
                                     None => {
                                         let scores = DISTS.convert(*tally.read());
+                                        save_scores(scores);
                                         state.set_scores(scores);
                                         navigator.replace(Route::Chat{});
                                     },

@@ -5,7 +5,10 @@ use chat::Chat;
 use chat::Message;
 use common::Scores;
 use dioxus::prelude::*;
+use futures::executor::block_on;
+use once_cell::sync::Lazy;
 use std::ops::Deref;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use test::Test;
 use wasm_bindgen::prelude::*;
@@ -155,10 +158,37 @@ pub fn Sidebar() -> Element {
     }
 }
 
+fn default_scores() -> Scores {
+    static COOKIE: Lazy<Option<Scores>> = Lazy::new(|| {
+        let scores = block_on(fetch_scores_storage());
+        scores
+    });
+
+    COOKIE.unwrap_or_else(Scores::mid)
+}
+
+async fn fetch_scores_storage() -> Option<Scores> {
+    let mut eval = eval(
+        r#"
+        let scores = localStorage.getItem('scores');
+        if (scores) {
+            dioxus.send(scores);
+        } else {
+            dioxus.send(null);
+        }
+        "#,
+    );
+
+    let scores = eval.recv().await.unwrap().to_string();
+    log_to_console(&scores);
+    Scores::from_str(&scores).ok()
+}
+
 #[component]
 fn Manual() -> Element {
     let navigator = use_navigator();
     let state = use_context::<State>();
+    let score = default_scores();
 
     rsx! {
         style { { include_str!("../styles.css") } }
@@ -173,6 +203,7 @@ fn Manual() -> Element {
                         match Scores::try_from(event.data().deref()) {
                             Ok(scores) => {
                                 state.set_scores(scores);
+                                save_scores(scores);
                                 navigator.replace(Route::Chat{});
                             }
                             Err(_) => {
@@ -184,31 +215,31 @@ fn Manual() -> Element {
                     div {
                         class: "spread-around",
                         label { r#for: "o", "Openness: " }
-                        input { id: "o", name: "o", value: "50", r#type: "number" }
+                        input { id: "o", name: "o", value: "{score.o}", r#type: "number" }
                     }
         
                     div {
                         class: "spread-around",
                         label { r#for: "c", "Conscientiousness: " }
-                        input { id: "c", name: "c", value: "50", r#type: "number" }
+                        input { id: "c", name: "c", value: "{score.c}", r#type: "number" }
                     }
         
                     div {
                         class: "spread-around",
                         label { r#for: "e", "Extraversion: " }
-                        input { id: "e", name: "e", value: "50", r#type: "number" }
+                        input { id: "e", name: "e", value: "{score.e}", r#type: "number" }
                     }
                     
                     div {
                         class: "spread-around",
                         label { r#for: "a", "Agreeableness: " }
-                        input { id: "a", name: "a", value: "50", r#type: "number" }
+                        input { id: "a", name: "a", value: "{score.a}", r#type: "number" }
                     }
         
                     div {
                         class: "spread-around",
                         label { r#for: "n", "Neuroticism: " }
-                        input { id: "n", name: "n", value: "50", r#type: "number" }
+                        input { id: "n", name: "n", value: "{score.n}", r#type: "number" }
                     }
         
                     br {}
@@ -259,4 +290,10 @@ pub fn Invalid() -> Element {
             }
         }
     }
+}
+
+pub fn save_scores(scores: Scores) {
+    let script = format!("localStorage.setItem('scores', '{}');", scores);
+    eval(&script);
+    log_to_console("storing scores in local storage");
 }
