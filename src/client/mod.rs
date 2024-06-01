@@ -163,7 +163,6 @@ fn Manual() -> Element {
             class: "layout",
             Sidebar {},
             div {
-                "hey write it!",
             form { onsubmit:  move |event| {
                  match Scores::try_from(event.data().deref()) {
                      Ok(scores) => {
