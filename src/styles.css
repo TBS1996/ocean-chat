@@ -61,3 +61,10 @@
     white-space: nowrap; 
 }
 
+
+.buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+

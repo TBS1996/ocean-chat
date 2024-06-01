@@ -73,5 +73,10 @@ impl Connection {
                 }
             }
         }
+
+        let _ = left_tx.close().await;
+        let _ = right_tx.close().await;
+
+        tracing::info!("closing connection");
     }
 }
