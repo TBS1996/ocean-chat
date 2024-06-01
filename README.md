@@ -8,6 +8,8 @@ run the backend with `cargo run --features server`.
 open project in another terminal, do `dx serve`.
 open in yet another terminal, do `dx serve --port 8081` (or any free port other than first one)
 
+note: Client-side code won't compile if you haven't run the backend, as it generates some textfiles that will be packaged into the client's binary
+
 
 w.i.p.
 
