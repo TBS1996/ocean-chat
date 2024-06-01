@@ -113,10 +113,8 @@ pub fn Chat() -> Element {
     });
 
     let state2 = state.clone();
-    let state3 = state.clone();
-    let state8 = state.clone();
+    //    let disabled = state.not_connected();
 
-    let disabled = !state.has_socket();
     rsx! {
         div {
             class: "layout",
@@ -124,10 +122,11 @@ pub fn Chat() -> Element {
             div {
         form {
             onsubmit: move |event| {
+                let state = state2.clone();
                 let msg = event.data().values().get("msg").unwrap().as_value();
                 input.set(String::new());
-                state2.insert_message(Message::new(Origin::Me, msg.clone()));
-                if state3.send_message(&msg) {
+                state.insert_message(Message::new(Origin::Me, msg.clone()));
+                if state.send_message(&msg) {
                     log_to_console("message submitted");
                 }
             },
@@ -142,25 +141,22 @@ pub fn Chat() -> Element {
                         r#type: "text",
                         name: "msg",
                         value: "{input}",
-                        disabled: "{disabled}",
+                   //     disabled: "{disabled}",
                         autocomplete: "off",
                         oninput: move |event| input.set(event.value()),
                     }
-                    input { r#type: "submit", value: "Submit", disabled: "{disabled}" }
+                    input { r#type: "submit", value: "Submit"}
                     button {
                         prevent_default: "onclick",
                         onclick: move |_| {
-                            let state9 = state.clone();
-                            let state10 = state.clone();
+                            let thestate = state.clone();
                             messages.write().clear();
-                            state8.clear_peer();
+                            state.clear_peer();
                             spawn_local(async move {
-                                let state9 = state9.clone();
-                                let state10 = state10.clone();
-                                let socket = connect_to_peer(scores, state9)
+                                let socket = connect_to_peer(scores, thestate.clone())
                                     .await
                                     .unwrap();
-                                state10.set_socket(socket);
+                                thestate.set_socket(socket);
                             });
                             let msg = Message {
                                 origin: Origin::Info,

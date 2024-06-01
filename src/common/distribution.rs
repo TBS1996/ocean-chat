@@ -4,6 +4,7 @@ use common::Scores;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::io::Write;
+use std::mem;
 use std::path::PathBuf;
 
 #[cfg(not(feature = "server"))]
@@ -25,27 +26,27 @@ impl Distributions {
         let mut map: HashMap<String, Vec<f32>> = serde_json::from_str(&s).unwrap();
 
         Self {
-            o: std::mem::take(&mut map.get_mut("o"))
+            o: mem::take(&mut map.get_mut("o"))
                 .unwrap()
                 .to_owned()
                 .try_into()
                 .unwrap(),
-            c: std::mem::take(&mut map.get_mut("c"))
+            c: mem::take(&mut map.get_mut("c"))
                 .unwrap()
                 .to_owned()
                 .try_into()
                 .unwrap(),
-            e: std::mem::take(&mut map.get_mut("e"))
+            e: mem::take(&mut map.get_mut("e"))
                 .unwrap()
                 .to_owned()
                 .try_into()
                 .unwrap(),
-            a: std::mem::take(&mut map.get_mut("a"))
+            a: mem::take(&mut map.get_mut("a"))
                 .unwrap()
                 .to_owned()
                 .try_into()
                 .unwrap(),
-            n: std::mem::take(&mut map.get_mut("n"))
+            n: mem::take(&mut map.get_mut("n"))
                 .unwrap()
                 .to_owned()
                 .try_into()

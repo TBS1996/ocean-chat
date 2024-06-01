@@ -38,6 +38,7 @@ struct InnerState {
     socket: Option<WebSocket>,
     messages: Signal<Vec<Message>>,
     input: Signal<String>,
+    connected: Signal<bool>,
 }
 
 impl State {
@@ -71,16 +72,22 @@ impl State {
         self.inner.lock().unwrap().scores
     }
 
-    pub fn set_socket(&self, socket: WebSocket) {
-        self.inner.lock().unwrap().socket = Some(socket);
+    pub fn has_socket(&self) -> bool {
+        self.inner.lock().unwrap().socket.is_some()
     }
 
-    fn has_socket(&self) -> bool {
-        self.inner.lock().unwrap().socket.is_some()
+    pub fn set_socket(&self, socket: WebSocket) {
+        self.inner.lock().unwrap().socket = Some(socket);
+        *self.not_connected().write() = false;
+    }
+
+    fn not_connected(&self) -> Signal<bool> {
+        self.inner.lock().unwrap().connected.clone()
     }
 
     fn clear_socket(&self) {
         self.inner.lock().unwrap().socket = None;
+        *self.not_connected().write() = true;
     }
 
     pub fn send_message(&self, msg: &str) -> bool {
@@ -126,14 +133,6 @@ fn App() -> Element {
 pub fn log_to_console(message: impl std::fmt::Debug) {
     let message = format!("{:?}", message);
     console::log_1(&JsValue::from_str(&message));
-}
-
-#[component]
-pub fn Invalid() -> Element {
-    rsx! {
-        "invalid input! all values must be between 0 and 100",
-        Link { to: Route::Home {}, "try again" }
-    }
 }
 
 #[component]
@@ -216,13 +215,37 @@ fn Manual() -> Element {
 #[component]
 fn Home() -> Element {
     rsx! {
-            style { { include_str!("../styles.css") } }
+        style {
+            { include_str!("../styles.css") }
+        }
         div {
             class: "layout",
             Sidebar {},
             div {
-                "hey whats up :D"
+                class: "content",
+                h1 { "Hello! Welcome to Oceanchat!" }
+                p {
+                    "Start chatting with people similar to your personality here.
+                    First you must take the personality test, or manually input your Big 5 trait scores!"
+                }
             }
+        }
     }
+}
+
+#[component]
+pub fn Invalid() -> Element {
+    rsx! {
+        div {
+            p {
+                "You have to either take the personality test, or manually submit a valid set of trait scores!"
+            }
+            div {
+                Link {
+                    to: Route::Home {},
+                    "Back to main page"
+                }
+            }
+        }
     }
 }
