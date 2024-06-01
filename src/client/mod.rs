@@ -1,8 +1,9 @@
 #![allow(non_snake_case)]
 
-use crate::client::chat::Message;
-use crate::common::Scores;
+use crate::common;
 use chat::Chat;
+use chat::Message;
+use common::Scores;
 use dioxus::prelude::*;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
