@@ -5,6 +5,7 @@ use crate::common;
 use client::log_to_console;
 use client::Invalid;
 use client::Sidebar;
+use client::Splash;
 use client::State;
 use common::Scores;
 use common::SocketMessage;
@@ -96,7 +97,7 @@ pub fn Chat() -> Element {
     let mut messages = state.messages();
 
     let Some(scores) = state.scores() else {
-        return Invalid();
+        return Splash();
     };
 
     use_effect({
