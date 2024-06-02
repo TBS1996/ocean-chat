@@ -30,45 +30,46 @@ pub fn Test() -> Element {
     let navigator = use_navigator();
 
     rsx! {
-        div {
-        class: "layout",
-        Sidebar {},
-        div {
-            style { { include_str!("../styles.css") } }
-            h1 { "Personality Test" }
-            div { class: "input-group",
-                "{curr_question}"
-            }
-            div { class: "buttons",
-                for (answer, state) in Answer::ALL.iter().zip(std::iter::repeat(state.clone())) {
-                    button {
-                        prevent_default: "onclick",
-                        onclick: move |_| {
-                            let question = QUESTIONS.lock().unwrap().pop().unwrap();
-                            {
-                                TALLY.lock().unwrap().add_answer(question, *answer);
-                            }
-                            match QUESTIONS.lock().unwrap().last().copied() {
-                                Some(next_question) => {
-                                    *curr_question.write() = next_question;
-                                },
-                                None => {
-                                    let tally = {
-                                        *TALLY.lock().unwrap()
-                                    };
+        main {
+            Sidebar {},
+            div {
+                style { { include_str!("../styles.css") } }
+                h1 { "Personality Test" }
+                br {}
+                div { class: "input-group",
+                    "{curr_question}"
+                }
+                div { class: "buttons",
+                    for (answer, state) in Answer::ALL.iter().zip(std::iter::repeat(state.clone())) {
+                        button {
+                            class: "confirm",
+                            prevent_default: "onclick",
+                            onclick: move |_| {
+                                let question = QUESTIONS.lock().unwrap().pop().unwrap();
+                                {
+                                    TALLY.lock().unwrap().add_answer(question, *answer);
+                                }
+                                match QUESTIONS.lock().unwrap().last().copied() {
+                                    Some(next_question) => {
+                                        *curr_question.write() = next_question;
+                                    },
+                                    None => {
+                                        let tally = {
+                                            *TALLY.lock().unwrap()
+                                        };
 
-                                    let scores = DISTS.convert(tally);
-                                    save_scores(scores);
-                                    state.set_scores(scores);
-                                    navigator.replace(Route::Chat{});
-                                },
-                            }
-                        },
-                        "{answer}"
+                                        let scores = DISTS.convert(tally);
+                                        save_scores(scores);
+                                        state.set_scores(scores);
+                                        navigator.replace(Route::Chat{});
+                                    },
+                                }
+                            },
+                            "{answer}"
+                        }
                     }
                 }
             }
         }
-    }
     }
 }
