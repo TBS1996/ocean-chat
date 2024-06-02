@@ -37,6 +37,30 @@ pub struct Scores {
 }
 
 impl Scores {
+    // Gives your percentage of weirdness.
+    //
+    // 0% => You are extraordinarily ordinary
+    // 100% => you're a weirdo
+    pub fn weirdness_percent(&self) -> f32 {
+        let mid = Scores::mid();
+        let weirdness = self.distance(&mid);
+
+        let mut diffs: Vec<f32> = common::SCORES
+            .iter()
+            .map(|score| mid.distance(score))
+            .collect();
+
+        diffs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+        let position = diffs
+            .iter()
+            .position(|diff| *diff > weirdness)
+            .unwrap_or(diffs.len());
+
+        let ratio = position as f32 / diffs.len() as f32;
+        ratio * 100.
+    }
+
     /// Calculates euclidean distance between two scores.
     #[allow(dead_code)]
     pub fn distance(&self, other: &Self) -> f32 {

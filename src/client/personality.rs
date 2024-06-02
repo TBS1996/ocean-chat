@@ -5,6 +5,7 @@ use crate::common;
 
 use client::Route;
 use client::Sidebar;
+use client::Splash;
 use client::State;
 use common::Scores;
 use common::Trait;
@@ -13,7 +14,11 @@ use dioxus::prelude::*;
 #[component]
 pub fn Personality() -> Element {
     let state = use_context::<State>();
-    let scores = state.scores().unwrap();
+    let Some(scores) = state.scores() else {
+        return Splash();
+    };
+
+    let weirdness = scores.weirdness_percent() as u32;
 
     rsx! {
         div {
@@ -42,6 +47,9 @@ pub fn Personality() -> Element {
                 to: Route::Test {},
                 "Take the test again"
             }
+        }
+        div {
+            "you are weirder than {weirdness}% of people"
         }
     }
     }
