@@ -50,14 +50,10 @@ fn weirdness_percent(arg: Scores) -> f32 {
 
     let weirdness = arg.distance(&mid);
 
-    let scores = &common::SCORES;
-
-    let mut diffs = vec![];
-
-    for score in scores.iter() {
-        let diff = mid.distance(&score);
-        diffs.push(diff);
-    }
+    let mut diffs: Vec<f32> = common::SCORES
+        .iter()
+        .map(|score| mid.distance(score))
+        .collect();
 
     diffs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
