@@ -24,11 +24,11 @@ pub fn Personality() -> Element {
 
             div { class: "container",
                 h1 { "Your big five scores!" }
-                PercentileBar { tr: Trait::Open, score: scores.o }
-                PercentileBar { tr: Trait::Con, score: scores.c }
-                PercentileBar { tr: Trait::Extro, score: scores.e }
-                PercentileBar { tr: Trait::Agree, score: scores.a }
-                PercentileBar { tr: Trait::Neurotic, score: scores.n }
+                PercentileBar { tr: Trait::Open, score: scores.o as u32 }
+                PercentileBar { tr: Trait::Con, score: scores.c as u32}
+                PercentileBar { tr: Trait::Extro, score: scores.e as u32}
+                PercentileBar { tr: Trait::Agree, score: scores.a as u32}
+                PercentileBar { tr: Trait::Neurotic, score: scores.n as u32}
             }
         }
     }
@@ -36,7 +36,7 @@ pub fn Personality() -> Element {
 }
 
 #[component]
-fn PercentileBar(tr: Trait, score: f32) -> Element {
+fn PercentileBar(tr: Trait, score: u32) -> Element {
     let bar_style = format!("width: {}%; background-color: {}", score, tr.color());
 
     rsx! {

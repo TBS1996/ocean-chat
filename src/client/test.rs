@@ -27,9 +27,11 @@ pub fn Test() -> Element {
     let mut curr_question = use_signal(|| QUESTIONS.lock().unwrap().last().copied().unwrap());
     let navigator = use_navigator();
 
+    let show_sidebar = state.scores().is_some();
+
     rsx! {
         main {
-            Sidebar {},
+            if show_sidebar { Sidebar{} } else { {} }
             div {
                 style { { include_str!("../styles.css") } }
                 h1 { "Personality Test" }

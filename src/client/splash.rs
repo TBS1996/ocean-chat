@@ -27,7 +27,7 @@ pub fn Splash() -> Element {
             }
             div {
                 class: "secondary-box",
-                onclick: move |_| {navigator.push(Route::Test{});},
+                onclick: move |_| {navigator.push(Route::Manual{});},
                 h2 {"Manual input"}
 
             }
