@@ -9,11 +9,6 @@ main {
     height: 100vh;
 }
 
-main.no-sidebar {
-    display: flex;
-    height: 100vh;
-}
-
 button {
     border: none;
     border-radius: 50vh;
