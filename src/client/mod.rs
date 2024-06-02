@@ -215,31 +215,31 @@ fn Manual() -> Element {
                     div {
                         class: "spread-around",
                         label { r#for: "o", "Openness: " }
-                        input { id: "o", name: "o", value: "{score.o}", r#type: "number" }
+                        input { id: "o", name: "o", value: "{score.o}", r#type: "number", step: "any", min: "0", max: "100" }
                     }
         
                     div {
                         class: "spread-around",
                         label { r#for: "c", "Conscientiousness: " }
-                        input { id: "c", name: "c", value: "{score.c}", r#type: "number" }
+                        input { id: "c", name: "c", value: "{score.c}", r#type: "number", step: "any", min: "0", max: "100" }
                     }
         
                     div {
                         class: "spread-around",
                         label { r#for: "e", "Extraversion: " }
-                        input { id: "e", name: "e", value: "{score.e}", r#type: "number" }
+                        input { id: "e", name: "e", value: "{score.e}", r#type: "number", step: "any", min: "0", max: "100" }
                     }
                     
                     div {
                         class: "spread-around",
                         label { r#for: "a", "Agreeableness: " }
-                        input { id: "a", name: "a", value: "{score.a}", r#type: "number" }
+                        input { id: "a", name: "a", value: "{score.a}", r#type: "number", step: "any", min: "0", max: "100" }
                     }
         
                     div {
                         class: "spread-around",
                         label { r#for: "n", "Neuroticism: " }
-                        input { id: "n", name: "n", value: "{score.n}", r#type: "number" }
+                        input { id: "n", name: "n", value: "{score.n}", r#type: "number", step: "any", min: "0", max: "100" }
                     }
         
                     br {}
