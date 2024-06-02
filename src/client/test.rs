@@ -20,10 +20,12 @@ use strum::IntoEnumIterator;
 static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> =
     Lazy::new(|| Arc::new(Mutex::new(Question::iter().collect())));
 
+static TALLY: Lazy<Arc<Mutex<ScoreTally>>> =
+    Lazy::new(|| Arc::new(Mutex::new(ScoreTally::default())));
+
 #[component]
 pub fn Test() -> Element {
     let state = use_context::<State>();
-    let mut tally = use_signal(ScoreTally::default);
     let mut curr_question = use_signal(|| QUESTIONS.lock().unwrap().last().copied().unwrap());
     let navigator = use_navigator();
 
@@ -43,13 +45,19 @@ pub fn Test() -> Element {
                         prevent_default: "onclick",
                         onclick: move |_| {
                             let question = QUESTIONS.lock().unwrap().pop().unwrap();
-                            tally.write().add_answer(question, *answer);
+                            {
+                                TALLY.lock().unwrap().add_answer(question, *answer);
+                            }
                             match QUESTIONS.lock().unwrap().last().copied() {
                                 Some(next_question) => {
                                     *curr_question.write() = next_question;
                                 },
                                 None => {
-                                    let scores = DISTS.convert(*tally.read());
+                                    let tally = {
+                                        *TALLY.lock().unwrap()
+                                    };
+
+                                    let scores = DISTS.convert(tally);
                                     save_scores(scores);
                                     state.set_scores(scores);
                                     navigator.replace(Route::Chat{});
