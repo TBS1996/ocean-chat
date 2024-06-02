@@ -63,6 +63,12 @@ pub fn Test() -> Element {
                         }
                     }
                 }
+                div {
+                    Link {
+                        to: Route::Manual {},
+                        "Or manually fill your big 5 values"
+                    }
+                }
             }
         }
     }

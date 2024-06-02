@@ -31,6 +31,18 @@ pub fn Personality() -> Element {
                 PercentileBar { tr: Trait::Neurotic, score: scores.n as u32}
             }
         }
+        div {
+            Link {
+                to: Route::Manual {},
+                "Edit values"
+            }
+        }
+        div {
+            Link {
+                to: Route::Test {},
+                "Take the test again"
+            }
+        }
     }
     }
 }

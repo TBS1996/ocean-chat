@@ -145,7 +145,7 @@ pub fn Chat() -> Element {
                                 autocomplete: "off",
                                 oninput: move |event| input.set(event.value()),
                             }
-                            button { 
+                            button {
                                 r#type: "submit",
                                 class: "confirm",
                                 "Send"
