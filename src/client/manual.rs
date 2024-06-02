@@ -85,6 +85,15 @@ pub fn Manual() -> Element {
                         h2 { "Save" }
                     }
                 }
+
+                div {
+                    Link {
+                        to: Route::Test {},
+                        "Or take the test instead"
+                    }
+                }
+
+
             }
         }
     }
