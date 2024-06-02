@@ -28,6 +28,7 @@ pub fn Manual() -> Element {
     rsx! {
         style { { include_str!("../styles.css") } }
         main {
+            class: "layout",
             if show_sidebar {Sidebar {}} else {{}},
             div {
                 h1 {"Manual Scores"}
@@ -38,7 +39,7 @@ pub fn Manual() -> Element {
                             Ok(scores) => {
                                 state.set_scores(scores);
                                 save_scores(scores);
-                                navigator.replace(Route::Personality{});
+                                navigator.replace(Route::Chat{});
                             }
                             Err(_) => {
                                 navigator.replace(Route::Invalid {});
@@ -49,31 +50,31 @@ pub fn Manual() -> Element {
                     div {
                         class: "spread-around",
                         label { r#for: "o", "Openness: " }
-                        input { id: "o", name: "o", value: "{score.o}", r#type: "number" }
+                        input { id: "o", name: "o", value: "{score.o as u32}", r#type: "number", step: "any", min: "0", max: "100" }
                     }
 
                     div {
                         class: "spread-around",
                         label { r#for: "c", "Conscientiousness: " }
-                        input { id: "c", name: "c", value: "{score.c}", r#type: "number" }
+                        input { id: "c", name: "c", value: "{score.c as u32}", r#type: "number", step: "any", min: "0", max: "100" }
                     }
 
                     div {
                         class: "spread-around",
                         label { r#for: "e", "Extraversion: " }
-                        input { id: "e", name: "e", value: "{score.e}", r#type: "number" }
+                        input { id: "e", name: "e", value: "{score.e as u32}", r#type: "number", step: "any", min: "0", max: "100" }
                     }
 
                     div {
                         class: "spread-around",
                         label { r#for: "a", "Agreeableness: " }
-                        input { id: "a", name: "a", value: "{score.a}", r#type: "number" }
+                        input { id: "a", name: "a", value: "{score.a as u32}", r#type: "number", step: "any", min: "0", max: "100" }
                     }
 
                     div {
                         class: "spread-around",
                         label { r#for: "n", "Neuroticism: " }
-                        input { id: "n", name: "n", value: "{score.n}", r#type: "number" }
+                        input { id: "n", name: "n", value: "{score.n as u32}", r#type: "number", step: "any", min: "0", max: "100" }
                     }
 
                     br {}
@@ -82,13 +83,6 @@ pub fn Manual() -> Element {
                         class: "confirm",
                         r#type: "submit",
                         h2 { "Save" }
-                    }
-                }
-
-                div {
-                    Link {
-                        to: Route::Test {},
-                        "Unsure? Take the test instead"
                     }
                 }
             }
