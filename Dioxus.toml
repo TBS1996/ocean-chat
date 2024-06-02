@@ -24,14 +24,14 @@ title = "Ocean Chat"
 reload_html = true
 
 # which files or dirs will be watcher monitoring
-watch_path = ["assets"]
+watch_path = ["assets", "src"]
 
 # include `assets` in web platform
 [web.resource]
 
 # CSS style file
 
-style = []
+style = ["/main.css"]
 
 # Javascript code file
 script = []

@@ -156,16 +156,17 @@ pub fn log_to_console(message: impl std::fmt::Debug) {
 #[component]
 pub fn Sidebar() -> Element {
     rsx! {
-       // style { { include_str!("../styles.css") } },
-        div {
+        nav {
             class: "sidebar",
             ul {
-                 li {
+                li {
                     Link { to: Route::Chat {}, "Chat" }
                 }
-                 li {
+
+                li {
                     Link { to: Route::Personality {}, "My personality" }
                 }
+
             }
         }
     }
@@ -204,51 +205,67 @@ fn Manual() -> Element {
     let score = default_scores();
 
     rsx! {
-            style { { include_str!("../styles.css") } }
-        div {
+        style { { include_str!("../styles.css") } }
+        main {
             class: "layout",
             Sidebar {},
             div {
-            form { onsubmit:  move |event| {
-                 match Scores::try_from(event.data().deref()) {
-                     Ok(scores) => {
-                         state.set_scores(scores);
-                         save_scores(scores);
-                         navigator.replace(Route::Personality{});
-                     }
-                     Err(_) => {
-                         navigator.replace(Route::Invalid {});
-                     }
+                h1 {"Manual Scores"}
+                br {}
+                form {
+                    onsubmit:  move |event| {
+                        match Scores::try_from(event.data().deref()) {
+                            Ok(scores) => {
+                                state.set_scores(scores);
+                                save_scores(scores);
+                                navigator.replace(Route::Personality{});
+                            }
+                            Err(_) => {
+                                navigator.replace(Route::Invalid {});
+                            }
+                        }
+                    },
 
-                 }
+                    div {
+                        class: "spread-around",
+                        label { r#for: "o", "Openness: " }
+                        input { id: "o", name: "o", value: "{score.o}", r#type: "number" }
+                    }
 
-            },
-    div { class: "form-group",
-                label { "Openness: " }
-                input { name: "o", value: "{score.o}"}
+                    div {
+                        class: "spread-around",
+                        label { r#for: "c", "Conscientiousness: " }
+                        input { id: "c", name: "c", value: "{score.c}", r#type: "number" }
+                    }
+
+                    div {
+                        class: "spread-around",
+                        label { r#for: "e", "Extraversion: " }
+                        input { id: "e", name: "e", value: "{score.e}", r#type: "number" }
+                    }
+
+                    div {
+                        class: "spread-around",
+                        label { r#for: "a", "Agreeableness: " }
+                        input { id: "a", name: "a", value: "{score.a}", r#type: "number" }
+                    }
+
+                    div {
+                        class: "spread-around",
+                        label { r#for: "n", "Neuroticism: " }
+                        input { id: "n", name: "n", value: "{score.n}", r#type: "number" }
+                    }
+
+                    br {}
+
+                    button {
+                        class: "confirm",
+                        r#type: "submit",
+                        h2 { "Save" }
+                    }
                 }
-                div { class: "form-group",
-                    label { "Conscientiousness: " }
-                    input { name: "c" , value: "{score.c}"}
-                }
-                div { class: "form-group",
-                    label { "Extraversion: " }
-                    input { name: "e", value: "{score.e}"}
-                }
-                div { class: "form-group",
-                    label { "Agreeableness: " }
-                    input { name: "a" , value: "{score.a}"}
-                }
-                div { class: "form-group",
-                    label { "Neuroticism: " }
-                    input { name: "n", value: "{score.n}"}
-                }
-                div { class: "form-group",
-                    input { r#type: "submit", value: "Save" }
             }
         }
-            }
-    }
     }
 }
 
