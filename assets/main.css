@@ -1,40 +1,86 @@
 body {
-    background-color: #111216;
-}
-
-#main {
     margin: 0;
+    background-color: whitesmoke;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+main {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
+    height: 100vh;
 }
 
-#links {
-    width: 400px;
-    text-align: left;
-    font-size: x-large;
-    color: white;
-    display: flex;
-    flex-direction: column;
-}
-
-#links a {
-    color: white;
-    text-decoration: none;
-    margin-top: 20px;
-    margin: 10px;
-    border: white 1px solid;
-    border-radius: 5px;
-    padding: 10px;
-}
-
-#links a:hover {
-    background-color: #1f1f1f;
+button {
+    border: none;
+    border-radius: 50vh;
+    padding: 7px 10px;
     cursor: pointer;
 }
 
-#header {
-    max-width: 1200px;
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+
+    max-width: 50px;
+    text-align: center;
+}
+
+input {
+    border-radius: 1vh;
+    border-color: lightskyblue;
+    border-style: solid;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+}
+
+label {
+    margin-right: 10px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+nav {
+    width: 200px;
+    background-color: #f4f4f4;
+    padding: 10px;
+    margin-right: 20px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+nav ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+nav li {
+    margin: 10px 0;
+}
+
+nav a {
+    text-decoration: none;
+    color: #333;
+}
+
+.confirm {
+    background-color: lightgreen;
+}
+
+.danger {
+    background-color: #FF7F7F;
+}
+
+.spread-around {
+    display: flex;
+    justify-content: space-between;
 }
