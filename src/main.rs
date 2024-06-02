@@ -47,7 +47,6 @@ fn scores() {
 // 100% => you're a weirdo
 fn weirdness_percent(arg: Scores) -> f32 {
     let mid = Scores::mid();
-
     let weirdness = arg.distance(&mid);
 
     let mut diffs: Vec<f32> = common::SCORES
