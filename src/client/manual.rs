@@ -31,7 +31,7 @@ pub fn Manual() -> Element {
             class: "layout",
             if show_sidebar {Sidebar {}} else {{}},
             div {
-                h1 {"Manual Scores"}
+                h1 {"Edit scores"}
                 br {}
                 form {
                     onsubmit:  move |event| {
