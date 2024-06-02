@@ -14,12 +14,60 @@ mod common;
 #[tokio::main]
 async fn main() {
     generate_files();
+    scores();
+    return;
     server::run().await;
 }
 
 #[cfg(not(feature = "server"))]
 fn main() {
     ocean_chat::run_app();
+}
+
+fn scores() {
+    let my_score = Scores {
+        a: 27.,
+        o: 95.,
+        c: 3.,
+        e: 95.,
+        n: 5.,
+    };
+
+    println!("analyzing scores: {:?}", my_score);
+    let weird = weirdness_percent(my_score);
+    println!(
+        "the provided scores are weirder than: {:.2}% of the population!",
+        weird
+    );
+}
+
+// Gives your percentage of weirdness.
+//
+// 0% => You are extraordinarily ordinary
+// 100% => you're a weirdo
+fn weirdness_percent(arg: Scores) -> f32 {
+    let mid = Scores::mid();
+
+    let weirdness = arg.distance(&mid);
+
+    let scores = &common::SCORES;
+
+    let mut diffs = vec![];
+
+    for score in scores.iter() {
+        let diff = mid.distance(&score);
+        diffs.push(diff);
+    }
+
+    diffs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+    let position = diffs
+        .iter()
+        .position(|diff| *diff > weirdness)
+        .unwrap_or(diffs.len());
+
+    let ratio = position as f32 / diffs.len() as f32;
+    ratio * 100.
 }
 
 fn generate_files() {

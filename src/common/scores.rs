@@ -10,7 +10,7 @@ use std::num::ParseFloatError;
 use std::str::FromStr;
 use strum::IntoEnumIterator;
 
-#[cfg(not(feature = "server"))]
+//#[cfg(not(feature = "server"))]
 pub static SCORES: Lazy<Vec<Scores>> = Lazy::new(|| {
     let s = include_str!("../../files/scores");
     let mut scores = vec![];
