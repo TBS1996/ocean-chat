@@ -9,6 +9,7 @@ use client::Splash;
 use client::State;
 use common::Scores;
 use common::Trait;
+use common::SLOAN;
 use dioxus::prelude::*;
 
 #[component]
@@ -19,6 +20,7 @@ pub fn Personality() -> Element {
     };
 
     let weirdness = scores.weirdness_percent() as u32;
+    let sloan = SLOAN::from_scores(scores);
 
     rsx! {
         div {
@@ -47,6 +49,9 @@ pub fn Personality() -> Element {
                 to: Route::Test {},
                 "Take the test again"
             }
+        }
+        div {
+            "your type is: {sloan}"
         }
         div {
             "you are weirder than {weirdness}% of people"
