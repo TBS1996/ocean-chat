@@ -1,0 +1,47 @@
+.container {
+    width: 50%;
+    margin: auto;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.bar-row {
+    display: flex; 
+    align-items: center; 
+    width: 100%;
+    margin: 10px 0;
+}
+
+.label {
+    width: 150px; /* Fixed width for the label */
+    padding-right: 10px; /* Space between the label and the bar */
+}
+
+.bar-container {
+    display: flex;
+    align-items: center;
+    flex-grow: 1; /* Allow the container to grow and fill the remaining space */
+    background-color: #f1f1f1;
+    border-radius: 25px;
+    overflow: hidden;
+    height: 30px; /* Fixed height for the bar container */
+    margin-left: 10px; /* Space between label and bar container */
+}
+
+.bar {
+    height: 100%; /* Make the bar fill the container's height */
+    border-radius: 25px;
+    text-align: right;
+    padding-right: 10px;
+    line-height: 30px;
+    color: black;
+    font-weight: bold;
+    background-color: #4CAF50;
+    width: 0; /* Default width, should be set dynamically */
+}
+
