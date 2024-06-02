@@ -52,7 +52,7 @@ pub fn Test() -> Element {
                                     let scores = DISTS.convert(*tally.read());
                                     save_scores(scores);
                                     state.set_scores(scores);
-                                    navigator.replace(Route::Chat{});
+                                    navigator.replace(Route::Personality{});
                                 },
                             }
                         },

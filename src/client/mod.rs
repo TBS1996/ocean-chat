@@ -1,22 +1,28 @@
 #![allow(non_snake_case)]
+#![allow(unused_imports)]
 
 use crate::common;
-use chat::Chat;
-use chat::Message;
 use common::Scores;
+
 use dioxus::prelude::*;
 use futures::executor::block_on;
 use once_cell::sync::Lazy;
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use test::Test;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use web_sys::WebSocket;
 
 mod chat;
+mod personality;
+mod splash;
 mod test;
+
+use chat::*;
+use personality::*;
+use splash::*;
+use test::*;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
@@ -39,6 +45,17 @@ struct InnerState {
 }
 
 impl State {
+    pub fn load() -> Self {
+        let s = Self::default();
+        if let Some(scores) = block_on(fetch_scores_storage()) {
+            log_to_console("score set!");
+            s.set_scores(scores);
+        } else {
+            log_to_console("score not set!");
+        };
+        s
+    }
+
     pub fn insert_message(&self, message: Message) {
         log_to_console("inserting msg");
         log_to_console(&message);
@@ -119,10 +136,14 @@ pub enum Route {
     Test {},
     #[route("/manual")]
     Manual {},
+    #[route("/splash")]
+    Splash {},
+    #[route("/personality")]
+    Personality {},
 }
 
 fn App() -> Element {
-    use_context_provider(State::default);
+    use_context_provider(State::load);
     rsx!(Router::<Route> {})
 }
 
@@ -135,20 +156,15 @@ pub fn log_to_console(message: impl std::fmt::Debug) {
 #[component]
 pub fn Sidebar() -> Element {
     rsx! {
+       // style { { include_str!("../styles.css") } },
         div {
             class: "sidebar",
             ul {
                  li {
-                    Link { to: Route::Home {}, "Home" }
+                    Link { to: Route::Chat {}, "Chat" }
                 }
                  li {
-                    Link { to: Route::Manual {}, "Enter scores manually" }
-                }
-                 li {
-                    Link { to: Route::Test {}, "Take the personality test" }
-                }
-                 li {
-                    Link { to: Route::Chat {}, "Start chatting" }
+                    Link { to: Route::Personality {}, "My personality" }
                 }
             }
         }
@@ -198,7 +214,7 @@ fn Manual() -> Element {
                      Ok(scores) => {
                          state.set_scores(scores);
                          save_scores(scores);
-                         navigator.replace(Route::Chat{});
+                         navigator.replace(Route::Personality{});
                      }
                      Err(_) => {
                          navigator.replace(Route::Invalid {});
@@ -238,22 +254,12 @@ fn Manual() -> Element {
 
 #[component]
 fn Home() -> Element {
-    rsx! {
-        style {
-            { include_str!("../styles.css") }
-        }
-        div {
-            class: "layout",
-            Sidebar {},
-            div {
-                class: "content",
-                h1 { "Hello! Welcome to Oceanchat!" }
-                p {
-                    "Start chatting with people similar to your personality here.
-                    First you must take the personality test, or manually input your Big 5 trait scores!"
-                }
-            }
-        }
+    let state = use_context::<State>();
+
+    if state.scores().is_some() {
+        return Chat();
+    } else {
+        return Splash();
     }
 }
 
