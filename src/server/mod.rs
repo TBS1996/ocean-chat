@@ -16,6 +16,7 @@ use common::SocketMessage;
 use common::CONFIG;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::SystemTime;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tower_http::cors::{Any, CorsLayer};
@@ -29,6 +30,7 @@ pub struct User {
     pub scores: Scores,
     pub socket: WebSocket,
     pub id: String,
+    pub con_time: SystemTime,
 }
 
 impl User {
@@ -116,7 +118,13 @@ impl State {
     /// you will receive the peer ID when pairing has completed.
     async fn queue(&self, scores: Scores, id: String, socket: WebSocket) {
         tracing::info!("user queued ");
-        let user = User { scores, socket, id };
+        let con_time = SystemTime::now();
+        let user = User {
+            scores,
+            socket,
+            id,
+            con_time,
+        };
         self.waiting_users.queue(user).await;
     }
 
@@ -128,26 +136,40 @@ impl State {
             loop {
                 {
                     while let Some((mut left, mut right)) = users.pop_pair().await {
-                        let left_pinged = left.ping().await;
-                        let right_pinged = right.ping().await;
+                        let users = users.clone();
+                        tokio::spawn(async move {
+                            let left_pinged = left.ping().await;
+                            let right_pinged = right.ping().await;
 
-                        match (left_pinged, right_pinged) {
-                            (true, true) => {
-                                tracing::error!("ping successful");
-                                connections.lock().await.connect(left, right);
+                            // If they're the same user, put the newest connection back in queue
+                            // (if pingale).
+                            if right.id == left.id {
+                                if right.con_time > left.con_time && right_pinged {
+                                    users.queue(right).await;
+                                } else if right.con_time < left.con_time && left_pinged {
+                                    users.queue(left).await;
+                                }
+                                return;
                             }
-                            (true, false) => {
-                                tracing::error!("failed to ping right");
-                                users.queue(left).await;
+
+                            match (left_pinged, right_pinged) {
+                                (true, true) => {
+                                    tracing::error!("ping successful");
+                                    connections.lock().await.connect(left, right);
+                                }
+                                (true, false) => {
+                                    tracing::error!("failed to ping right");
+                                    users.queue(left).await;
+                                }
+                                (false, true) => {
+                                    tracing::error!("failed to ping left");
+                                    users.queue(right).await;
+                                }
+                                (false, false) => {
+                                    tracing::error!("failed to ping both right and left");
+                                }
                             }
-                            (false, true) => {
-                                tracing::error!("failed to ping left");
-                                users.queue(right).await;
-                            }
-                            (false, false) => {
-                                tracing::error!("failed to ping both right and left");
-                            }
-                        }
+                        });
                     }
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(
