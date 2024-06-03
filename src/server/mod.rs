@@ -70,6 +70,7 @@ struct ConnectionManager {
 impl ConnectionManager {
     fn debug(&self) {
         tracing::info!("current active connections: {}", self.id_to_handle.len());
+        tracing::debug!("{:?}", self);
     }
 
     fn connect(&mut self, left: User, right: User) {
@@ -96,7 +97,9 @@ impl ConnectionManager {
 
         tracing::info!("User connecting twice: {}", &user.id);
 
-        self.id_to_handle.remove(&id);
+        if let Some(handle) = self.id_to_handle.remove(&id) {
+            handle.abort();
+        }
         self.user_to_connection.remove(&id.0);
         self.user_to_connection.remove(&id.1);
     }
@@ -128,6 +131,31 @@ impl State {
         self.waiting_users.queue(user).await;
     }
 
+    fn stats_printer(&self) {
+        let waits = self.waiting_users.clone();
+        let cons = self.connections.clone();
+
+        tokio::spawn(async move {
+            let mut prev = (99, 99);
+            loop {
+                let stat = {
+                    let waiting = waits.0.lock().await.len();
+                    let connected = cons.lock().await.id_to_handle.len();
+                    (waiting, connected)
+                };
+
+                if prev != stat {
+                    let (waiting, connected) = stat;
+                    tracing::info!("users waiting: {}, connected users: {}", waiting, connected);
+                }
+
+                prev = stat;
+
+                tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+            }
+        });
+    }
+
     async fn start_pairing(&self) {
         tracing::info!("pairing started");
         let users = self.waiting_users.clone();
@@ -147,8 +175,10 @@ impl State {
                             if right.id == left.id {
                                 if right.con_time > left.con_time && right_pinged {
                                     users.queue(right).await;
+                                    let _ = left.socket.close().await;
                                 } else if right.con_time < left.con_time && left_pinged {
                                     users.queue(left).await;
+                                    let _ = right.socket.close().await;
                                 }
                                 return;
                             }
@@ -212,6 +242,7 @@ pub async fn run() {
     tracing::info!("starting server ");
     let state = State::new();
     state.start_pairing().await;
+    state.stats_printer();
 
     let cors = CorsLayer::new()
         .allow_origin(Any)

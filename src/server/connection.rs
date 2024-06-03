@@ -77,7 +77,7 @@ impl Connection {
                             match serde_json::from_slice(&bytes) {
                                 Ok(SocketMessage::User(msg)) => {
                                     tracing::info!("left->right: {}", &msg);
-                                    if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
+                                    if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
                                         let _ = left_tx.send(SocketMessage::close_connection()).await;
                                         tracing::error!("Failed to send message to right");
                                         break;
