@@ -10,6 +10,7 @@ use once_cell::sync::Lazy;
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use uuid::Uuid;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use web_sys::WebSocket;
@@ -44,11 +45,33 @@ struct InnerState {
     messages: Signal<Vec<Message>>,
     input: Signal<String>,
     connected: Signal<bool>,
+    user_id: Uuid,
+}
+
+impl InnerState {
+    fn new(user_id: Uuid) -> Self {
+        Self {
+            user_id,
+            ..Default::default()
+        }
+    }
 }
 
 impl State {
     pub fn load() -> Self {
-        let s = Self::default();
+        let id = match block_on(fetch_id_storage()) {
+            Some(id) => id,
+            None => {
+                let id = Uuid::new_v4();
+                save_id(id);
+                id
+            }
+        };
+
+        let s = Self {
+            inner: Arc::new(Mutex::new(InnerState::new(id))),
+        };
+
         if let Some(scores) = block_on(fetch_scores_storage()) {
             log_to_console("score set!");
             s.set_scores(scores);
@@ -56,6 +79,10 @@ impl State {
             log_to_console("score not set!");
         };
         s
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.inner.lock().unwrap().user_id
     }
 
     pub fn insert_message(&self, message: Message) {
@@ -183,6 +210,30 @@ fn default_scores() -> Scores {
     COOKIE.unwrap_or_else(Scores::mid)
 }
 
+async fn fetch_id_storage() -> Option<Uuid> {
+    let eval = eval(
+        r#"
+        let id = localStorage.getItem('user_id');
+        if (id) {
+            dioxus.send(id);
+        } else {
+            dioxus.send(null);
+        }
+        "#,
+    )
+    .recv()
+    .await;
+
+    log_to_console(&eval);
+
+    let mut id = eval.ok()?.to_string();
+    id.remove(0);
+    id.pop();
+    let uuid = Uuid::from_str(&id);
+    log_to_console(&uuid);
+    uuid.ok()
+}
+
 async fn fetch_scores_storage() -> Option<Scores> {
     let mut eval = eval(
         r#"
@@ -226,6 +277,12 @@ pub fn Invalid() -> Element {
             }
         }
     }
+}
+
+pub fn save_id(id: Uuid) {
+    let script = format!("localStorage.setItem('user_id', '{}');", id);
+    eval(&script);
+    log_to_console("storing user_id in local storage");
 }
 
 pub fn save_scores(scores: Scores) {

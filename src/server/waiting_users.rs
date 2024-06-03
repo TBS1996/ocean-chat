@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Default, Clone)]
-pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
+pub struct WaitingUsers(pub Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
     pub async fn queue(&self, user: User) {

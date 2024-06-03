@@ -14,7 +14,11 @@ use crate::server::waiting_users::WaitingUsers;
 use common::Scores;
 use common::SocketMessage;
 use common::CONFIG;
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::SystemTime;
+use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -25,6 +29,8 @@ mod waiting_users;
 pub struct User {
     pub scores: Scores,
     pub socket: WebSocket,
+    pub id: String,
+    pub con_time: SystemTime,
 }
 
 impl User {
@@ -51,10 +57,59 @@ impl User {
     }
 }
 
+type UserId = String;
+type ConnectionId = (UserId, UserId);
+
+/// Ensures the same user is not connected multiple times.
+#[derive(Default, Debug)]
+struct ConnectionManager {
+    user_to_connection: HashMap<UserId, ConnectionId>,
+    id_to_handle: HashMap<ConnectionId, JoinHandle<()>>,
+}
+
+impl ConnectionManager {
+    fn debug(&self) {
+        tracing::info!("current active connections: {}", self.id_to_handle.len());
+        tracing::debug!("{:?}", self);
+    }
+
+    fn connect(&mut self, left: User, right: User) {
+        self.clear_user(&left);
+        self.clear_user(&right);
+
+        let con_id = (left.id.clone(), right.id.clone());
+        self.user_to_connection
+            .insert(left.id.clone(), con_id.clone());
+        self.user_to_connection
+            .insert(right.id.clone(), con_id.clone());
+
+        let handle = tokio::spawn(async move {
+            Connection::new(left, right).run().await;
+        });
+        self.id_to_handle.insert(con_id, handle);
+        self.debug();
+    }
+
+    fn clear_user(&mut self, user: &User) {
+        let Some(id) = self.user_to_connection.remove(&user.id) else {
+            return;
+        };
+
+        tracing::info!("User connecting twice: {}", &user.id);
+
+        if let Some(handle) = self.id_to_handle.remove(&id) {
+            handle.abort();
+        }
+        self.user_to_connection.remove(&id.0);
+        self.user_to_connection.remove(&id.1);
+    }
+}
+
 #[derive(Default, Clone)]
 struct State {
     // Users waiting to be matched with a peer.
     waiting_users: WaitingUsers,
+    connections: Arc<Mutex<ConnectionManager>>,
 }
 
 impl State {
@@ -64,41 +119,88 @@ impl State {
 
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
-    async fn queue(&self, scores: Scores, socket: WebSocket) {
+    async fn queue(&self, scores: Scores, id: String, socket: WebSocket) {
         tracing::info!("user queued ");
-        let user = User { scores, socket };
+        let con_time = SystemTime::now();
+        let user = User {
+            scores,
+            socket,
+            id,
+            con_time,
+        };
         self.waiting_users.queue(user).await;
+    }
+
+    fn stats_printer(&self) {
+        let waits = self.waiting_users.clone();
+        let cons = self.connections.clone();
+
+        tokio::spawn(async move {
+            let mut prev = (99, 99);
+            loop {
+                let stat = {
+                    let waiting = waits.0.lock().await.len();
+                    let connected = cons.lock().await.id_to_handle.len();
+                    (waiting, connected)
+                };
+
+                if prev != stat {
+                    let (waiting, connected) = stat;
+                    tracing::info!("users waiting: {}, connected users: {}", waiting, connected);
+                }
+
+                prev = stat;
+
+                tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+            }
+        });
     }
 
     async fn start_pairing(&self) {
         tracing::info!("pairing started");
         let users = self.waiting_users.clone();
+        let connections = self.connections.clone();
         tokio::spawn(async move {
             loop {
                 {
                     while let Some((mut left, mut right)) = users.pop_pair().await {
-                        let left_pinged = left.ping().await;
-                        let right_pinged = right.ping().await;
+                        let users = users.clone();
+                        let connections = connections.clone();
+                        tokio::spawn(async move {
+                            let left_pinged = left.ping().await;
+                            let right_pinged = right.ping().await;
 
-                        match (left_pinged, right_pinged) {
-                            (true, true) => {
-                                tracing::error!("ping successful");
-                                tokio::spawn(async move {
-                                    Connection::new(left, right).run().await;
-                                });
+                            // If they're the same user, put the newest connection back in queue
+                            // (if pingable).
+                            if right.id == left.id {
+                                if right.con_time > left.con_time && right_pinged {
+                                    users.queue(right).await;
+                                    let _ = left.socket.close().await;
+                                } else if right.con_time < left.con_time && left_pinged {
+                                    users.queue(left).await;
+                                    let _ = right.socket.close().await;
+                                }
+                                return;
                             }
-                            (true, false) => {
-                                tracing::error!("failed to ping right");
-                                users.queue(left).await;
+
+                            match (left_pinged, right_pinged) {
+                                (true, true) => {
+                                    tracing::error!("ping successful");
+                                    connections.lock().await.connect(left, right);
+                                }
+                                (true, false) => {
+                                    tracing::error!("failed to ping right");
+                                    users.queue(left).await;
+                                }
+                                (false, true) => {
+                                    tracing::error!("failed to ping left");
+                                    users.queue(right).await;
+                                }
+                                (false, false) => {
+                                    tracing::error!("failed to ping both right and left");
+                                }
                             }
-                            (false, true) => {
-                                tracing::error!("failed to ping left");
-                                users.queue(right).await;
-                            }
-                            (false, false) => {
-                                tracing::error!("failed to ping both right and left");
-                            }
-                        }
+                        });
                     }
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(
@@ -111,7 +213,7 @@ impl State {
 }
 
 async fn pair_handler(
-    Path(scores): Path<String>,
+    Path((scores, id)): Path<(String, String)>,
     ws: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
 ) -> impl IntoResponse {
@@ -121,7 +223,7 @@ async fn pair_handler(
         let state = state.clone();
         async move {
             let state = state.clone();
-            state.queue(scores, socket).await;
+            state.queue(scores, id, socket).await;
         }
     })
 }
@@ -140,6 +242,7 @@ pub async fn run() {
     tracing::info!("starting server ");
     let state = State::new();
     state.start_pairing().await;
+    state.stats_printer();
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -147,7 +250,7 @@ pub async fn run() {
         .allow_headers(Any);
 
     let app = Router::new()
-        .route("/pair/:scores", get(pair_handler))
+        .route("/pair/:scores/:id", get(pair_handler))
         .layer(cors)
         .layer(tracing_layer)
         .layer(Extension(Arc::new(state)));

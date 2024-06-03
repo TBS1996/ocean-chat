@@ -18,7 +18,12 @@ use web_sys::WebSocket;
 
 async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
-    let url = format!("{}/pair/{}", CONFIG.server_address(), scores);
+    let url = format!(
+        "{}/pair/{}/{}",
+        CONFIG.server_address(),
+        scores,
+        state.id().simple().to_string()
+    );
 
     // Attempt to create the WebSocket
     let ws = web_sys::WebSocket::new(&url).map_err(|err| {
@@ -107,11 +112,6 @@ async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, Stri
     ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
     onclose_callback.forget();
     Ok(ws)
-}
-
-#[component]
-pub fn Connecting() -> Element {
-    rsx! {"connecting to peer..."}
 }
 
 #[component]
