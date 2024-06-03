@@ -14,7 +14,10 @@ use crate::server::waiting_users::WaitingUsers;
 use common::Scores;
 use common::SocketMessage;
 use common::CONFIG;
+use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -25,6 +28,7 @@ mod waiting_users;
 pub struct User {
     pub scores: Scores,
     pub socket: WebSocket,
+    pub id: String,
 }
 
 impl User {
@@ -51,10 +55,51 @@ impl User {
     }
 }
 
+type UserId = String;
+type ConnectionId = (UserId, UserId);
+
+/// Ensures the same user is not connected multiple times.
+#[derive(Default)]
+struct ConnectionManager {
+    user_to_connection: HashMap<UserId, ConnectionId>,
+    id_to_handle: HashMap<ConnectionId, JoinHandle<()>>,
+}
+
+impl ConnectionManager {
+    fn connect(&mut self, left: User, right: User) {
+        self.clear_user(&left);
+        self.clear_user(&right);
+
+        let con_id = (left.id.clone(), right.id.clone());
+        self.user_to_connection
+            .insert(left.id.clone(), con_id.clone());
+        self.user_to_connection
+            .insert(right.id.clone(), con_id.clone());
+
+        let handle = tokio::spawn(async move {
+            Connection::new(left, right).run().await;
+        });
+        self.id_to_handle.insert(con_id, handle);
+    }
+
+    fn clear_user(&mut self, user: &User) {
+        let Some(id) = self.user_to_connection.remove(&user.id) else {
+            return;
+        };
+
+        tracing::info!("User connecting twice: {}" & user.id);
+
+        self.id_to_handle.remove(&id);
+        self.user_to_connection.remove(&id.0);
+        self.user_to_connection.remove(&id.1);
+    }
+}
+
 #[derive(Default, Clone)]
 struct State {
     // Users waiting to be matched with a peer.
     waiting_users: WaitingUsers,
+    connections: Arc<Mutex<ConnectionManager>>,
 }
 
 impl State {
@@ -64,9 +109,9 @@ impl State {
 
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
-    async fn queue(&self, scores: Scores, socket: WebSocket) {
+    async fn queue(&self, scores: Scores, id: String, socket: WebSocket) {
         tracing::info!("user queued ");
-        let user = User { scores, socket };
+        let user = User { scores, socket, id };
         self.waiting_users.queue(user).await;
     }
 
@@ -83,9 +128,6 @@ impl State {
                         match (left_pinged, right_pinged) {
                             (true, true) => {
                                 tracing::error!("ping successful");
-                                tokio::spawn(async move {
-                                    Connection::new(left, right).run().await;
-                                });
                             }
                             (true, false) => {
                                 tracing::error!("failed to ping right");
@@ -112,6 +154,7 @@ impl State {
 
 async fn pair_handler(
     Path(scores): Path<String>,
+    Path(id): Path<String>,
     ws: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
 ) -> impl IntoResponse {
@@ -121,7 +164,7 @@ async fn pair_handler(
         let state = state.clone();
         async move {
             let state = state.clone();
-            state.queue(scores, socket).await;
+            state.queue(scores, id, socket).await;
         }
     })
 }
