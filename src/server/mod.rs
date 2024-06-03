@@ -137,12 +137,13 @@ impl State {
                 {
                     while let Some((mut left, mut right)) = users.pop_pair().await {
                         let users = users.clone();
+                        let connections = connections.clone();
                         tokio::spawn(async move {
                             let left_pinged = left.ping().await;
                             let right_pinged = right.ping().await;
 
                             // If they're the same user, put the newest connection back in queue
-                            // (if pingale).
+                            // (if pingable).
                             if right.id == left.id {
                                 if right.con_time > left.con_time && right_pinged {
                                     users.queue(right).await;
