@@ -45,6 +45,10 @@ async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, Stri
             let message = match serde_json::from_str(&txt).unwrap() {
                 SocketMessage::User(msg) => Message::new(Origin::Peer, msg),
                 SocketMessage::Info(msg) => Message::new(Origin::Info, msg),
+                SocketMessage::ConnectionClosed => {
+                    state.clear_socket();
+                    Message::new(Origin::Info, "Connection closed".into())
+                }
                 SocketMessage::PeerScores(peer_scores) => {
                     state.set_peer_scores(peer_scores);
                     let diff = scores.percentage_similarity(peer_scores);
@@ -65,6 +69,7 @@ async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, Stri
     ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     onmessage_callback.forget();
 
+    let the_state = state.clone();
     // Handle WebSocket error event
     let onerror_callback = Closure::wrap(Box::new(move |e: web_sys::ErrorEvent| {
         let err_msg = format!(
@@ -75,6 +80,10 @@ async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, Stri
             e.lineno(),
             e.colno()
         );
+        the_state.insert_message(Message::new(
+            Origin::Info,
+            "unexpected error occured".into(),
+        ));
         log_to_console(&err_msg);
     }) as Box<dyn FnMut(_)>);
     ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));

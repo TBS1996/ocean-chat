@@ -37,12 +37,13 @@ impl Connection {
                 Some(Ok(msg)) = right_rx.next() => {
                     match msg {
                         Message::Close(_) => {
-                            let _ = left_tx.send(SocketMessage::info_msg("Peer disconnected".to_string())).await;
+                            let _ = left_tx.send(SocketMessage::close_connection()).await;
                             break;
                         },
                         Message::Text(msg) => {
                             tracing::info!("right->left: {}", &msg);
                             if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
+                                let _ = left_tx.send(SocketMessage::close_connection()).await;
                                 tracing::error!("Failed to send message to left");
                                 break;
                             }
@@ -53,12 +54,13 @@ impl Connection {
                 Some(Ok(msg)) = left_rx.next() => {
                     match msg {
                         Message::Close(_) => {
-                            let _ = right_tx.send(SocketMessage::info_msg("Peer disconnected".to_string())).await;
+                            let _ = right_tx.send(SocketMessage::close_connection()).await;
                             break;
                         },
                         Message::Text(msg) => {
                             tracing::info!("left->right: {}", &msg);
                             if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
+                                let _ = right_tx.send(SocketMessage::close_connection()).await;
                                 tracing::error!("Failed to send message to right");
                                 break;
                             }
@@ -67,8 +69,8 @@ impl Connection {
                     }
                 }
                 else => {
-                    let _ = left_tx.send(SocketMessage::user_msg("unexpected error occured".to_string())).await;
-                    let _ = right_tx.send(SocketMessage::user_msg("unexpected error occured".to_string())).await;
+                    let _ = left_tx.send(SocketMessage::close_connection()).await;
+                    let _ = right_tx.send(SocketMessage::close_connection()).await;
                     break;
                 }
             }
