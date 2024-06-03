@@ -87,7 +87,7 @@ impl ConnectionManager {
             return;
         };
 
-        tracing::info!("User connecting twice: {}" & user.id);
+        tracing::info!("User connecting twice: {}", &user.id);
 
         self.id_to_handle.remove(&id);
         self.user_to_connection.remove(&id.0);
