@@ -21,6 +21,9 @@ pub enum SocketMessage {
     User(String),
     Info(String),
     PeerScores(Scores),
+    ConnectionClosed,
+    //    Ping,
+    //    Pong,
 }
 
 impl SocketMessage {
@@ -39,6 +42,12 @@ impl SocketMessage {
     #[cfg(feature = "server")]
     pub fn peer_scores(scores: Scores) -> Message {
         let s = serde_json::to_string(&Self::PeerScores(scores)).unwrap();
+        Message::Text(s)
+    }
+
+    #[cfg(feature = "server")]
+    pub fn close_connection() -> Message {
+        let s = serde_json::to_string(&Self::ConnectionClosed).unwrap();
         Message::Text(s)
     }
 }
