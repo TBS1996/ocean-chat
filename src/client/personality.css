@@ -18,23 +18,23 @@ h1 {
 }
 
 .label {
-    width: 150px; /* Fixed width for the label */
-    padding-right: 10px; /* Space between the label and the bar */
+    width: 150px; 
+    padding-right: 10px; 
 }
 
 .bar-container {
     display: flex;
     align-items: center;
-    flex-grow: 1; /* Allow the container to grow and fill the remaining space */
+    flex-grow: 1; 
     background-color: #f1f1f1;
     border-radius: 25px;
     overflow: hidden;
-    height: 30px; /* Fixed height for the bar container */
-    margin-left: 10px; /* Space between label and bar container */
+    height: 30px; 
+    margin-left: 10px; 
 }
 
 .bar {
-    height: 100%; /* Make the bar fill the container's height */
+    height: 100%;
     border-radius: 25px;
     text-align: right;
     padding-right: 10px;
@@ -42,6 +42,6 @@ h1 {
     color: black;
     font-weight: bold;
     background-color: #4CAF50;
-    width: 0; /* Default width, should be set dynamically */
+    width: 0; 
 }
 

@@ -21,7 +21,7 @@ title = "Ocean Chat"
 [web.watcher]
 
 # when watcher trigger, regenerate the `index.html`
-reload_html = { env = "RELOAD_HTML", default = true }
+reload_html = true
 
 # which files or dirs will be watcher monitoring
 watch_path = ["assets", "src"]

@@ -12,6 +12,16 @@ use common::Trait;
 use common::SLOAN;
 use dioxus::prelude::*;
 
+pub fn bars(scores: Scores) -> Element {
+    rsx! {
+        PercentileBar { tr: Trait::Con, score: scores.c as u32}
+        PercentileBar { tr: Trait::Open, score: scores.o as u32 }
+        PercentileBar { tr: Trait::Extro, score: scores.e as u32}
+        PercentileBar { tr: Trait::Agree, score: scores.a as u32}
+        PercentileBar { tr: Trait::Neurotic, score: scores.n as u32}
+    }
+}
+
 #[component]
 pub fn Personality() -> Element {
     let state = use_context::<State>();
@@ -24,39 +34,32 @@ pub fn Personality() -> Element {
 
     rsx! {
         div {
-        class: "layout",
-        Sidebar{}
-        div {
-            style { { include_str!("personality.css") } },
+            class: "layout",
+            Sidebar{}
+            div {
+                style { { include_str!("personality.css") } },
 
-            div { class: "container",
-                h1 { "Your big five scores!" }
-                PercentileBar { tr: Trait::Open, score: scores.o as u32 }
-                PercentileBar { tr: Trait::Con, score: scores.c as u32}
-                PercentileBar { tr: Trait::Extro, score: scores.e as u32}
-                PercentileBar { tr: Trait::Agree, score: scores.a as u32}
-                PercentileBar { tr: Trait::Neurotic, score: scores.n as u32}
+                div { class: "container",
+                    h1 { "{sloan}" }
+                    { bars(scores) }
+                }
+            }
+            div {
+                Link {
+                    to: Route::Manual {},
+                    "Edit values"
+                }
+            }
+            div {
+                Link {
+                    to: Route::Test {},
+                    "Take the test again"
+                }
+            }
+            div {
+                "you are weirder than {weirdness}% of people"
             }
         }
-        div {
-            Link {
-                to: Route::Manual {},
-                "Edit values"
-            }
-        }
-        div {
-            Link {
-                to: Route::Test {},
-                "Take the test again"
-            }
-        }
-        div {
-            "your type is: {sloan}"
-        }
-        div {
-            "you are weirder than {weirdness}% of people"
-        }
-    }
     }
 }
 
