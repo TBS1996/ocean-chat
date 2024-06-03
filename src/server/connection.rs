@@ -3,6 +3,7 @@ use crate::server::User;
 use axum::extract::ws::Message;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
+use tokio::time;
 
 /// Holds the client-server connections between two peers.
 pub struct Connection {
@@ -15,11 +16,20 @@ impl Connection {
         Self { left, right }
     }
 
+    //  Removes all the pending messages in the streams.
+    async fn drain_streams(&mut self) {
+        let drain_timeout = time::Duration::from_millis(100);
+
+        while let Ok(Some(_)) = time::timeout(drain_timeout, self.left.socket.recv()).await {}
+        while let Ok(Some(_)) = time::timeout(drain_timeout, self.right.socket.recv()).await {}
+    }
+
     /// Handles sending messages from one peer to another.
-    pub async fn run(self) {
+    pub async fn run(mut self) {
         tracing::info!("communication starting between a pair");
         let msg = "connected to peer!".to_string();
 
+        self.drain_streams().await;
         let (mut left_tx, mut left_rx) = self.left.socket.split();
         let (mut right_tx, mut right_rx) = self.right.socket.split();
 
