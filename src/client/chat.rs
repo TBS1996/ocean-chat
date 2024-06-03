@@ -45,9 +45,18 @@ async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, Stri
             let message = match serde_json::from_str(&txt).unwrap() {
                 SocketMessage::User(msg) => Message::new(Origin::Peer, msg),
                 SocketMessage::Info(msg) => Message::new(Origin::Info, msg),
+                SocketMessage::Ping => {
+                    let msg = SocketMessage::pong();
+                    state.send_message(msg);
+                    return;
+                }
+                SocketMessage::Pong => {
+                    log_to_console("unexpected pong!");
+                    return;
+                }
                 SocketMessage::ConnectionClosed => {
                     state.clear_socket();
-                    Message::new(Origin::Info, "Connection closed".into())
+                    return;
                 }
                 SocketMessage::PeerScores(peer_scores) => {
                     state.set_peer_scores(peer_scores);
@@ -93,10 +102,16 @@ async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, Stri
     let onclose_callback = Closure::wrap(Box::new(move |_| {
         state.clear_socket();
         log_to_console("WebSocket connection closed");
+        state.insert_message(Message::new(Origin::Info, "Connection closed".into()));
     }) as Box<dyn FnMut(JsValue)>);
     ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
     onclose_callback.forget();
     Ok(ws)
+}
+
+#[component]
+pub fn Connecting() -> Element {
+    rsx! {"connecting to peer..."}
 }
 
 #[component]
@@ -115,6 +130,11 @@ pub fn Chat() -> Element {
             let state = state.clone();
             spawn_local(async move {
                 if !state.has_socket() {
+                    let msg = Message {
+                        origin: Origin::Info,
+                        content: "searching for peer...".to_string(),
+                    };
+                    messages.write().insert(0, msg);
                     let socket = connect_to_peer(scores, state.clone()).await.unwrap();
                     state.set_socket(socket);
                 }
@@ -123,7 +143,6 @@ pub fn Chat() -> Element {
     });
 
     let state2 = state.clone();
-    //    let disabled = state.not_connected();
 
     rsx! {
         main {
@@ -136,7 +155,8 @@ pub fn Chat() -> Element {
                         let msg = event.data().values().get("msg").unwrap().as_value();
                         input.set(String::new());
                         state.insert_message(Message::new(Origin::Me, msg.clone()));
-                        if state.send_message(&msg) {
+                        let msg = SocketMessage::user_msg(msg);
+                        if state.send_message(msg) {
                             log_to_console("message submitted");
                         }
                     },
@@ -151,7 +171,6 @@ pub fn Chat() -> Element {
                                 r#type: "text",
                                 name: "msg",
                                 value: "{input}",
-                                // disabled: "{disabled}",
                                 autocomplete: "off",
                                 oninput: move |event| input.set(event.value()),
                             }
@@ -176,7 +195,7 @@ pub fn Chat() -> Element {
                                     let msg = Message {
                                         origin: Origin::Info,
                                         content: "searching for peer...".to_string()};
-                                    messages.write().push(msg);
+                                    messages.write().insert(0, msg);
                                     input.set(String::new());
                                 },
                                 "New peer"

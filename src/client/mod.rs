@@ -61,7 +61,7 @@ impl State {
     pub fn insert_message(&self, message: Message) {
         log_to_console("inserting msg");
         log_to_console(&message);
-        self.inner.lock().unwrap().messages.push(message);
+        self.inner.lock().unwrap().messages.insert(0, message);
     }
 
     pub fn input(&self) -> Signal<String> {
@@ -106,9 +106,9 @@ impl State {
         *self.not_connected().write() = true;
     }
 
-    pub fn send_message(&self, msg: &str) -> bool {
+    pub fn send_message(&self, msg: Vec<u8>) -> bool {
         if let Some(socket) = &self.inner.lock().unwrap().socket {
-            let _ = socket.send_with_str(msg);
+            let _ = socket.send_with_u8_array(&msg);
             true
         } else {
             log_to_console("attempted to send msg without a socket configured");
