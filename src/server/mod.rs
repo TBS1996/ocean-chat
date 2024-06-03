@@ -69,7 +69,7 @@ struct ConnectionManager {
 
 impl ConnectionManager {
     fn debug(&self) {
-        dbg!(self);
+        tracing::info!("current active connections: {}", self.id_to_handle.len());
     }
 
     fn connect(&mut self, left: User, right: User) {
