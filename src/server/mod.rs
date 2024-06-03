@@ -1,5 +1,5 @@
 use axum::{
-    extract::ws::{WebSocket, WebSocketUpgrade},
+    extract::ws::{Message, WebSocket, WebSocketUpgrade},
     extract::Extension,
     extract::Path,
     response::IntoResponse,
@@ -7,10 +7,13 @@ use axum::{
     Router,
 };
 
-use crate::common::Scores;
-use crate::common::CONFIG;
+use crate::common;
+
 use crate::server::connection::Connection;
 use crate::server::waiting_users::WaitingUsers;
+use common::Scores;
+use common::SocketMessage;
+use common::CONFIG;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -22,6 +25,30 @@ mod waiting_users;
 pub struct User {
     pub scores: Scores,
     pub socket: WebSocket,
+}
+
+impl User {
+    async fn ping(&mut self) -> bool {
+        let ping_timeout = tokio::time::Duration::from_millis(500);
+        if self.socket.send(SocketMessage::ping()).await.is_err() {
+            return false;
+        }
+
+        while let Ok(Some(Ok(Message::Binary(msg)))) =
+            tokio::time::timeout(ping_timeout, self.socket.recv()).await
+        {
+            if let Ok(SocketMessage::Pong) = serde_json::from_slice(&msg) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    async fn drain_socket(&mut self) {
+        let drain_timeout = tokio::time::Duration::from_millis(100);
+        while let Ok(Some(_)) = tokio::time::timeout(drain_timeout, self.socket.recv()).await {}
+    }
 }
 
 #[derive(Default, Clone)]
@@ -49,10 +76,29 @@ impl State {
         tokio::spawn(async move {
             loop {
                 {
-                    while let Some((left, right)) = users.pop_pair().await {
-                        tokio::spawn(async move {
-                            Connection::new(left, right).run().await;
-                        });
+                    while let Some((mut left, mut right)) = users.pop_pair().await {
+                        let left_pinged = left.ping().await;
+                        let right_pinged = right.ping().await;
+
+                        match (left_pinged, right_pinged) {
+                            (true, true) => {
+                                tracing::error!("ping successful");
+                                tokio::spawn(async move {
+                                    Connection::new(left, right).run().await;
+                                });
+                            }
+                            (true, false) => {
+                                tracing::error!("failed to ping right");
+                                users.queue(left).await;
+                            }
+                            (false, true) => {
+                                tracing::error!("failed to ping left");
+                                users.queue(right).await;
+                            }
+                            (false, false) => {
+                                tracing::error!("failed to ping both right and left");
+                            }
+                        }
                     }
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(
