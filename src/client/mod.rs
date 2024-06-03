@@ -59,7 +59,15 @@ impl InnerState {
 
 impl State {
     pub fn load() -> Self {
-        let id = block_on(fetch_id_storage()).unwrap_or_else(|| Uuid::new_v4());
+        let id = match block_on(fetch_id_storage()) {
+            Some(id) => id,
+            None => {
+                let id = Uuid::new_v4();
+                save_id(id);
+                id
+            }
+        };
+
         let s = Self {
             inner: Arc::new(Mutex::new(InnerState::new(id))),
         };
@@ -203,7 +211,7 @@ fn default_scores() -> Scores {
 }
 
 async fn fetch_id_storage() -> Option<Uuid> {
-    let mut eval = eval(
+    let eval = eval(
         r#"
         let id = localStorage.getItem('user_id');
         if (id) {
@@ -212,10 +220,18 @@ async fn fetch_id_storage() -> Option<Uuid> {
             dioxus.send(null);
         }
         "#,
-    );
+    )
+    .recv()
+    .await;
 
-    let id = eval.recv().await.ok()?.to_string();
-    Uuid::from_str(&id).ok()
+    log_to_console(&eval);
+
+    let mut id = eval.ok()?.to_string();
+    id.remove(0);
+    id.pop();
+    let uuid = Uuid::from_str(&id);
+    log_to_console(&uuid);
+    uuid.ok()
 }
 
 async fn fetch_scores_storage() -> Option<Scores> {
@@ -261,6 +277,12 @@ pub fn Invalid() -> Element {
             }
         }
     }
+}
+
+pub fn save_id(id: Uuid) {
+    let script = format!("localStorage.setItem('user_id', '{}');", id);
+    eval(&script);
+    log_to_console("storing user_id in local storage");
 }
 
 pub fn save_scores(scores: Scores) {

@@ -59,13 +59,17 @@ type UserId = String;
 type ConnectionId = (UserId, UserId);
 
 /// Ensures the same user is not connected multiple times.
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct ConnectionManager {
     user_to_connection: HashMap<UserId, ConnectionId>,
     id_to_handle: HashMap<ConnectionId, JoinHandle<()>>,
 }
 
 impl ConnectionManager {
+    fn debug(&self) {
+        dbg!(self);
+    }
+
     fn connect(&mut self, left: User, right: User) {
         self.clear_user(&left);
         self.clear_user(&right);
@@ -80,6 +84,7 @@ impl ConnectionManager {
             Connection::new(left, right).run().await;
         });
         self.id_to_handle.insert(con_id, handle);
+        self.debug();
     }
 
     fn clear_user(&mut self, user: &User) {
@@ -118,6 +123,7 @@ impl State {
     async fn start_pairing(&self) {
         tracing::info!("pairing started");
         let users = self.waiting_users.clone();
+        let connections = self.connections.clone();
         tokio::spawn(async move {
             loop {
                 {
@@ -128,6 +134,7 @@ impl State {
                         match (left_pinged, right_pinged) {
                             (true, true) => {
                                 tracing::error!("ping successful");
+                                connections.lock().await.connect(left, right);
                             }
                             (true, false) => {
                                 tracing::error!("failed to ping right");
@@ -153,8 +160,7 @@ impl State {
 }
 
 async fn pair_handler(
-    Path(scores): Path<String>,
-    Path(id): Path<String>,
+    Path((scores, id)): Path<(String, String)>,
     ws: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
 ) -> impl IntoResponse {
@@ -190,7 +196,7 @@ pub async fn run() {
         .allow_headers(Any);
 
     let app = Router::new()
-        .route("/pair/:scores", get(pair_handler))
+        .route("/pair/:scores/:id", get(pair_handler))
         .layer(cors)
         .layer(tracing_layer)
         .layer(Extension(Arc::new(state)));

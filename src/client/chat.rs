@@ -18,7 +18,12 @@ use web_sys::WebSocket;
 
 async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
-    let url = format!("{}/pair/{}/{}", CONFIG.server_address(), scores, state.id());
+    let url = format!(
+        "{}/pair/{}/{}",
+        CONFIG.server_address(),
+        scores,
+        state.id().simple().to_string()
+    );
 
     // Attempt to create the WebSocket
     let ws = web_sys::WebSocket::new(&url).map_err(|err| {
