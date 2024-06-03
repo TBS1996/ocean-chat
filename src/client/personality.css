@@ -18,13 +18,19 @@ h1 {
 }
 
 .label {
+<<<<<<< HEAD
     width: 150px; 
     padding-right: 10px; 
+=======
+    width: 150px; /* Fixed width for the label */
+    padding-right: 10px; /* Space between the label and the bar */
+>>>>>>> main
 }
 
 .bar-container {
     display: flex;
     align-items: center;
+<<<<<<< HEAD
     flex-grow: 1; 
     background-color: #f1f1f1;
     border-radius: 25px;
@@ -35,6 +41,18 @@ h1 {
 
 .bar {
     height: 100%;
+=======
+    flex-grow: 1; /* Allow the container to grow and fill the remaining space */
+    background-color: #f1f1f1;
+    border-radius: 25px;
+    overflow: hidden;
+    height: 30px; /* Fixed height for the bar container */
+    margin-left: 10px; /* Space between label and bar container */
+}
+
+.bar {
+    height: 100%; /* Make the bar fill the container's height */
+>>>>>>> main
     border-radius: 25px;
     text-align: right;
     padding-right: 10px;
@@ -42,6 +60,10 @@ h1 {
     color: black;
     font-weight: bold;
     background-color: #4CAF50;
+<<<<<<< HEAD
     width: 0; 
+=======
+    width: 0; /* Default width, should be set dynamically */
+>>>>>>> main
 }
 
