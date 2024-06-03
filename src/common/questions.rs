@@ -55,13 +55,39 @@ impl Answer {
     }
 }
 
-#[derive(Clone, Debug, Copy)]
+#[derive(PartialEq, Clone, Debug, Copy)]
 pub enum Trait {
     Open,
     Con,
     Extro,
     Agree,
     Neurotic,
+}
+
+impl Trait {
+    pub fn color(&self) -> &'static str {
+        match self {
+            Self::Open => "#1E90FF",
+            Self::Con => "#32CD32",
+            Self::Extro => "#FF4500",
+            Self::Agree => "#FFD700",
+            Self::Neurotic => "#FF8C00",
+        }
+    }
+}
+
+impl fmt::Display for Trait {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::Open => "Openness",
+            Self::Con => "Conscientiousness",
+            Self::Extro => "Extraversion",
+            Self::Agree => "Agreeableness",
+            Self::Neurotic => "Neuroticism",
+        };
+
+        write!(f, "{}", s)
+    }
 }
 
 impl fmt::Display for Question {

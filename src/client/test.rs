@@ -29,9 +29,11 @@ pub fn Test() -> Element {
     let mut curr_question = use_signal(|| QUESTIONS.lock().unwrap().last().copied().unwrap());
     let navigator = use_navigator();
 
+    let show_sidebar = state.scores().is_some();
+
     rsx! {
         main {
-            Sidebar {},
+            if show_sidebar { Sidebar{} } else { {} }
             div {
                 style { { include_str!("../styles.css") } }
                 h1 { "Personality Test" }
@@ -61,12 +63,18 @@ pub fn Test() -> Element {
                                         let scores = DISTS.convert(tally);
                                         save_scores(scores);
                                         state.set_scores(scores);
-                                        navigator.replace(Route::Chat{});
+                                        navigator.replace(Route::Personality{});
                                     },
                                 }
                             },
                             "{answer}"
                         }
+                    }
+                }
+                div {
+                    Link {
+                        to: Route::Manual {},
+                        "Or manually fill your big 5 values"
                     }
                 }
             }

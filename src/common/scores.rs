@@ -26,6 +26,7 @@ pub static SCORES: Lazy<Vec<Scores>> = Lazy::new(|| {
     scores
 });
 
+/// Percentage of each trait in a big 5 score. Each number is from 0 to 100.
 #[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize, Default)]
 pub struct Scores {
     pub o: f32,

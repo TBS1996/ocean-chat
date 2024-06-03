@@ -1,22 +1,30 @@
 #![allow(non_snake_case)]
+#![allow(unused_imports)]
 
 use crate::common;
-use chat::Chat;
-use chat::Message;
 use common::Scores;
+
 use dioxus::prelude::*;
 use futures::executor::block_on;
 use once_cell::sync::Lazy;
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use test::Test;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use web_sys::WebSocket;
 
 mod chat;
+mod manual;
+mod personality;
+mod splash;
 mod test;
+
+use chat::*;
+use manual::*;
+use personality::*;
+use splash::*;
+use test::*;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
@@ -39,6 +47,17 @@ struct InnerState {
 }
 
 impl State {
+    pub fn load() -> Self {
+        let s = Self::default();
+        if let Some(scores) = block_on(fetch_scores_storage()) {
+            log_to_console("score set!");
+            s.set_scores(scores);
+        } else {
+            log_to_console("score not set!");
+        };
+        s
+    }
+
     pub fn insert_message(&self, message: Message) {
         log_to_console("inserting msg");
         log_to_console(&message);
@@ -119,10 +138,14 @@ pub enum Route {
     Test {},
     #[route("/manual")]
     Manual {},
+    #[route("/splash")]
+    Splash {},
+    #[route("/personality")]
+    Personality {},
 }
 
 fn App() -> Element {
-    use_context_provider(State::default);
+    use_context_provider(State::load);
     rsx!(Router::<Route> {})
 }
 
@@ -139,20 +162,13 @@ pub fn Sidebar() -> Element {
             class: "sidebar",
             ul {
                 li {
-                    Link { to: Route::Home {}, "Home" }
+                    Link { to: Route::Chat {}, "Chat" }
                 }
 
                 li {
-                    Link { to: Route::Manual {}, "Enter scores manually" }
+                    Link { to: Route::Personality {}, "My personality" }
                 }
 
-                li {
-                    Link { to: Route::Test {}, "Take the personality test" }
-                }
-
-                li {
-                    Link { to: Route::Chat {}, "Start chatting" }
-                }
             }
         }
     }
@@ -185,93 +201,13 @@ async fn fetch_scores_storage() -> Option<Scores> {
 }
 
 #[component]
-fn Manual() -> Element {
-    let navigator = use_navigator();
-    let state = use_context::<State>();
-    let score = default_scores();
-
-    rsx! {
-        style { { include_str!("../styles.css") } }
-        main {
-            class: "layout",
-            Sidebar {},
-            div {
-                h1 {"Manual Scores"}
-                br {}
-                form {
-                    onsubmit:  move |event| {
-                        match Scores::try_from(event.data().deref()) {
-                            Ok(scores) => {
-                                state.set_scores(scores);
-                                save_scores(scores);
-                                navigator.replace(Route::Chat{});
-                            }
-                            Err(_) => {
-                                navigator.replace(Route::Invalid {});
-                            }
-                        }
-                    },
-
-                    div {
-                        class: "spread-around",
-                        label { r#for: "o", "Openness: " }
-                        input { id: "o", name: "o", value: "{score.o}", r#type: "number", step: "any", min: "0", max: "100" }
-                    }
-        
-                    div {
-                        class: "spread-around",
-                        label { r#for: "c", "Conscientiousness: " }
-                        input { id: "c", name: "c", value: "{score.c}", r#type: "number", step: "any", min: "0", max: "100" }
-                    }
-        
-                    div {
-                        class: "spread-around",
-                        label { r#for: "e", "Extraversion: " }
-                        input { id: "e", name: "e", value: "{score.e}", r#type: "number", step: "any", min: "0", max: "100" }
-                    }
-                    
-                    div {
-                        class: "spread-around",
-                        label { r#for: "a", "Agreeableness: " }
-                        input { id: "a", name: "a", value: "{score.a}", r#type: "number", step: "any", min: "0", max: "100" }
-                    }
-        
-                    div {
-                        class: "spread-around",
-                        label { r#for: "n", "Neuroticism: " }
-                        input { id: "n", name: "n", value: "{score.n}", r#type: "number", step: "any", min: "0", max: "100" }
-                    }
-        
-                    br {}
-                    
-                    button {
-                        class: "confirm",
-                        r#type: "submit",
-                        h2 { "Save" }
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[component]
 fn Home() -> Element {
-    rsx! {
-        style {
-            { include_str!("../styles.css") }
-        }
-        main {
-            class: "layout",
-            Sidebar {},
-            div {
-                h1 { "Hello! Welcome to Oceanchat!" }
-                p {
-                    "Start chatting with people similar to your personality here.
-                    First you must take the personality test, or manually input your Big 5 trait scores!"
-                }
-            }
-        }
+    let state = use_context::<State>();
+
+    if state.scores().is_some() {
+        return Chat();
+    } else {
+        return Splash();
     }
 }
 
