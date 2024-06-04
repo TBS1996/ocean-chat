@@ -33,7 +33,7 @@ pub fn Test() -> Element {
 
     rsx! {
         main {
-            if show_sidebar { Sidebar{} } else { {} }
+            if show_sidebar { Sidebar{active_chat: false} } else { {} }
             div {
                 style { { include_str!("../styles.css") } }
                 h1 { "Personality Test" }

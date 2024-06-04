@@ -18,7 +18,7 @@ pub fn Personality() -> Element {
     rsx! {
         div {
         class: "layout",
-        Sidebar{}
+        Sidebar{active_chat: false}
         div {
             style { { include_str!("personality.css") } },
 

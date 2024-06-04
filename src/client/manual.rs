@@ -29,7 +29,7 @@ pub fn Manual() -> Element {
         style { { include_str!("../styles.css") } }
         main {
             class: "layout",
-            if show_sidebar {Sidebar {}} else {{}},
+            if show_sidebar {Sidebar {active_chat: false}} else {{}},
             div {
                 h1 {"Edit scores"}
                 br {}

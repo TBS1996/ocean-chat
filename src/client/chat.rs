@@ -146,9 +146,8 @@ pub fn Chat() -> Element {
 
     rsx! {
         main {
-            Sidebar {},
+            Sidebar { active_chat: true },
             div {
-                h1 { "Chat" }
                 form {
                     onsubmit: move |event| {
                         let state = state2.clone();
