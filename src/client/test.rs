@@ -29,12 +29,15 @@ pub fn Test() -> Element {
     let mut curr_question = use_signal(|| QUESTIONS.lock().unwrap().last().copied().unwrap());
     let navigator = use_navigator();
 
-    let show_sidebar = state.scores().is_some();
+    let show_navbar = state.scores().is_some();
 
     rsx! {
         main {
-            if show_sidebar { Navbar{active_chat: false} } else { {} }
+            class: "main-content",
+            style { { include_str!("manual.css") } },
+            if show_navbar { Navbar{active_chat: false} } else { {} }
             div {
+                class: "container",
                 h1 { "Personality Test" }
                 br {}
                 div { class: "input-group",

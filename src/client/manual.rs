@@ -27,9 +27,11 @@ pub fn Manual() -> Element {
 
     rsx! {
         main {
-            class: "layout",
+            class: "main-content",
+            style { { include_str!("manual.css") } },
             if show_sidebar {Navbar {active_chat: false}} else {{}},
             div {
+                class: "container",
                 h1 {"Edit scores"}
                 br {}
                 form {
@@ -45,7 +47,6 @@ pub fn Manual() -> Element {
                             }
                         }
                     },
-
                     div {
                         class: "spread-around",
                         label { r#for: "o", "Openness: " }
