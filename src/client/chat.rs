@@ -160,7 +160,6 @@ pub fn Chat() -> Element {
                             log_to_console("message submitted");
                         }
                     },
-                    style { { include_str!("../styles.css") } }
                     div {
                         class: "chat-app",
                         MessageList { messages: messages.read().to_vec() }

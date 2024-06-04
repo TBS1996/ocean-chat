@@ -35,7 +35,6 @@ pub fn Test() -> Element {
         main {
             if show_sidebar { Sidebar{} } else { {} }
             div {
-                style { { include_str!("../styles.css") } }
                 h1 { "Personality Test" }
                 br {}
                 div { class: "input-group",
