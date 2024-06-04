@@ -59,13 +59,13 @@ form {
 
 nav {
     width: 100%;
-    height: 60px; /* Fixed height for the top bar */
+    height: 60px; 
     margin-bottom: 20px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     background-color: #4CAF50;
-    display: flex; /* Use flexbox for alignment */
-    align-items: center; /* Center items vertically */
-    padding: 0 20px; /* Add padding to the sides */
+    display: flex; 
+    align-items: center; 
+    padding: 0 20px; 
 }
 
 nav ul {
@@ -74,15 +74,15 @@ nav ul {
     padding: 0;
     margin: 0;
     list-style: none;
-    height: 100%; /* Set height to 100% of the nav bar */
-    align-items: center; /* Center items vertically */
+    height: 100%; 
+    align-items: center; 
 }
 
 nav li {
     margin: 0 20px;
-    height: 100%; /* Set height to 100% of the nav bar */
-    display: flex; /* Use flexbox for alignment */
-    align-items: center; /* Center items vertically */
+    height: 100%; 
+    display: flex;
+    align-items: center; 
 }
 
 nav a {
@@ -91,10 +91,10 @@ nav a {
     padding: 10px 20px;
     border-radius: 5px;
     transition: background-color 0.3s ease;
-    line-height: 40px; /* Set line height to maintain vertical alignment */
-    height: 40px; /* Set a fixed height for the link */
-    display: flex; /* Use flexbox for alignment */
-    align-items: center; /* Center items vertically */
+    line-height: 40px; 
+    height: 40px; 
+    display: flex;
+    align-items: center; 
 }
 
 nav a:hover {
