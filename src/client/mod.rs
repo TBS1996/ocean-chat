@@ -183,22 +183,32 @@ pub fn log_to_console(message: impl std::fmt::Debug) {
 }
 
 #[component]
-pub fn Sidebar() -> Element {
+pub fn Navbar(active_chat: bool) -> Element {
     rsx! {
-        nav {
-            class: "sidebar",
-            ul {
-                li {
-                    Link { to: Route::Chat {}, "Chat" }
-                }
+            nav {
+                class: "navbar",
+                ul {
+                    li {
+                        Link {
+                            to: Route::Chat {},
+                            "Chat",
+                            class: if active_chat { "active" } else { "" }
+                        }
+                    }
 
-                li {
-                    Link { to: Route::Personality {}, "My personality" }
-                }
+                    li {
+                        Link { to: Route::Personality {}, "My personality"
 
+
+    ,
+
+                        class: if !active_chat { "active" } else { "" }
+
+                        }
+                    }
+                }
             }
         }
-    }
 }
 
 fn default_scores() -> Scores {

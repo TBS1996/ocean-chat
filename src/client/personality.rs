@@ -3,8 +3,8 @@
 use crate::client;
 use crate::common;
 
+use client::Navbar;
 use client::Route;
-use client::Sidebar;
 use client::State;
 use common::Scores;
 use common::Trait;
@@ -18,7 +18,7 @@ pub fn Personality() -> Element {
     rsx! {
         div {
         class: "layout",
-        Sidebar{}
+        Navbar{active_chat: false}
         div {
             style { { include_str!("personality.css") } },
 

@@ -4,7 +4,7 @@ use crate::common;
 
 use client::log_to_console;
 use client::Invalid;
-use client::Sidebar;
+use client::Navbar;
 use client::Splash;
 use client::State;
 use common::Scores;
@@ -15,6 +15,98 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::WebSocket;
+
+#[component]
+pub fn Chat() -> Element {
+    let state = use_context::<State>();
+    let mut input = state.input();
+    let mut messages = state.messages();
+
+    let Some(scores) = state.scores() else {
+        return Splash();
+    };
+
+    use_effect({
+        let state = state.clone();
+        move || {
+            let state = state.clone();
+            spawn_local(async move {
+                if !state.has_socket() {
+                    let msg = Message {
+                        origin: Origin::Info,
+                        content: "searching for peer...".to_string(),
+                    };
+                    messages.write().insert(0, msg);
+                    let socket = connect_to_peer(scores, state.clone()).await.unwrap();
+                    state.set_socket(socket);
+                }
+            });
+        }
+    });
+
+    let state2 = state.clone();
+
+    rsx! {
+        main {
+            Navbar { active_chat: true },
+            div {
+                form {
+                    onsubmit: move |event| {
+                        let state = state2.clone();
+                        let msg = event.data().values().get("msg").unwrap().as_value();
+                        input.set(String::new());
+                        state.insert_message(Message::new(Origin::Me, msg.clone()));
+                        let msg = SocketMessage::user_msg(msg);
+                        if state.send_message(msg) {
+                            log_to_console("message submitted");
+                        }
+                    },
+                    div {
+                        class: "chat-app",
+                        MessageList { messages: messages.read().to_vec() }
+                    }
+                    div { class: "form-group",
+                        div { class: "input-group",
+                            input {
+                                r#type: "text",
+                                name: "msg",
+                                value: "{input}",
+                                autocomplete: "off",
+                                oninput: move |event| input.set(event.value()),
+                            }
+                            button {
+                                r#type: "submit",
+                                class: "confirm",
+                                "Send"
+                            }
+                            button {
+                                prevent_default: "onclick",
+                                class: "danger",
+                                onclick: move |_| {
+                                    let thestate = state.clone();
+                                    messages.write().clear();
+                                    state.clear_peer();
+                                    spawn_local(async move {
+                                        let socket = connect_to_peer(scores, thestate.clone())
+                                            .await
+                                            .unwrap();
+                                        thestate.set_socket(socket);
+                                    });
+                                    let msg = Message {
+                                        origin: Origin::Info,
+                                        content: "searching for peer...".to_string()};
+                                    messages.write().insert(0, msg);
+                                    input.set(String::new());
+                                },
+                                "New peer"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
@@ -112,99 +204,6 @@ async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, Stri
     ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
     onclose_callback.forget();
     Ok(ws)
-}
-
-#[component]
-pub fn Chat() -> Element {
-    let state = use_context::<State>();
-    let mut input = state.input();
-    let mut messages = state.messages();
-
-    let Some(scores) = state.scores() else {
-        return Splash();
-    };
-
-    use_effect({
-        let state = state.clone();
-        move || {
-            let state = state.clone();
-            spawn_local(async move {
-                if !state.has_socket() {
-                    let msg = Message {
-                        origin: Origin::Info,
-                        content: "searching for peer...".to_string(),
-                    };
-                    messages.write().insert(0, msg);
-                    let socket = connect_to_peer(scores, state.clone()).await.unwrap();
-                    state.set_socket(socket);
-                }
-            });
-        }
-    });
-
-    let state2 = state.clone();
-
-    rsx! {
-        main {
-            Sidebar {},
-            div {
-                h1 { "Chat" }
-                form {
-                    onsubmit: move |event| {
-                        let state = state2.clone();
-                        let msg = event.data().values().get("msg").unwrap().as_value();
-                        input.set(String::new());
-                        state.insert_message(Message::new(Origin::Me, msg.clone()));
-                        let msg = SocketMessage::user_msg(msg);
-                        if state.send_message(msg) {
-                            log_to_console("message submitted");
-                        }
-                    },
-                    div {
-                        class: "chat-app",
-                        MessageList { messages: messages.read().to_vec() }
-                    }
-                    div { class: "form-group",
-                        div { class: "input-group",
-                            input {
-                                r#type: "text",
-                                name: "msg",
-                                value: "{input}",
-                                autocomplete: "off",
-                                oninput: move |event| input.set(event.value()),
-                            }
-                            button {
-                                r#type: "submit",
-                                class: "confirm",
-                                "Send"
-                            }
-                            button {
-                                prevent_default: "onclick",
-                                class: "danger",
-                                onclick: move |_| {
-                                    let thestate = state.clone();
-                                    messages.write().clear();
-                                    state.clear_peer();
-                                    spawn_local(async move {
-                                        let socket = connect_to_peer(scores, thestate.clone())
-                                            .await
-                                            .unwrap();
-                                        thestate.set_socket(socket);
-                                    });
-                                    let msg = Message {
-                                        origin: Origin::Info,
-                                        content: "searching for peer...".to_string()};
-                                    messages.write().insert(0, msg);
-                                    input.set(String::new());
-                                },
-                                "New peer"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

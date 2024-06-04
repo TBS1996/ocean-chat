@@ -4,8 +4,8 @@ use crate::client;
 use crate::common;
 
 use client::save_scores;
+use client::Navbar;
 use client::Route;
-use client::Sidebar;
 use client::State;
 use common::Answer;
 use common::Question;
@@ -27,9 +27,11 @@ pub fn Manual() -> Element {
 
     rsx! {
         main {
-            class: "layout",
-            if show_sidebar {Sidebar {}} else {{}},
+            class: "main-content",
+            style { { include_str!("manual.css") } },
+            if show_sidebar {Navbar {active_chat: false}} else {{}},
             div {
+                class: "container",
                 h1 {"Edit scores"}
                 br {}
                 form {
@@ -45,7 +47,6 @@ pub fn Manual() -> Element {
                             }
                         }
                     },
-
                     div {
                         class: "spread-around",
                         label { r#for: "o", "Openness: " }
