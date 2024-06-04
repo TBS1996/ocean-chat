@@ -26,7 +26,6 @@ pub fn Manual() -> Element {
     let show_sidebar = state.scores().is_some();
 
     rsx! {
-        style { { include_str!("../styles.css") } }
         main {
             class: "layout",
             if show_sidebar {Sidebar {}} else {{}},
