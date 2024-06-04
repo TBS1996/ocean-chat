@@ -169,12 +169,6 @@ pub enum Route {
     Splash {},
     #[route("/personality")]
     Personality {},
-    #[route("/dlurker")]
-    Dlurker {},
-}
-
-fn Dlurker() -> Element {
-    rsx! {}
 }
 
 fn App() -> Element {
@@ -189,23 +183,32 @@ pub fn log_to_console(message: impl std::fmt::Debug) {
 }
 
 #[component]
-pub fn Sidebar(active_chat: bool) -> Element {
+pub fn Navbar(active_chat: bool) -> Element {
     rsx! {
-        nav {
-            class: "navbar",
-            ul {
-                li {
-                    class: if active_chat { "active" } else { "" },
-                    Link { to: Route::Chat {}, "Chat" }
-                }
+            nav {
+                class: "navbar",
+                ul {
+                    li {
+                        Link {
+                            to: Route::Chat {},
+                            "Chat",
+                            class: if active_chat { "active" } else { "" }
+                        }
+                    }
 
-                li {
-                    class: if !active_chat { "active" } else { "" },
-                    Link { to: Route::Personality {}, "My personality" }
+                    li {
+                        Link { to: Route::Personality {}, "My personality"
+
+
+    ,
+
+                        class: if !active_chat { "active" } else { "" }
+
+                        }
+                    }
                 }
             }
         }
-    }
 }
 
 fn default_scores() -> Scores {

@@ -4,8 +4,8 @@ use crate::client;
 use crate::common;
 
 use client::save_scores;
+use client::Navbar;
 use client::Route;
-use client::Sidebar;
 use client::State;
 use common::Answer;
 use common::Question;
@@ -33,7 +33,7 @@ pub fn Test() -> Element {
 
     rsx! {
         main {
-            if show_sidebar { Sidebar{active_chat: false} } else { {} }
+            if show_sidebar { Navbar{active_chat: false} } else { {} }
             div {
                 h1 { "Personality Test" }
                 br {}
