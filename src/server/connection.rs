@@ -25,31 +25,54 @@ struct Inner {
 }
 
 impl Inner {
+    /// Removes a user.
+    ///
+    /// Ensures that when a user is removed, also the connection is closed, and
+    /// the other user in the connection is also removed.
     fn clear_user(&mut self, user: &User) {
-        let Some(id) = self.user_to_connection.remove(&user.id) else {
+        let Some(connection_id) = self.user_to_connection.remove(&user.id) else {
             return;
         };
 
         tracing::info!("User connecting twice: {}", &user.id);
 
-        if let Some(handle) = self.id_to_handle.remove(&id) {
+        // Removes the connection and aborts the thread.
+        if let Some(handle) = self.id_to_handle.remove(&connection_id) {
             handle.abort();
         }
-        self.user_to_connection.remove(&id.0);
-        self.user_to_connection.remove(&id.1);
+
+        // The connection id consists of the two user ids.
+        // So to ensure the other user is also removed we simply call remove
+        // on both the IDs that make up the tuple.
+        let (left_id, right_id) = connection_id;
+        self.user_to_connection.remove(&left_id);
+        self.user_to_connection.remove(&right_id);
     }
 
     fn debug(&self) {
         tracing::info!("current active connections: {}", self.id_to_handle.len());
         tracing::debug!("{:?}", self);
     }
+
+    // There should be exactly twice as many users as connections.
+    fn invariant(&self) {
+        if self.user_to_connection.len() * 2 != self.id_to_handle.len() {
+            tracing::error!(
+                "INVALID STATE: user_to_connection: {}, id_to_handle: {}",
+                self.user_to_connection.len(),
+                self.id_to_handle.len()
+            );
+        }
+    }
 }
 
 impl ConnectionManager {
+    /// Returns the quantity of users currently connected.
     pub async fn connected_users_qty(&self) -> usize {
         self.inner.lock().await.id_to_handle.len()
     }
 
+    /// Connects two users together for chatting.
     pub async fn connect(&self, left: User, right: User) {
         let mut lock = self.inner.lock().await;
         lock.clear_user(&left);
@@ -66,6 +89,7 @@ impl ConnectionManager {
             Connection::new(left, right).run().await;
         });
         lock.id_to_handle.insert(con_id, handle);
+        lock.invariant();
     }
 }
 
