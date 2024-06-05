@@ -3,7 +3,6 @@ use crate::client;
 use crate::common;
 
 use client::log_to_console;
-use client::Invalid;
 use client::Navbar;
 use client::Splash;
 use client::State;

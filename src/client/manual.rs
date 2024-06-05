@@ -7,16 +7,9 @@ use client::save_scores;
 use client::Navbar;
 use client::Route;
 use client::State;
-use common::Answer;
-use common::Question;
-use common::ScoreTally;
 use common::Scores;
-use common::DISTS;
 use dioxus::prelude::*;
-use once_cell::sync::Lazy;
 use std::ops::Deref;
-use std::sync::{Arc, Mutex};
-use strum::IntoEnumIterator;
 
 #[component]
 pub fn Manual() -> Element {
