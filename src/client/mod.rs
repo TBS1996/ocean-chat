@@ -69,13 +69,18 @@ pub struct State {
 }
 
 #[derive(Default)]
-struct InnerState {
-    scores: Option<Scores>,
+struct ChatState {
     peer_scores: Option<Scores>,
     socket: Option<WebSocket>,
     messages: Signal<Vec<Message>>,
     input: Signal<String>,
     connected: Signal<bool>,
+}
+
+#[derive(Default)]
+struct InnerState {
+    chat: ChatState,
+    scores: Option<Scores>,
     user_id: Uuid,
 }
 
@@ -119,19 +124,19 @@ impl State {
     pub fn insert_message(&self, message: Message) {
         log_to_console("inserting msg");
         log_to_console(&message);
-        self.inner.lock().unwrap().messages.insert(0, message);
+        self.inner.lock().unwrap().chat.messages.insert(0, message);
     }
 
     pub fn input(&self) -> Signal<String> {
-        self.inner.lock().unwrap().input.clone()
+        self.inner.lock().unwrap().chat.input.clone()
     }
 
     pub fn messages(&self) -> Signal<Vec<Message>> {
-        self.inner.lock().unwrap().messages.clone()
+        self.inner.lock().unwrap().chat.messages.clone()
     }
 
     pub fn clear_messages(&self) {
-        self.inner.lock().unwrap().messages.clear();
+        self.inner.lock().unwrap().chat.messages.clear();
     }
 
     pub fn set_scores(&self, scores: Scores) {
@@ -139,7 +144,7 @@ impl State {
     }
 
     pub fn set_peer_scores(&self, scores: Scores) {
-        self.inner.lock().unwrap().peer_scores = Some(scores);
+        self.inner.lock().unwrap().chat.peer_scores = Some(scores);
     }
 
     pub fn scores(&self) -> Option<Scores> {
@@ -147,25 +152,25 @@ impl State {
     }
 
     pub fn has_socket(&self) -> bool {
-        self.inner.lock().unwrap().socket.is_some()
+        self.inner.lock().unwrap().chat.socket.is_some()
     }
 
     pub fn set_socket(&self, socket: WebSocket) {
-        self.inner.lock().unwrap().socket = Some(socket);
+        self.inner.lock().unwrap().chat.socket = Some(socket);
         *self.not_connected().write() = false;
     }
 
     fn not_connected(&self) -> Signal<bool> {
-        self.inner.lock().unwrap().connected.clone()
+        self.inner.lock().unwrap().chat.connected.clone()
     }
 
     fn clear_socket(&self) {
-        self.inner.lock().unwrap().socket = None;
+        self.inner.lock().unwrap().chat.socket = None;
         *self.not_connected().write() = true;
     }
 
     pub fn send_message(&self, msg: Vec<u8>) -> bool {
-        if let Some(socket) = &self.inner.lock().unwrap().socket {
+        if let Some(socket) = &self.inner.lock().unwrap().chat.socket {
             let _ = socket.send_with_u8_array(&msg);
             true
         } else {
@@ -176,10 +181,10 @@ impl State {
 
     pub fn clear_peer(&self) {
         let mut lock = self.inner.lock().unwrap();
-        if let Some(socket) = &lock.socket {
+        if let Some(socket) = &lock.chat.socket {
             socket.close().unwrap();
         }
-        lock.peer_scores = None;
-        lock.socket = None;
+        lock.chat.peer_scores = None;
+        lock.chat.socket = None;
     }
 }
