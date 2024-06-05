@@ -78,6 +78,7 @@ impl Scores {
     //
     // 0% => You are extraordinarily ordinary
     // 100% => you're a weirdo
+    #[cfg(not(feature = "server"))]
     pub fn weirdness_percent(&self) -> f32 {
         let mid = Scores::mid();
         let weirdness = self.distance(&mid);
