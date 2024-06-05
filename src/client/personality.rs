@@ -6,6 +6,7 @@ use crate::common;
 use client::Navbar;
 use client::Route;
 use client::State;
+use common::Sloan;
 use common::Trait;
 use dioxus::prelude::*;
 
@@ -13,6 +14,10 @@ use dioxus::prelude::*;
 pub fn Personality() -> Element {
     let state = use_context::<State>();
     let scores = state.scores().unwrap();
+    let sloan = Sloan::from_scores(scores);
+    let sloan = format!("{:?}", sloan).to_lowercase();
+    let weirdness = format!("{:.2}", scores.weirdness_percent());
+    let link = format!("https://similarminds.com/global5/{}.html", sloan);
 
     rsx! {
         div {
@@ -28,6 +33,12 @@ pub fn Personality() -> Element {
                 PercentileBar { tr: Trait::Extro, score: scores.e as u32}
                 PercentileBar { tr: Trait::Agree, score: scores.a as u32}
                 PercentileBar { tr: Trait::Neurotic, score: scores.n as u32}
+                h2 {"Your type is ", a {
+                    href: link,
+                    target: "_blank",
+                    "{sloan}"
+                } },
+                h2 {"You are weirder than {weirdness}% of the population!"},
             }
         }
         div {

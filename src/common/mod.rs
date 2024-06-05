@@ -6,11 +6,13 @@ pub mod config;
 pub mod distribution;
 pub mod questions;
 pub mod scores;
+pub mod sloan;
 
 pub use config::*;
 pub use distribution::*;
 pub use questions::*;
 pub use scores::*;
+pub use sloan::*;
 
 #[cfg(feature = "server")]
 use axum::extract::ws::Message;
