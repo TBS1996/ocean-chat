@@ -9,22 +9,21 @@ use axum::{
 
 use crate::common;
 
-use crate::server::connection::Connection;
-use crate::server::waiting_users::WaitingUsers;
+use crate::server::ConnectionManager;
 use common::Scores;
 use common::SocketMessage;
 use common::CONFIG;
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod connection;
 mod waiting_users;
+
+use connection::*;
+use waiting_users::*;
 
 pub struct User {
     pub scores: Scores,
@@ -35,7 +34,7 @@ pub struct User {
 
 impl User {
     async fn ping(&mut self) -> bool {
-        let ping_timeout = tokio::time::Duration::from_millis(500);
+        let ping_timeout = tokio::time::Duration::from_millis(2000);
         if self.socket.send(SocketMessage::ping()).await.is_err() {
             return false;
         }
@@ -57,59 +56,11 @@ impl User {
     }
 }
 
-type UserId = String;
-type ConnectionId = (UserId, UserId);
-
-/// Ensures the same user is not connected multiple times.
-#[derive(Default, Debug)]
-struct ConnectionManager {
-    user_to_connection: HashMap<UserId, ConnectionId>,
-    id_to_handle: HashMap<ConnectionId, JoinHandle<()>>,
-}
-
-impl ConnectionManager {
-    fn debug(&self) {
-        tracing::info!("current active connections: {}", self.id_to_handle.len());
-        tracing::debug!("{:?}", self);
-    }
-
-    fn connect(&mut self, left: User, right: User) {
-        self.clear_user(&left);
-        self.clear_user(&right);
-
-        let con_id = (left.id.clone(), right.id.clone());
-        self.user_to_connection
-            .insert(left.id.clone(), con_id.clone());
-        self.user_to_connection
-            .insert(right.id.clone(), con_id.clone());
-
-        let handle = tokio::spawn(async move {
-            Connection::new(left, right).run().await;
-        });
-        self.id_to_handle.insert(con_id, handle);
-        self.debug();
-    }
-
-    fn clear_user(&mut self, user: &User) {
-        let Some(id) = self.user_to_connection.remove(&user.id) else {
-            return;
-        };
-
-        tracing::info!("User connecting twice: {}", &user.id);
-
-        if let Some(handle) = self.id_to_handle.remove(&id) {
-            handle.abort();
-        }
-        self.user_to_connection.remove(&id.0);
-        self.user_to_connection.remove(&id.1);
-    }
-}
-
 #[derive(Default, Clone)]
 struct State {
     // Users waiting to be matched with a peer.
     waiting_users: WaitingUsers,
-    connections: Arc<Mutex<ConnectionManager>>,
+    connections: ConnectionManager,
 }
 
 impl State {
@@ -140,7 +91,7 @@ impl State {
             loop {
                 let stat = {
                     let waiting = waits.0.lock().await.len();
-                    let connected = cons.lock().await.id_to_handle.len();
+                    let connected = cons.connected_users_qty().await;
                     (waiting, connected)
                 };
 
@@ -186,7 +137,7 @@ impl State {
                             match (left_pinged, right_pinged) {
                                 (true, true) => {
                                     tracing::error!("ping successful");
-                                    connections.lock().await.connect(left, right);
+                                    connections.connect(left, right).await;
                                 }
                                 (true, false) => {
                                     tracing::error!("failed to ping right");
