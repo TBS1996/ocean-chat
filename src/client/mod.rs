@@ -75,6 +75,7 @@ struct ChatState {
     messages: Signal<Vec<Message>>,
     input: Signal<String>,
     connected: Signal<bool>,
+    init: bool,
 }
 
 #[derive(Default)]
@@ -115,6 +116,14 @@ impl State {
             log_to_console("score not set!");
         };
         s
+    }
+
+    fn is_init(&self) -> bool {
+        self.inner.lock().unwrap().chat.init
+    }
+
+    fn set_init(&self, init: bool) {
+        self.inner.lock().unwrap().chat.init = init;
     }
 
     pub fn id(&self) -> Uuid {

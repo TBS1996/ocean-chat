@@ -25,29 +25,16 @@ pub fn Chat() -> Element {
         return Splash();
     };
 
-    use_effect({
-        let state = state.clone();
-        move || {
-            let state = state.clone();
-            spawn_local(async move {
-                if !state.has_socket() {
-                    let msg = Message {
-                        origin: Origin::Info,
-                        content: "searching for peer...".to_string(),
-                    };
-                    messages.write().insert(0, msg);
-                    let socket = connect_to_peer(scores, state.clone()).await.unwrap();
-                    state.set_socket(socket);
-                }
-            });
-        }
-    });
+    let is_init = state.is_init();
+    log_to_console(&is_init);
+    let mut is_init = use_signal(move || is_init);
 
     let state2 = state.clone();
 
     rsx! {
         main {
             Navbar { active_chat: true },
+            if is_init() {
             div {
                 form {
                     onsubmit: move |event| {
@@ -101,6 +88,35 @@ pub fn Chat() -> Element {
                             }
                         }
                     }
+                }
+            }
+        }
+            else {
+                button {
+                    class: "default",
+                    max_width: "300px",
+                    onclick: move |_| {
+                        is_init.toggle();
+                        state.set_init(true);
+                        use_effect({
+                            let state = state.clone();
+                            move || {
+                                let state = state.clone();
+                                spawn_local(async move {
+                                    if !state.has_socket() {
+                                        let msg = Message {
+                                            origin: Origin::Info,
+                                            content: "searching for peer...".to_string(),
+                                        };
+                                        messages.write().insert(0, msg);
+                                        let socket = connect_to_peer(scores, state.clone()).await.unwrap();
+                                        state.set_socket(socket);
+                                    }
+                                });
+                            }
+                        });
+                    },
+                    "Start chatting!"
                 }
             }
         }
