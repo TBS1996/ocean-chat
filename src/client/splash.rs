@@ -1,35 +1,81 @@
-#![allow(non_snake_case)]
-
 use crate::client;
-
 use client::Route;
 use dioxus::prelude::*;
+
+fn top_bar() -> Element {
+    rsx! {
+        div {
+            background_color: "#0a5f98",
+            width: "100%",
+            margin: "0",
+            padding: "20px 0",
+            display: "flex",
+            align_items: "center",
+            justify_content: "center",
+
+            div {
+                display: "flex",
+                align_items: "center",
+                justify_content: "center",
+
+                img {
+                    src: "logo.png",
+                    alt: "Oceanchat Logo",
+                    width: "100px",
+                    height: "100px",
+                    margin_right: "20px",
+                }
+
+                h1 { "OceanChat" }
+            }
+        }
+    }
+}
 
 #[component]
 pub fn Splash() -> Element {
     let navigator = use_navigator();
 
-    rsx! {
-        style { { include_str!("splash.css") } }
-        div {
-            class: "splash-container",
-            h1 { "Welcome to Oceanchat!" }
-            p { "Before you can start chatting, we need to know your personality scores." }
+    let buttons = rsx! {div {
+        class: "bottom-section",
             div {
                 class: "main-box",
                 onclick: move |_| {navigator.push(Route::Test{});},
-                h2 {"Take the test!"}
+                h2 { "Get started!" }
+            }
+    }};
 
-            }
-            p {
-                class: "small-text",
-                "Already know your big-5 scores? Enter them here!"
-            }
+    let text_part = rsx! {
             div {
-                class: "secondary-box",
-                onclick: move |_| {navigator.push(Route::Manual{});},
-                h2 {"Manual input"}
+                flex: "1",
+                width: "100%",
+                display: "flex",
+                align_items: "center",
+                padding: "10px",
+                flex_direction: "column",
+                justify_content: "right",
 
+                h2 { "Discover Your Personality" }
+                p { "Oceanchat is a unique livechatting experience, which pairs you up with the people most similar to yourself" }
+                p { "This is made possibly by the big five personality test. The only general personality test taken serious by researchers." }
+            }
+    };
+
+    rsx! {
+    style { { include_str!("splash.css") } }
+    div {
+        class: "landing-container",
+        { top_bar() }
+        div {
+            flex: "1",
+            width: "1000px",
+            display: "flex",
+            align_items: "top",
+            padding: "20px",
+            flex_direction: "row",
+
+            {text_part},
+            { buttons },
             }
         }
     }
