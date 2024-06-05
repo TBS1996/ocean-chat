@@ -3,6 +3,7 @@
 use common::Distributions;
 use common::ScoreTally;
 use common::Scores;
+use common::CONFIG;
 use std::io::Write;
 
 #[cfg(feature = "server")]
@@ -13,8 +14,17 @@ mod common;
 #[cfg(feature = "server")]
 #[tokio::main]
 async fn main() {
+    enforce_release();
     generate_files();
     server::run().await;
+}
+
+fn enforce_release() {
+    if cfg!(debug_assertions) && !CONFIG.local {
+        eprintln!("Server should be run in release mode while in production:");
+        eprintln!("`cargo run --features server --release`");
+        std::process::exit(1);
+    }
 }
 
 #[cfg(not(feature = "server"))]
