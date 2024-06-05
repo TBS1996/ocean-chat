@@ -1,18 +1,13 @@
 #![allow(non_snake_case)]
-#![allow(unused_imports)]
 
 use crate::common;
 use common::Scores;
 
 use dioxus::prelude::*;
 use futures::executor::block_on;
-use once_cell::sync::Lazy;
-use std::ops::Deref;
-use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 use wasm_bindgen::prelude::*;
-use web_sys::console;
 use web_sys::WebSocket;
 
 mod chat;
@@ -20,16 +15,52 @@ mod manual;
 mod personality;
 mod splash;
 mod test;
+mod utils;
 
 use chat::*;
 use manual::*;
 use personality::*;
 use splash::*;
 use test::*;
+use utils::*;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
     launch(App);
+}
+
+#[derive(Clone, Routable, Debug, PartialEq)]
+pub enum Route {
+    #[route("/")]
+    Home {},
+    #[route("/invalid")]
+    Invalid {},
+    #[route("/chat")]
+    Chat {},
+    #[route("/test")]
+    Test {},
+    #[route("/manual")]
+    Manual {},
+    #[route("/splash")]
+    Splash {},
+    #[route("/personality")]
+    Personality {},
+}
+
+fn App() -> Element {
+    use_context_provider(State::load);
+    rsx!(Router::<Route> {})
+}
+
+#[component]
+fn Home() -> Element {
+    let state = use_context::<State>();
+
+    if state.scores().is_some() {
+        return Chat();
+    } else {
+        return Splash();
+    }
 }
 
 #[derive(Clone, Default)]
@@ -151,152 +182,4 @@ impl State {
         lock.peer_scores = None;
         lock.socket = None;
     }
-}
-
-#[derive(Clone, Routable, Debug, PartialEq)]
-pub enum Route {
-    #[route("/")]
-    Home {},
-    #[route("/invalid")]
-    Invalid {},
-    #[route("/chat")]
-    Chat {},
-    #[route("/test")]
-    Test {},
-    #[route("/manual")]
-    Manual {},
-    #[route("/splash")]
-    Splash {},
-    #[route("/personality")]
-    Personality {},
-}
-
-fn App() -> Element {
-    use_context_provider(State::load);
-    rsx!(Router::<Route> {})
-}
-
-// Call this function to log a message
-pub fn log_to_console(message: impl std::fmt::Debug) {
-    let message = format!("{:?}", message);
-    console::log_1(&JsValue::from_str(&message));
-}
-
-#[component]
-pub fn Navbar(active_chat: bool) -> Element {
-    rsx! {
-            nav {
-                class: "navbar",
-                ul {
-                    li {
-                        Link {
-                            to: Route::Chat {},
-                            "Chat",
-                            class: if active_chat { "active" } else { "" }
-                        }
-                    }
-
-                    li {
-                        Link { to: Route::Personality {}, "My personality"
-
-
-    ,
-
-                        class: if !active_chat { "active" } else { "" }
-
-                        }
-                    }
-                }
-            }
-        }
-}
-
-fn default_scores() -> Scores {
-    static COOKIE: Lazy<Option<Scores>> = Lazy::new(|| {
-        let scores = block_on(fetch_scores_storage());
-        scores
-    });
-
-    COOKIE.unwrap_or_else(Scores::mid)
-}
-
-async fn fetch_id_storage() -> Option<Uuid> {
-    let eval = eval(
-        r#"
-        let id = localStorage.getItem('user_id');
-        if (id) {
-            dioxus.send(id);
-        } else {
-            dioxus.send(null);
-        }
-        "#,
-    )
-    .recv()
-    .await;
-
-    log_to_console(&eval);
-
-    let mut id = eval.ok()?.to_string();
-    id.remove(0);
-    id.pop();
-    let uuid = Uuid::from_str(&id);
-    log_to_console(&uuid);
-    uuid.ok()
-}
-
-async fn fetch_scores_storage() -> Option<Scores> {
-    let mut eval = eval(
-        r#"
-        let scores = localStorage.getItem('scores');
-        if (scores) {
-            dioxus.send(scores);
-        } else {
-            dioxus.send(null);
-        }
-        "#,
-    );
-
-    let scores = eval.recv().await.unwrap().to_string();
-    log_to_console(&scores);
-    Scores::from_str(&scores).ok()
-}
-
-#[component]
-fn Home() -> Element {
-    let state = use_context::<State>();
-
-    if state.scores().is_some() {
-        return Chat();
-    } else {
-        return Splash();
-    }
-}
-
-#[component]
-pub fn Invalid() -> Element {
-    rsx! {
-        div {
-            p {
-                "You have to either take the personality test, or manually submit a valid set of trait scores!"
-            }
-            div {
-                Link {
-                    to: Route::Home {},
-                    "Back to main page"
-                }
-            }
-        }
-    }
-}
-
-pub fn save_id(id: Uuid) {
-    let script = format!("localStorage.setItem('user_id', '{}');", id);
-    eval(&script);
-    log_to_console("storing user_id in local storage");
-}
-
-pub fn save_scores(scores: Scores) {
-    let script = format!("localStorage.setItem('scores', '{}');", scores);
-    eval(&script);
-    log_to_console("storing scores in local storage");
 }

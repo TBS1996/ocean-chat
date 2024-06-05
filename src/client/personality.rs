@@ -6,7 +6,6 @@ use crate::common;
 use client::Navbar;
 use client::Route;
 use client::State;
-use common::Scores;
 use common::Trait;
 use dioxus::prelude::*;
 
