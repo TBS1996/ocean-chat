@@ -10,6 +10,7 @@ pub fn top_bar() -> Element {
             width: "100%",
             margin: "0",
             padding: "20px 0",
+            height: "100px",
             display: "flex",
             align_items: "center",
             justify_content: "center",
@@ -22,8 +23,8 @@ pub fn top_bar() -> Element {
                 img {
                     src: "logo.png",
                     alt: "Oceanchat Logo",
-                    width: "100px",
-                    height: "100px",
+                    width: "80px",
+                    height: "80px",
                     margin_right: "20px",
                 }
 

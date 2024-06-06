@@ -52,8 +52,14 @@ pub fn log_to_console(message: impl std::fmt::Debug) {
 pub fn Navbar(active_chat: bool) -> Element {
     rsx! {
         nav {
-            class: "navbar",
             ul {
+               img {
+                   src: "logo.png",
+                   alt: "Oceanchat Logo",
+                   width: "80px",
+                   height: "80px",
+                   margin_right: "20px",
+               }
                 li {
                     Link {
                         to: Route::Chat {},
@@ -61,7 +67,6 @@ pub fn Navbar(active_chat: bool) -> Element {
                         class: if active_chat { "active" } else { "" }
                     }
                 }
-
                 li {
                     Link { to: Route::Personality {},
                     "My personality",
@@ -122,6 +127,26 @@ pub async fn fetch_scores_storage() -> Option<Scores> {
     let scores = eval.recv().await.unwrap().to_string();
     log_to_console(&scores);
     Scores::from_str(&scores).ok()
+}
+
+pub fn test_msg() -> Element {
+    rsx! {
+        div {
+            display: "flex",
+            flex_direction: "row",
+            font_size: "0.8em",
+            align_items: "center",
+            color: "#666",
+            div {
+                "Unsure? Take the "
+                Link {
+                    to: Route::Test {},
+                    "test"
+                }
+                "."
+            }
+        }
+    }
 }
 
 pub fn manual_msg() -> Element {
