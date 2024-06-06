@@ -137,7 +137,7 @@ impl State {
     pub fn insert_message(&self, message: Message) {
         log_to_console("inserting msg");
         log_to_console(&message);
-        self.inner.lock().unwrap().chat.messages.insert(0, message);
+        self.inner.lock().unwrap().chat.messages.push(message);
     }
 
     pub fn input(&self) -> Signal<String> {

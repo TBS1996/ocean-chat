@@ -2,6 +2,7 @@
 use crate::client;
 use crate::common;
 
+use client::big_five_bars;
 use client::log_to_console;
 use client::Navbar;
 use client::Splash;
@@ -86,7 +87,7 @@ pub fn Chat() -> Element {
                                     let msg = Message {
                                         origin: Origin::Info,
                                         content: "searching for peer...".to_string()};
-                                    messages.write().insert(0, msg);
+                                    messages.write().push(msg);
                                     input.set(String::new());
                                 },
                                 "New peer"
@@ -95,9 +96,12 @@ pub fn Chat() -> Element {
                     }
                 }
                 div {
+                    width: "500px",
                     match *peer_score.read() {
-                        Some(_score) => {"nice"},
-                        None => {"damn"},
+                        Some(score) => {
+                             big_five_bars(score, true)
+                        },
+                        None => { rsx!{} },
                     }
                 }
             }
@@ -107,7 +111,6 @@ pub fn Chat() -> Element {
                     display: "flex",
                     margin_left: "100px",
                     margin_top: "100px",
-               //     width: "750px",
 
 
                 button {
@@ -127,7 +130,7 @@ pub fn Chat() -> Element {
                                             origin: Origin::Info,
                                             content: "searching for peer...".to_string(),
                                         };
-                                        messages.write().insert(0, msg);
+                                        messages.write().push(msg);
                                         let socket = connect_to_peer(scores, state.clone(), peer_score.clone()).await.unwrap();
                                         state.set_socket(socket);
                                     }
@@ -317,11 +320,14 @@ struct MessageListProps {
     messages: Vec<Message>,
 }
 
-fn MessageList(msgs: MessageListProps) -> Element {
+fn MessageList(mut msgs: MessageListProps) -> Element {
+    msgs.messages.reverse();
     rsx!(
         div {
             class: "message-list",
-            for msg in msgs.messages {
+            display: "flex",
+            flex_direction: "column-reverse",
+            for msg in msgs.messages{
                 Message {class: msg.origin.class(), sender: msg.origin.str(), content: msg.content}
             }
         }
