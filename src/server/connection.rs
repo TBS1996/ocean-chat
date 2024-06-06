@@ -56,7 +56,7 @@ impl Inner {
 
     // There should be exactly twice as many users as connections.
     fn invariant(&self) {
-        if self.user_to_connection.len() * 2 != self.id_to_handle.len() {
+        if self.user_to_connection.len() != self.id_to_handle.len() * 2 {
             tracing::error!(
                 "INVALID STATE: user_to_connection: {}, id_to_handle: {}",
                 self.user_to_connection.len(),

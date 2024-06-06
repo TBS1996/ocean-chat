@@ -1,8 +1,9 @@
+use super::*;
+
 use crate::client;
 use client::Route;
-use dioxus::prelude::*;
 
-fn top_bar() -> Element {
+pub fn top_bar() -> Element {
     rsx! {
         div {
             background_color: "#0a5f98",
@@ -26,7 +27,12 @@ fn top_bar() -> Element {
                     margin_right: "20px",
                 }
 
-                h1 { "OceanChat" }
+                div {
+                    font_size: "2.5em",
+                    color: "white",
+                    margin: "0",
+                    "OceanChat"
+                }
             }
         }
     }
@@ -40,7 +46,7 @@ pub fn Splash() -> Element {
         class: "bottom-section",
             div {
                 class: "main-box",
-                onclick: move |_| {navigator.push(Route::Test{});},
+                onclick: move |_| {navigator.push(Route::Pretest{});},
                 h2 { "Get started!" }
             }
     }};

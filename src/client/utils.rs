@@ -123,3 +123,22 @@ pub async fn fetch_scores_storage() -> Option<Scores> {
     log_to_console(&scores);
     Scores::from_str(&scores).ok()
 }
+
+pub fn manual_msg() -> Element {
+    rsx! {
+        div {
+            display: "flex",
+            flex_direction: "row",
+            font_size: "0.8em",
+            align_items: "center",
+            color: "#666",
+            div {
+                "Already know your score? Enter them "
+                Link {
+                    to: Route::Manual {},
+                    " manually."
+                }
+            }
+        }
+    }
+}

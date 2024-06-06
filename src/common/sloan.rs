@@ -1,5 +1,9 @@
 use super::*;
 
+use std::fmt;
+use std::fmt::Display;
+use std::fmt::Formatter;
+
 #[derive(Debug)]
 pub enum Sloan {
     Rcoai,
@@ -36,9 +40,6 @@ pub enum Sloan {
     Scuei,
 }
 
-use std::fmt;
-use std::fmt::Display;
-use std::fmt::Formatter;
 impl Display for Sloan {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)

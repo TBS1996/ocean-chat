@@ -46,6 +46,12 @@ h1, h2, h3, h4, h5, h6 {
     margin: 0;
 }
 
+
+p {
+    font-size: 1.2em;
+    color: #666;
+}
+
 label {
     margin-right: 10px;
 }
@@ -113,6 +119,11 @@ nav a.active {
 
 .confirm {
     background-color: lightgreen;
+    transition: background-color 0.3s ease;
+}
+
+.confirm: hover {
+    background-color: #4935c4;
 }
 
 .danger {
@@ -195,4 +206,62 @@ nav a.active {
     gap: 5px;
 }
 
+
+
+
+.main-box{
+    width: 300px;
+    height: 150px;
+    padding: 15px;
+    margin: 10px 0;
+    color: #fff;
+    background-color: #563df5;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.3s ease;
+    line-height: 100px;
+}
+
+.main-box:hover{
+    background-color: #4935c4;
+}
+
+
+
+.mybutton{
+    width: 300px;
+    color: #fff;
+    background-color: #563df5;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.3s ease;
+}
+
+.mybutton:hover{
+    background-color: #4935c4;
+}
+
+
+.bar-container {
+    display: flex;
+    justify-content: left; 
+    background-color: #f1f1f1;
+    border-radius: 25px;
+    overflow: hidden;
+    height: 30px;
+    width: 100%; 
+    margin: 20px 0; 
+}
+
+.bar {
+    display: flex;
+    align-items: left;
+    justify-content: center; /* Center text inside the bar */
+    height: 100%;
+    color: white;
+    border-radius: 25px 0 0 25px; /* Ensure the left side is rounded */
+    transition: width 0.5s;
+}
 
