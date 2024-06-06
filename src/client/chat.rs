@@ -28,15 +28,20 @@ pub fn Chat() -> Element {
     let is_init = state.is_init();
     log_to_console(&is_init);
     let mut is_init = use_signal(move || is_init);
+    let mut peer_score = use_signal(|| None);
 
     let state2 = state.clone();
 
     rsx! {
-        main {
-            Navbar { active_chat: true },
-            if is_init() {
+        Navbar { active_chat: true },
+        if is_init() {
             div {
+                display: "flex",
+                flex_direction: "row",
                 form {
+                    display: "flex",
+                    margin_left: "20px",
+                    width: "700px",
                     onsubmit: move |event| {
                         let state = state2.clone();
                         let msg = event.data().values().get("msg").unwrap().as_value();
@@ -73,7 +78,7 @@ pub fn Chat() -> Element {
                                     messages.write().clear();
                                     state.clear_peer();
                                     spawn_local(async move {
-                                        let socket = connect_to_peer(scores, thestate.clone())
+                                        let socket = connect_to_peer(scores, thestate.clone(), peer_score.clone())
                                             .await
                                             .unwrap();
                                         thestate.set_socket(socket);
@@ -89,12 +94,26 @@ pub fn Chat() -> Element {
                         }
                     }
                 }
+                div {
+                    match *peer_score.read() {
+                        Some(_score) => {"nice"},
+                        None => {"damn"},
+                    }
+                }
             }
         }
             else {
+                div {
+                    display: "flex",
+                    margin_left: "100px",
+                    margin_top: "100px",
+               //     width: "750px",
+
+
                 button {
-                    class: "default",
-                    max_width: "300px",
+                    class: "mybutton",
+                    width: "200px",
+                    height: "200px",
                     onclick: move |_| {
                         is_init.toggle();
                         state.set_init(true);
@@ -109,7 +128,7 @@ pub fn Chat() -> Element {
                                             content: "searching for peer...".to_string(),
                                         };
                                         messages.write().insert(0, msg);
-                                        let socket = connect_to_peer(scores, state.clone()).await.unwrap();
+                                        let socket = connect_to_peer(scores, state.clone(), peer_score.clone()).await.unwrap();
                                         state.set_socket(socket);
                                     }
                                 });
@@ -118,12 +137,29 @@ pub fn Chat() -> Element {
                     },
                     "Start chatting!"
                 }
+
+
+
+
+
+
+
+
+                }
+
+
+
+
+
             }
-        }
     }
 }
 
-async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, String> {
+async fn connect_to_peer(
+    scores: Scores,
+    state: State,
+    mut peer_score_signal: Signal<Option<Scores>>,
+) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
     let url = format!(
         "{}/pair/{}/{}",
@@ -171,6 +207,7 @@ async fn connect_to_peer(scores: Scores, state: State) -> Result<WebSocket, Stri
                     return;
                 }
                 SocketMessage::PeerScores(peer_scores) => {
+                    *peer_score_signal.write() = Some(peer_scores);
                     state.set_peer_scores(peer_scores);
                     let diff = scores.percentage_similarity(peer_scores);
                     let msg = format!(
