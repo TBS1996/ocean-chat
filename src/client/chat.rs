@@ -29,7 +29,7 @@ pub fn Chat() -> Element {
     let is_init = state.is_init();
     log_to_console(&is_init);
     let mut is_init = use_signal(move || is_init);
-    let mut peer_score = use_signal(|| None);
+    let peer_score = use_signal(|| None);
 
     let state2 = state.clone();
 
