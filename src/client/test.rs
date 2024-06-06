@@ -30,7 +30,8 @@ pub fn Test() -> Element {
     let state = use_context::<State>();
     let mut curr_question = use_signal(|| QUESTIONS.lock().unwrap().last().copied().unwrap());
     let navigator = use_navigator();
-    let mut percentage_done = use_signal(|| 0.);
+    let mut percentage_done =
+        use_signal(|| ((50 - QUESTIONS.lock().unwrap().len()) as f32 / 50.) * 100.);
 
     let show_navbar = state.scores().is_some();
 
