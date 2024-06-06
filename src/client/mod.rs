@@ -11,6 +11,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::WebSocket;
 
 mod chat;
+mod getstarted;
 mod manual;
 mod personality;
 mod splash;
@@ -18,6 +19,7 @@ mod test;
 mod utils;
 
 use chat::*;
+use getstarted::*;
 use manual::*;
 use personality::*;
 use splash::*;
@@ -45,6 +47,8 @@ pub enum Route {
     Splash {},
     #[route("/personality")]
     Personality {},
+    #[route("/pretest")]
+    Pretest {},
 }
 
 fn App() -> Element {

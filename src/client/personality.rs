@@ -59,15 +59,21 @@ pub fn Personality() -> Element {
 
 #[component]
 fn PercentileBar(tr: Trait, score: u32) -> Element {
-    let bar_style = format!("width: {}%; background-color: {}", score, tr.color());
-
     rsx! {
         div { class: "bar-row",
             div {class: "label", "{tr}"},
-            div { class: "bar-container",
-                div { class: "bar", style: "{bar_style}",
-                    "{score}%"
-                }
+            { PercentileBarRaw(tr.color(), score) }
+        }
+    }
+}
+
+pub fn PercentileBarRaw(color: &str, score: u32) -> Element {
+    let bar_style = format!("width: {}%; background-color: {}", score, color);
+
+    rsx! {
+        div { class: "bar-container",
+            div { class: "bar", style: "{bar_style}",
+                "{score}%"
             }
         }
     }
