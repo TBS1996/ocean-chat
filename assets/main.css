@@ -252,17 +252,17 @@ nav a.active {
     border-radius: 25px;
     overflow: hidden;
     height: 30px;
-    width: 100%; 
+    width: 75%; 
     margin: 20px 0; 
 }
 
 .bar {
     display: flex;
-    align-items: left;
-    justify-content: center; /* Center text inside the bar */
+    justify-content: center;
     height: 100%;
-    color: white;
-    border-radius: 25px 0 0 25px; /* Ensure the left side is rounded */
+    color: black;
+    border-radius: 25px 0 0 25px; 
     transition: width 0.5s;
+    line-height: 30px;
 }
 
