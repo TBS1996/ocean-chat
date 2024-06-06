@@ -37,6 +37,16 @@ pub struct Scores {
 }
 
 impl Scores {
+    pub fn trait_val(&self, tr: Trait) -> f32 {
+        match tr {
+            Trait::Open => self.o,
+            Trait::Con => self.c,
+            Trait::Extro => self.e,
+            Trait::Agree => self.a,
+            Trait::Neurotic => self.n,
+        }
+    }
+
     /// Calculates euclidean distance between two scores.
     #[allow(dead_code)]
     pub fn distance(&self, other: &Self) -> f32 {
@@ -137,11 +147,36 @@ impl TryFrom<&FormData> for Scores {
     fn try_from(form: &FormData) -> Result<Self, Self::Error> {
         let data = form.values();
 
-        let o: f32 = data.get("o").unwrap().as_value().parse().map_err(|_| ())?;
-        let c: f32 = data.get("c").unwrap().as_value().parse().map_err(|_| ())?;
-        let e: f32 = data.get("e").unwrap().as_value().parse().map_err(|_| ())?;
-        let a: f32 = data.get("a").unwrap().as_value().parse().map_err(|_| ())?;
-        let n: f32 = data.get("n").unwrap().as_value().parse().map_err(|_| ())?;
+        let o: f32 = data
+            .get(&Trait::Open.to_string())
+            .unwrap()
+            .as_value()
+            .parse()
+            .map_err(|_| ())?;
+        let c: f32 = data
+            .get(&Trait::Con.to_string())
+            .unwrap()
+            .as_value()
+            .parse()
+            .map_err(|_| ())?;
+        let e: f32 = data
+            .get(&Trait::Con.to_string())
+            .unwrap()
+            .as_value()
+            .parse()
+            .map_err(|_| ())?;
+        let a: f32 = data
+            .get(&Trait::Extro.to_string())
+            .unwrap()
+            .as_value()
+            .parse()
+            .map_err(|_| ())?;
+        let n: f32 = data
+            .get(&Trait::Neurotic.to_string())
+            .unwrap()
+            .as_value()
+            .parse()
+            .map_err(|_| ())?;
 
         if [o, c, e, a, n]
             .iter()

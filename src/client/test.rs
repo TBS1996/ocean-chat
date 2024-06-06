@@ -36,7 +36,6 @@ pub fn Test() -> Element {
     let show_navbar = state.scores().is_some();
 
     rsx! {
-                style { { include_str!("manual.css") } },
                 if show_navbar { Navbar{active_chat: false} } else {  { top_bar() } }
                 div {
                     display: "flex",
