@@ -1,24 +1,11 @@
-.container {
-    width: 50%;
-    margin: auto;
-    padding: 20px;
-    font-family: Arial, sans-serif;
-}
-
 h1 {
     text-align: center;
     margin-bottom: 40px;
 }
 
-.bar-row {
-    display: flex; 
-    align-items: center; 
-    width: 100%;
-    margin: 10px 0;
-}
 
 .label {
-    width: 150px; /* Fixed width for the label */
-    padding-right: 10px; /* Space between the label and the bar */
+    width: 150px; 
+    padding-right: 10px; 
 }
 
