@@ -168,3 +168,59 @@ pub fn manual_msg() -> Element {
         }
     }
 }
+
+pub fn score_cmp(mine: Scores, peer: Scores) -> Element {
+    let o_diff = (mine.o - peer.o) as i32;
+    let c_diff = (mine.c - peer.c) as i32;
+    let e_diff = (mine.e - peer.e) as i32;
+    let a_diff = (mine.a - peer.a) as i32;
+    let n_diff = (mine.n - peer.n) as i32;
+
+    let ostr = format!(
+        "{}% {} openness. {}->{}",
+        o_diff.abs(),
+        if o_diff < 0 { "higher" } else { "lower" },
+        mine.o as u32,
+        peer.o as u32
+    );
+    let cstr = format!(
+        "{}% {} conscientiousness. {}->{}",
+        c_diff.abs(),
+        if c_diff < 0 { "higher" } else { "lower" },
+        mine.c,
+        peer.c
+    );
+    let estr = format!(
+        "{}% {} extroversion. {}->{}",
+        e_diff.abs(),
+        if e_diff < 0 { "higher" } else { "lower" },
+        mine.e,
+        peer.e
+    );
+    let astr = format!(
+        "{}% {} agreeableness. {}->{}",
+        a_diff.abs(),
+        if a_diff < 0 { "higher" } else { "lower" },
+        mine.a,
+        peer.a
+    );
+    let nstr = format!(
+        "{}% {} neuroticism. {}->{}",
+        n_diff.abs(),
+        if n_diff < 0 { "higher" } else { "lower" },
+        mine.n,
+        peer.n
+    );
+
+    let font_size = "1em";
+
+    rsx! {
+        div {
+            p {font_size: "{font_size}", "{ostr}"}
+            p {font_size: "{font_size}", "{cstr}"}
+            p {font_size: "{font_size}", "{estr}"}
+            p {font_size: "{font_size}", "{astr}"}
+            p {font_size: "{font_size}", "{nstr}"}
+        }
+    }
+}
