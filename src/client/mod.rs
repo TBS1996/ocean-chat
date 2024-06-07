@@ -156,6 +156,10 @@ impl State {
         self.inner.lock().unwrap().scores = Some(scores);
     }
 
+    pub fn peer_scores(&self) -> Option<Scores> {
+        self.inner.lock().unwrap().chat.peer_scores
+    }
+
     pub fn set_peer_scores(&self, scores: Scores) {
         self.inner.lock().unwrap().chat.peer_scores = Some(scores);
     }

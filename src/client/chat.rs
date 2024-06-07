@@ -4,6 +4,7 @@ use crate::common;
 
 use client::big_five_bars;
 use client::log_to_console;
+use client::score_cmp;
 use client::Navbar;
 use client::Splash;
 use client::State;
@@ -29,7 +30,7 @@ pub fn Chat() -> Element {
     let is_init = state.is_init();
     log_to_console(&is_init);
     let mut is_init = use_signal(move || is_init);
-    let peer_score = use_signal(|| None);
+    let peer_score = use_signal(|| state.peer_scores());
 
     let state2 = state.clone();
 
@@ -97,11 +98,16 @@ pub fn Chat() -> Element {
                 }
                 div {
                     width: "500px",
-                    match *peer_score.read() {
+                    match peer_score() {
                         Some(score) => {
-                             big_five_bars(score, true)
+                            rsx! {
+                                div {
+                                    h3 { "Your peer's personality:" }
+                                    { score_cmp(scores, score) }
+                                }
+                            }
                         },
-                        None => { rsx!{} },
+                        None => { rsx!{""} },
                     }
                 }
             }
@@ -161,7 +167,7 @@ pub fn Chat() -> Element {
 async fn connect_to_peer(
     scores: Scores,
     state: State,
-    mut peer_score_signal: Signal<Option<Scores>>,
+    peer_score_signal: Signal<Option<Scores>>,
 ) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
     let url = format!(
@@ -210,7 +216,7 @@ async fn connect_to_peer(
                     return;
                 }
                 SocketMessage::PeerScores(peer_scores) => {
-                    *peer_score_signal.write() = Some(peer_scores);
+                    *peer_score_signal.write_unchecked() = Some(peer_scores);
                     state.set_peer_scores(peer_scores);
                     let diff = scores.percentage_similarity(peer_scores);
                     let msg = format!(
