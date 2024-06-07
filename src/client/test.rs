@@ -35,7 +35,7 @@ pub fn Test() -> Element {
     let mut curr_question = use_signal(|| QUESTIONS.lock().unwrap().last().copied().unwrap());
     let navigator = use_navigator();
     let mut percentage_done =
-        use_signal(|| ((50 - QUESTIONS.lock().unwrap().len()) as f32 / 50.) * 100.);
+        use_signal(|| (((50 - QUESTIONS.lock().unwrap().len()) as f32 / 50.) * 100.) as u32);
 
     let show_navbar = state.scores().is_some();
 
@@ -65,7 +65,7 @@ pub fn Test() -> Element {
                                     }
 
                                     let questions_left = QUESTIONS.lock().unwrap().len();
-                                    *percentage_done.write() = ((50 - questions_left) as f32 / 50.) * 100.;
+                                    *percentage_done.write() = (((50 - questions_left) as f32 / 50.) * 100.) as u32;
 
                                     let q = { QUESTIONS.lock().unwrap().last().copied() };
 
