@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::common;
+
 use common::Scores;
 
 use crate::client::Route;

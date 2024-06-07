@@ -14,16 +14,20 @@ use common::DISTS;
 use dioxus::prelude::*;
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
-use strum::IntoEnumIterator;
 
 use super::*;
 
 /// using statics everywhere because im too dumb to understand dioxus properly
-static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(Question::iter().collect())));
+static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> = Lazy::new(|| Arc::new(Mutex::new(vec![])));
 
 static TALLY: Lazy<Arc<Mutex<ScoreTally>>> =
     Lazy::new(|| Arc::new(Mutex::new(ScoreTally::default())));
+
+pub fn reset_test() {
+    let questions: Vec<Question> = Question::all_questions();
+    *QUESTIONS.lock().unwrap() = questions;
+    *TALLY.lock().unwrap() = ScoreTally::default();
+}
 
 #[component]
 pub fn Test() -> Element {
@@ -31,7 +35,7 @@ pub fn Test() -> Element {
     let mut curr_question = use_signal(|| QUESTIONS.lock().unwrap().last().copied().unwrap());
     let navigator = use_navigator();
     let mut percentage_done =
-        use_signal(|| ((50 - QUESTIONS.lock().unwrap().len()) as f32 / 50.) * 100.);
+        use_signal(|| (((50 - QUESTIONS.lock().unwrap().len()) as f32 / 50.) * 100.) as u32);
 
     let show_navbar = state.scores().is_some();
 
@@ -48,11 +52,7 @@ pub fn Test() -> Element {
                         display: "flex",
                         justify_content: "center",
                         font_size: "1.5em",
-                        padding_bottom: "30px",
-
-                        "{curr_question}"
-                    }
-
+                        padding_bottom: "30px", "{curr_question}" }
                     div { class: "buttons",
                         for (answer, state) in Answer::ALL.iter().zip(std::iter::repeat(state.clone())) {
                             button {
@@ -65,20 +65,20 @@ pub fn Test() -> Element {
                                     }
 
                                     let questions_left = QUESTIONS.lock().unwrap().len();
-                                    *percentage_done.write() = ((50 - questions_left) as f32 / 50.) * 100.;
+                                    *percentage_done.write() = (((50 - questions_left) as f32 / 50.) * 100.) as u32;
 
-                                    match QUESTIONS.lock().unwrap().last().copied() {
+                                    let q = { QUESTIONS.lock().unwrap().last().copied() };
+
+                                    match q {
                                         Some(next_question) => {
                                             *curr_question.write() = next_question;
                                         },
                                         None => {
-                                            let tally = {
-                                                *TALLY.lock().unwrap()
-                                            };
-
+                                            let tally = {*TALLY.lock().unwrap()};
                                             let scores = DISTS.convert(tally);
                                             save_scores(scores);
                                             state.set_scores(scores);
+                                            reset_test();
                                             navigator.replace(Route::Personality{});
                                         },
                                     }

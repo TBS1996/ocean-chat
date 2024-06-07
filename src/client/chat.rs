@@ -2,7 +2,6 @@
 use crate::client;
 use crate::common;
 
-use client::big_five_bars;
 use client::log_to_console;
 use client::score_cmp;
 use client::Navbar;
