@@ -155,6 +155,16 @@ pub enum Question {
 }
 
 impl Question {
+    pub fn all_questions() -> Vec<Self> {
+        use Question::*;
+
+        vec![
+            O1, C1, E1, A1, N1, O2, C2, E2, A2, N2, O3, C3, E3, A3, N3, O4, C4, E4, A4, N4, O5, C5,
+            E5, A5, N5, O6, C6, E6, A6, N6, O7, C7, E7, A7, N7, O8, C8, E8, A8, N8, O9, C9, E9, A9,
+            N9, O10, C10, E10, A10, N10,
+        ]
+    }
+
     pub fn text(&self) -> &'static str {
         match self {
             Question::E1 => "I am the life of the party.",
