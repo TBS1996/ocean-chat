@@ -99,10 +99,14 @@ pub fn Chat() -> Element {
                     width: "500px",
                     match peer_score() {
                         Some(score) => {
+                            let more_similar = format!("{:.1}", scores.percentage_similarity(score));
                             rsx! {
                                 div {
-                                    h3 { "Your peer's personality:" }
+                                    h4 { "Your peer's personality:" }
                                     { score_cmp(scores, score) }
+                                    p {
+                                        "{more_similar}% of people are more similar to you than your peer."
+                                    }
                                 }
                             }
                         },
@@ -217,13 +221,7 @@ async fn connect_to_peer(
                 SocketMessage::PeerScores(peer_scores) => {
                     *peer_score_signal.write_unchecked() = Some(peer_scores);
                     state.set_peer_scores(peer_scores);
-                    let diff = scores.percentage_similarity(peer_scores);
-                    let msg = format!(
-                        "{:.1}% of people are more similar to you than your peer",
-                        diff
-                    );
-
-                    Message::new(Origin::Info, msg)
+                    return;
                 }
             };
 

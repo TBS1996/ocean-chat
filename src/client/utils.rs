@@ -212,13 +212,15 @@ pub fn score_cmp(mine: Scores, peer: Scores) -> Element {
         peer.n
     );
 
+    let font_size = "1em";
+
     rsx! {
         div {
-            p {"{ostr}"}
-            p {"{cstr}"}
-            p {"{estr}"}
-            p {"{astr}"}
-            p {"{nstr}"}
+            p {font_size: "{font_size}", "{ostr}"}
+            p {font_size: "{font_size}", "{cstr}"}
+            p {font_size: "{font_size}", "{estr}"}
+            p {font_size: "{font_size}", "{astr}"}
+            p {font_size: "{font_size}", "{nstr}"}
         }
     }
 }
