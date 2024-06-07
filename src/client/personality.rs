@@ -34,7 +34,7 @@ pub fn Personality() -> Element {
                 font_family: "Arial, sans-serif",
 
                 h1 { "Your big five scores!" }
-                {  big_five_bars(scores) }
+                {  big_five_bars(scores, false) }
                 div {
                     display: "flex",
                     flex_direction: "row",
@@ -64,7 +64,7 @@ pub fn Personality() -> Element {
 }
 
 #[component]
-fn PercentileBar(tr: Trait, score: u32) -> Element {
+fn PercentileBar(tr: Trait, score: u32, label_top: bool) -> Element {
     rsx! {
         div {
             display: "flex",
@@ -72,6 +72,7 @@ fn PercentileBar(tr: Trait, score: u32) -> Element {
             align_items: "center",
             width: "100%",
             margin: "10px 0",
+            flex_direction: if label_top {"column"} else {"row"},
 
             div {class: "label", "{tr}"},
             { PercentileBarRaw(tr.color(), score) }
@@ -108,17 +109,17 @@ pub fn PercentileBarRaw(color: &str, score: u32) -> Element {
     }
 }
 
-pub fn big_five_bars(scores: Scores) -> Element {
+pub fn big_five_bars(scores: Scores, label_top: bool) -> Element {
     rsx! {
         div {
             display: "flex",
             flex_direction: "column",
 
-            PercentileBar { tr: Trait::Open, score: scores.o as u32 }
-            PercentileBar { tr: Trait::Con, score: scores.c as u32 }
-            PercentileBar { tr: Trait::Extro, score: scores.e as u32 }
-            PercentileBar { tr: Trait::Agree, score: scores.a as u32 }
-            PercentileBar { tr: Trait::Neurotic, score: scores.n as u32 }
+            PercentileBar { tr: Trait::Open, score: scores.o as u32 , label_top}
+            PercentileBar { tr: Trait::Con, score: scores.c as u32 , label_top}
+            PercentileBar { tr: Trait::Extro, score: scores.e as u32 , label_top}
+            PercentileBar { tr: Trait::Agree, score: scores.a as u32 , label_top}
+            PercentileBar { tr: Trait::Neurotic, score: scores.n as u32 , label_top}
         }
     }
 }
