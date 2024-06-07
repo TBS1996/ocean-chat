@@ -1,5 +1,3 @@
-use web_sys::console::warn_0;
-
 use super::*;
 
 use std::fmt;
