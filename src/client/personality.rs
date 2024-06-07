@@ -3,6 +3,7 @@
 use crate::client;
 use crate::common;
 
+use client::markdown_converter;
 use client::Navbar;
 use client::Route;
 use client::State;
@@ -17,9 +18,11 @@ pub fn Personality() -> Element {
     let state = use_context::<State>();
     let scores = state.scores().unwrap();
     let sloan = Sloan::from_scores(scores);
+    let summary = sloan.summary();
+    let summary = markdown_converter(summary);
     let sloan = format!("{:?}", sloan).to_lowercase();
     let weirdness = scores.weirdness_percent() as u32;
-    let link = format!("https://similarminds.com/global5/{}.html", sloan);
+    //let link = format!("https://similarminds.com/global5/{}.html", sloan);
 
     rsx! {
         div {
@@ -51,12 +54,14 @@ pub fn Personality() -> Element {
                         "Take the test"
                     }
                 }
-                h2 {"Your type is ", a {
-                    href: link,
-                    target: "_blank",
-                    "{sloan}"
-                } },
+                h2 {"Your type is {sloan}" },
                 h2 {"You are weirder than {weirdness}% of the population!"},
+
+                div {
+                    padding_top: "50px",
+                    { summary }
+
+                }
             }
         }
     }

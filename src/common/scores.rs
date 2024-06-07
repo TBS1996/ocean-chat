@@ -160,13 +160,13 @@ impl TryFrom<&FormData> for Scores {
             .parse()
             .map_err(|_| ())?;
         let e: f32 = data
-            .get(&Trait::Con.to_string())
+            .get(&Trait::Extro.to_string())
             .unwrap()
             .as_value()
             .parse()
             .map_err(|_| ())?;
         let a: f32 = data
-            .get(&Trait::Extro.to_string())
+            .get(&Trait::Agree.to_string())
             .unwrap()
             .as_value()
             .parse()

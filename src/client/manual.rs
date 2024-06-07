@@ -57,7 +57,7 @@ pub fn Manual() -> Element {
                         Ok(scores) => {
                             state.set_scores(scores);
                             save_scores(scores);
-                            navigator.replace(Route::Chat{});
+                            navigator.replace(Route::Personality{});
                         }
                         Err(_) => {
                             navigator.replace(Route::Invalid {});
