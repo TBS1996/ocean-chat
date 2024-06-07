@@ -224,3 +224,29 @@ pub fn score_cmp(mine: Scores, peer: Scores) -> Element {
         }
     }
 }
+
+pub fn markdown_converter(s: &str) -> Element {
+    let lines: Vec<&str> = s.split("\n").collect();
+
+    rsx! {
+        for line in lines {
+            if line.starts_with("# ") {
+                h1 {
+                    "{line[2..]}"
+                }
+            } else if line.starts_with("## ") {
+                h2 {
+                    "{line[3..]}"
+                }
+            } else if line.starts_with("### ") {
+                h3 {
+                    "{line[4..]}"
+                }
+            } else {
+                p {
+                    "{line}"
+                }
+            }
+        }
+    }
+}
