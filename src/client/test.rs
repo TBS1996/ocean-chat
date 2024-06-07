@@ -13,18 +13,21 @@ use common::ScoreTally;
 use common::DISTS;
 use dioxus::prelude::*;
 use once_cell::sync::Lazy;
-use std::mem;
 use std::sync::{Arc, Mutex};
-use strum::IntoEnumIterator;
 
 use super::*;
 
 /// using statics everywhere because im too dumb to understand dioxus properly
-static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(Question::iter().collect())));
+static QUESTIONS: Lazy<Arc<Mutex<Vec<Question>>>> = Lazy::new(|| Arc::new(Mutex::new(vec![])));
 
 static TALLY: Lazy<Arc<Mutex<ScoreTally>>> =
     Lazy::new(|| Arc::new(Mutex::new(ScoreTally::default())));
+
+pub fn reset_test() {
+    let questions: Vec<Question> = Question::all_questions();
+    *QUESTIONS.lock().unwrap() = questions;
+    *TALLY.lock().unwrap() = ScoreTally::default();
+}
 
 #[component]
 pub fn Test() -> Element {
@@ -71,14 +74,11 @@ pub fn Test() -> Element {
                                             *curr_question.write() = next_question;
                                         },
                                         None => {
-                                            let tally = {
-                                                mem::take(&mut *TALLY.lock().unwrap())
-                                            };
-                                            let new_questions: Vec<Question> = Question::iter().collect();
-                                            *QUESTIONS.lock().unwrap() = new_questions;
+                                            let tally = {*TALLY.lock().unwrap()};
                                             let scores = DISTS.convert(tally);
                                             save_scores(scores);
                                             state.set_scores(scores);
+                                            reset_test();
                                             navigator.replace(Route::Personality{});
                                         },
                                     }
