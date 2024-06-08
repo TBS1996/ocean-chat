@@ -54,7 +54,7 @@ pub fn Personality() -> Element {
                         "Take the test"
                     }
                 }
-                h2 {"You are weirder than {weirdness}% of the population!"},
+                h2 {"You are weirder than {weirdness}% of the general population!"},
 
                 div {
                     padding_top: "50px",
