@@ -22,7 +22,6 @@ pub fn Personality() -> Element {
     let summary = markdown_converter(summary);
     let sloan = format!("{:?}", sloan).to_lowercase();
     let weirdness = scores.weirdness_percent() as u32;
-    //let link = format!("https://similarminds.com/global5/{}.html", sloan);
 
     rsx! {
         div {
