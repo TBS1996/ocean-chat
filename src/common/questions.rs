@@ -74,6 +74,25 @@ impl Trait {
             Self::Neurotic => "#FF8C00",
         }
     }
+
+    pub fn low_type(&self) -> &'static str {
+        match self {
+            Self::Extro => "Reserved",
+            Self::Neurotic => "Calm",
+            Self::Con => "Unstructured",
+            Self::Agree => "Egocentric",
+            Self::Open => "Non-curious",
+        }
+    }
+    pub fn high_type(&self) -> &'static str {
+        match self {
+            Self::Extro => "Social",
+            Self::Neurotic => "Limbic",
+            Self::Con => "Organized",
+            Self::Agree => "Accomodating",
+            Self::Open => "Inquisitive",
+        }
+    }
 }
 
 impl fmt::Display for Trait {
