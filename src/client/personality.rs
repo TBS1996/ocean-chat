@@ -22,7 +22,6 @@ pub fn Personality() -> Element {
     let summary = markdown_converter(summary);
     let sloan = format!("{:?}", sloan).to_uppercase();
     let weirdness = scores.weirdness_percent() as u32;
-    //let link = format!("https://similarminds.com/global5/{}.html", sloan);
 
     rsx! {
         div {
@@ -69,14 +68,12 @@ pub fn Personality() -> Element {
 }
 
 #[component]
-fn Xxx(tr: Trait, score: u32, label_top: bool) -> Element {
+fn trait_bar(tr: Trait, score: u32, label_top: bool) -> Element {
     let low_type = tr.low_type();
-    //    let low_first_letter = &low_type[0];
-    // let low_type = &low_type[1..];
-
     let high_type = tr.high_type();
+
     let color = tr.color();
-    let score_position = (score as f64 / 100.0) * 500.0; // Calculate the position based on score
+    let score_position = (score as f64 / 100.0) * 500.0;
 
     let left_weight = if score < 50 { "bold" } else { "normal" };
     let right_weight = if score >= 50 { "bold" } else { "normal" };
@@ -125,61 +122,6 @@ fn Xxx(tr: Trait, score: u32, label_top: bool) -> Element {
                     font_weight: "{right_weight}",
                     "{high_type}"
                 }
-            }
-        }
-    }
-}
-
-#[component]
-fn yXxx(tr: Trait, score: u32, label_top: bool) -> Element {
-    let low_type = tr.low_type();
-    let high_type = tr.high_type();
-    let color = tr.color();
-    let pos = score * 5;
-
-    rsx! {
-        div {
-            display: "flex",
-            align_items: "center",
-            flex_direction: "column",
-
-            div {"{tr}: {score}%"},
-            div {
-                display: "flex",
-                flex_direction: "row",
-                justify_content: "space-between",
-
-
-                div {
-                    padding_right: "10px",
-                    text_align: "right",
-                    width: "100px",
-                    "{low_type}  "
-                }
-
-                div {
-                    display: "flex",
-                    justify_content: "center",
-                    height: "30px",
-                    width: "500px",
-                    background_color: "{color}",
-
-                    div {
-                        height: "100%",
-                        width: "10px",
-                        background_color: "black",
-                    }
-
-                }
-
-
-                div {
-                    padding_left: "10px",
-                    text_align: "left",
-                    width: "100px",
-                    "{high_type}"
-                }
-
             }
         }
     }
@@ -237,26 +179,11 @@ pub fn big_five_bars(scores: Scores, label_top: bool) -> Element {
             display: "flex",
             flex_direction: "column",
 
-            Xxx { tr: Trait::Extro, score: scores.e as u32 , label_top}
-            Xxx { tr: Trait::Neurotic, score: scores.n as u32 , label_top}
-            Xxx { tr: Trait::Con, score: scores.c as u32 , label_top}
-            Xxx { tr: Trait::Agree, score: scores.a as u32 , label_top}
-            Xxx { tr: Trait::Open, score: scores.o as u32 , label_top}
-        }
-    }
-}
-
-pub fn _big_five_bars(scores: Scores, label_top: bool) -> Element {
-    rsx! {
-        div {
-            display: "flex",
-            flex_direction: "column",
-
-            PercentileBar { tr: Trait::Open, score: scores.o as u32 , label_top}
-            PercentileBar { tr: Trait::Con, score: scores.c as u32 , label_top}
-            PercentileBar { tr: Trait::Extro, score: scores.e as u32 , label_top}
-            PercentileBar { tr: Trait::Agree, score: scores.a as u32 , label_top}
-            PercentileBar { tr: Trait::Neurotic, score: scores.n as u32 , label_top}
+            trait_bar { tr: Trait::Extro, score: scores.e as u32 , label_top}
+            trait_bar { tr: Trait::Neurotic, score: scores.n as u32 , label_top}
+            trait_bar { tr: Trait::Con, score: scores.c as u32 , label_top}
+            trait_bar { tr: Trait::Agree, score: scores.a as u32 , label_top}
+            trait_bar { tr: Trait::Open, score: scores.o as u32 , label_top}
         }
     }
 }
