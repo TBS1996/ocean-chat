@@ -35,7 +35,7 @@ pub fn Manual() -> Element {
         .iter()
         .map(|tr| {
             score
-                .map(|score| format!("{}", score.trait_val(*tr)))
+                .map(|score| format!("{:.1}", score.trait_val(*tr)))
                 .unwrap_or_default()
         })
         .collect();

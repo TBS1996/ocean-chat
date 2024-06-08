@@ -53,7 +53,8 @@ pub enum Route {
 
 fn App() -> Element {
     use_context_provider(State::load);
-    reset_test();
+    use_context_provider(Quiz::new);
+
     rsx!(Router::<Route> {})
 }
 
