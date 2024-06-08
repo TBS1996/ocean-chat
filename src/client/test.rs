@@ -28,6 +28,10 @@ impl Quiz {
         }
     }
 
+    pub fn reset(&self) {
+        self.inner.lock().unwrap().reset();
+    }
+
     pub fn go_back(&self) {
         self.inner.lock().unwrap().go_back();
     }
@@ -86,6 +90,7 @@ impl Inner {
         self.answered_questions.clear();
         let current_question = self.pending_questions.last().unwrap();
         *self.current_question.write() = *current_question;
+        self.update_percentage();
     }
 
     fn next_question(&mut self, answer: Answer) -> Option<ScoreTally> {
@@ -125,6 +130,7 @@ pub fn Test() -> Element {
     let (progress, curr_question) = quiz.signals();
 
     let show_navbar = state.scores().is_some();
+    let quiz1 = quiz.clone();
 
     rsx! {
                 if show_navbar { Navbar{active_chat: false} } else {  { top_bar() } }
@@ -160,34 +166,65 @@ pub fn Test() -> Element {
                             }
                         }
                     }
+
+
+                div {
+                    margin_top: "20px",
+                    display: "flex",
+                    flex_direction: "row",
+                    justify_content: "center",
+
+                    button {
+                        class: "mybutton",
+                        background_color: "black",
+                        width: "150px",
+                        prevent_default: "onclick",
+                        onclick: move |_| {
+                            quiz1.go_back();
+                        },
+                        "previous question"
+                    }
+                    button {
+                        class: "mybutton",
+                        background_color: "black",
+                        width: "150px",
+                        prevent_default: "onclick",
+                        onclick: move |_| {
+                            quiz.reset();
+                        },
+                        "reset"
+                    }
+
                 }
 
+                }
+                div {
+                    display: "flex",
+                    justify_content: "center",
+                    align_items: "center",
+                    flex_direction: "column",
+                    p {"{progress}%"}
                     div {
                         display: "flex",
-                        justify_content: "center",
-                        align_items: "center",
-                        flex_direction: "column",
-                        p {"{progress}%"}
+                        justify_content: "left",
+                        background_color: "#f1f1f1",
+                        overflow: "hidden",
+                        height: "30px",
+                        width: "500px",
                         div {
                             display: "flex",
-                            justify_content: "left",
-                            background_color: "#f1f1f1",
-                            overflow: "hidden",
-                            height: "30px",
-                            width: "500px",
-                            div {
-                                display: "flex",
-                                align_items: "left",
-                                justify_content: "center",
-                                height: "100%",
-                                color: "white",
-                                border_radius: "25px 0 0 25px",
-                                transition: "width 0.5s",
-                                width: "{progress}%",
-                                background_color: "red",
-                            }
+                            align_items: "left",
+                            justify_content: "center",
+                            height: "100%",
+                            color: "white",
+                            border_radius: "25px 0 0 25px",
+                            transition: "width 0.5s",
+                            width: "{progress}%",
+                            background_color: "red",
                         }
-                        { manual_msg() }
+                    }
+                    { manual_msg() }
             }
+
     }
 }
