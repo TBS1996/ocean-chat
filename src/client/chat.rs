@@ -33,6 +33,8 @@ pub fn Chat() -> Element {
 
     let state2 = state.clone();
 
+    let disabled = true;
+
     rsx! {
         Navbar { active_chat: true },
         if is_init() {
@@ -97,6 +99,7 @@ pub fn Chat() -> Element {
                 }
                 div {
                     width: "500px",
+                    margin_left: "100px",
                     match peer_score() {
                         Some(score) => {
                             let more_similar = format!("{:.1}", scores.percentage_similarity(score));
@@ -115,17 +118,23 @@ pub fn Chat() -> Element {
                 }
             }
         }
-            else {
+        else {
+            div {
+                display: "flex",
+                margin_left: "20px",
+                width: "700px",
+                flex_direction: "column",
                 div {
+                    class: "message-list",
                     display: "flex",
-                    margin_left: "100px",
-                    margin_top: "100px",
-
+                    width: "700px",
 
                 button {
                     class: "mybutton",
                     width: "200px",
                     height: "200px",
+                    margin_top: "175px",
+                    margin_left: "225px",
                     onclick: move |_| {
                         is_init.toggle();
                         state.set_init(true);
@@ -152,18 +161,54 @@ pub fn Chat() -> Element {
 
 
 
-
-
-
-
-
                 }
+
+
+
+                    div { class: "form-group",
+                        div { class: "input-group",
+                            input {
+                                r#type: "text",
+                                name: "msg",
+                                value: "{input}",
+                                autocomplete: "off",
+                                border_color: "gray",
+                                disabled: "{disabled}",
+                                background_color: "gray",
+                              //  oninput: move |event| input.set(event.value()),
+                            }
+                            button {
+                                r#type: "submit",
+                                class: "confirm",
+                                background_color: "gray",
+                                "Send"
+                            }
+                            button {
+                                prevent_default: "onclick",
+                                class: "danger",
+                                background_color: "gray",
+                                "New peer"
+                            }
+                        }
+                    }
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 
             }
+        }
     }
 }
 
