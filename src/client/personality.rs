@@ -20,7 +20,7 @@ pub fn Personality() -> Element {
     let sloan = Sloan::from_scores(scores);
     let summary = sloan.summary();
     let summary = markdown_converter(summary);
-    let sloan = format!("{:?}", sloan).to_lowercase();
+    let sloan = format!("{:?}", sloan).to_uppercase();
     let weirdness = scores.weirdness_percent() as u32;
 
     rsx! {
@@ -35,12 +35,13 @@ pub fn Personality() -> Element {
                 padding: "20px",
                 font_family: "Arial, sans-serif",
 
-                h1 { "Your big five scores!" }
+                h1 { "{sloan}" }
                 {  big_five_bars(scores, false) }
                 div {
                     display: "flex",
                     flex_direction: "row",
-                    justify_content: "left",
+                    justify_content: "center",
+                    margin_top: "25px",
                     margin_bottom: "50px",
 
                     Link {
@@ -53,7 +54,6 @@ pub fn Personality() -> Element {
                         "Take the test"
                     }
                 }
-                h2 {"Your type is {sloan}" },
                 h2 {"You are weirder than {weirdness}% of the population!"},
 
                 div {
@@ -64,6 +64,66 @@ pub fn Personality() -> Element {
             }
         }
     }
+    }
+}
+
+#[component]
+fn trait_bar(tr: Trait, score: u32, label_top: bool) -> Element {
+    let low_type = tr.low_type();
+    let high_type = tr.high_type();
+
+    let color = tr.color();
+    let score_position = (score as f64 / 100.0) * 500.0;
+
+    let left_weight = if score < 50 { "bold" } else { "normal" };
+    let right_weight = if score >= 50 { "bold" } else { "normal" };
+
+    rsx! {
+        div {
+            display: "flex",
+            align_items: "center",
+            flex_direction: "column",
+
+            div {margin_top: "15px", "{tr}: {score}%"},
+            div {
+                display: "flex",
+                flex_direction: "row",
+                justify_content: "space-between",
+
+                div {
+                    padding_right: "10px",
+                    text_align: "right",
+                    width: "100px",
+                    font_weight: "{left_weight}",
+                    "{low_type}"
+                }
+
+                div {
+                    display: "flex",
+                    justify_content: "center",
+                    position: "relative",
+                    height: "30px",
+                    width: "500px",
+                    background_color: "{color}",
+
+                    div {
+                        position: "absolute",
+                        left: "{score_position}px",
+                        height: "100%",
+                        width: "10px",
+                        background_color: "black",
+                    }
+                }
+
+                div {
+                    padding_left: "10px",
+                    text_align: "left",
+                    width: "100px",
+                    font_weight: "{right_weight}",
+                    "{high_type}"
+                }
+            }
+        }
     }
 }
 
@@ -119,11 +179,11 @@ pub fn big_five_bars(scores: Scores, label_top: bool) -> Element {
             display: "flex",
             flex_direction: "column",
 
-            PercentileBar { tr: Trait::Open, score: scores.o as u32 , label_top}
-            PercentileBar { tr: Trait::Con, score: scores.c as u32 , label_top}
-            PercentileBar { tr: Trait::Extro, score: scores.e as u32 , label_top}
-            PercentileBar { tr: Trait::Agree, score: scores.a as u32 , label_top}
-            PercentileBar { tr: Trait::Neurotic, score: scores.n as u32 , label_top}
+            trait_bar { tr: Trait::Extro, score: scores.e as u32 , label_top}
+            trait_bar { tr: Trait::Neurotic, score: scores.n as u32 , label_top}
+            trait_bar { tr: Trait::Con, score: scores.c as u32 , label_top}
+            trait_bar { tr: Trait::Agree, score: scores.a as u32 , label_top}
+            trait_bar { tr: Trait::Open, score: scores.o as u32 , label_top}
         }
     }
 }
