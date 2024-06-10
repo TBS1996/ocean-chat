@@ -36,7 +36,8 @@ futures-util = "0.3"
 futures = "0.3"
 
 tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
+tracing-appender = "0.2"
 strum = "0.26.2"
 strum_macros = "0.26.2"
 

@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::layer::SubscriberExt;
 
 mod connection;
 mod waiting_users;
@@ -97,7 +97,7 @@ impl State {
                 let (waiting, connected) = stat;
                 tracing::info!("users waiting: {}, connected users: {}", waiting, connected);
 
-                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(600)).await;
             }
         });
     }
@@ -175,15 +175,19 @@ async fn pair_handler(
 }
 
 pub async fn run() {
-    tracing_subscriber::registry()
+    let file_appender = tracing_appender::rolling::daily("log", "ocean-chat.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    let subscriber = tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                 "ocean_chat=debug,tower_http=debug,axum::rejection=trace".into()
             }),
         )
         .with(tracing_subscriber::fmt::layer())
-        .init();
-    let tracing_layer = TraceLayer::new_for_http();
+        .with(tracing_subscriber::fmt::layer().with_writer(non_blocking));
+
+    tracing::subscriber::set_global_default(subscriber).expect("Unable to set a global subscriber");
 
     tracing::info!("starting server ");
     let state = State::new();
@@ -198,7 +202,7 @@ pub async fn run() {
     let app = Router::new()
         .route("/pair/:scores/:id", get(pair_handler))
         .layer(cors)
-        .layer(tracing_layer)
+        .layer(TraceLayer::new_for_http())
         .layer(Extension(Arc::new(state)));
 
     let addr = "0.0.0.0:3000".parse().unwrap();
