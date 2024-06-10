@@ -11,13 +11,17 @@ pub fn Pretest() -> Element {
             flex_direction: "column",
             align_items: "center",
             p {
-                "Before you can get started, we must know your big 5 scores",
+                margin_top: "50px",
+                "Obviously, to pair you up with similar people we have to know who you are.
+    ",
             }
             p {
-                "Take our test, where you answer 50 questions. Estimated 3-5 minutes to complete.",
+                "Start taking the standard Big-5 test, and you'll be ready in just 3-5 minutes.",
             }
             div {
                 class: "main-box",
+                height: "100px",
+                line_height: "75px",
                 onclick: move |_| {navigator.push(Route::Test{});},
                 h2 { "Start test" }
             }
