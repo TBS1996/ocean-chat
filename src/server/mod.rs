@@ -87,7 +87,6 @@ impl State {
         let cons = self.connections.clone();
 
         tokio::spawn(async move {
-            let mut prev = (99, 99);
             loop {
                 let stat = {
                     let waiting = waits.0.lock().await.len();
@@ -95,14 +94,10 @@ impl State {
                     (waiting, connected)
                 };
 
-                if prev != stat {
-                    let (waiting, connected) = stat;
-                    tracing::info!("users waiting: {}, connected users: {}", waiting, connected);
-                }
+                let (waiting, connected) = stat;
+                tracing::info!("users waiting: {}, connected users: {}", waiting, connected);
 
-                prev = stat;
-
-                tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
             }
         });
     }
@@ -136,7 +131,7 @@ impl State {
 
                             match (left_pinged, right_pinged) {
                                 (true, true) => {
-                                    tracing::error!("ping successful");
+                                    tracing::info!("ping successful");
                                     connections.connect(left, right).await;
                                 }
                                 (true, false) => {
