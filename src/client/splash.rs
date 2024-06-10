@@ -62,9 +62,16 @@ pub fn Splash() -> Element {
                 flex_direction: "column",
                 justify_content: "right",
 
-                h2 { "Discover Your Personality" }
-                p { "Oceanchat is a unique livechatting experience, which pairs you up with the people most similar to yourself" }
-                p { "This is made possibly by the big five personality test. The only general personality test taken serious by researchers." }
+                h2 { "Engage with Similar Minds" }
+                p {
+                    "OceanChat offers a personality-based chat experience. Using the only general personality test taken seriously by researchers, we can scientifically measure how similar you are to anyone else."}
+                p{" Give it a go and see if you can find someone ",
+                    span {
+                        style: "font-style: italic;",
+                        "truly"
+                    },
+                    " like-minded."
+                }
             }
     };
 
