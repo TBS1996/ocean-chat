@@ -22,7 +22,8 @@ async fn main() {
 fn enforce_release() {
     if cfg!(debug_assertions) && !CONFIG.local {
         eprintln!("Server should be run in release mode while in production:");
-        eprintln!("`cargo run --features server --release`");
+        eprintln!("`cargo run --features server --profile release-server`");
+        eprintln!("Do not build with the release profile, you could lose out on some performance");
         std::process::exit(1);
     }
 }
