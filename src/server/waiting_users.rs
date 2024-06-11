@@ -13,7 +13,7 @@ impl WaitingUsers {
     }
 
     pub async fn len(&self) -> usize {
-        self.0.lock().await.0.len()
+        self.0.lock().await.len()
     }
 
     /// If 2 or more users are present, it'll pop the longest-waiting user along with

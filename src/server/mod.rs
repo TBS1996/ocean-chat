@@ -109,7 +109,7 @@ impl State {
         tokio::spawn(async move {
             loop {
                 {
-                    while let Some((mut left, mut right)) = users.pop_papubir().await {
+                    while let Some((mut left, mut right)) = users.pop_pair().await {
                         let users = users.clone();
                         let connections = connections.clone();
                         tokio::spawn(async move {
