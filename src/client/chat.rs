@@ -27,7 +27,7 @@ pub fn Chat() -> Element {
     };
 
     let is_init = state.is_init();
-    log_to_console(&is_init);
+    log_to_console(("chat refresh, is_init: ", &is_init));
     let mut is_init = use_signal(move || is_init);
     let peer_score = use_signal(|| state.peer_scores());
 

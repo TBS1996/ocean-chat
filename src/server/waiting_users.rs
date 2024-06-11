@@ -3,13 +3,17 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Default, Clone)]
-pub struct WaitingUsers(pub Arc<Mutex<Vec<User>>>);
+pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
     pub async fn queue(&self, user: User) {
         let mut lock = self.0.lock().await;
         lock.push(user);
         tracing::info!("users waiting for peer: {}", lock.len());
+    }
+
+    pub async fn len(&self) -> usize {
+        self.0.lock().await.0.len()
     }
 
     /// If 2 or more users are present, it'll pop the longest-waiting user along with
