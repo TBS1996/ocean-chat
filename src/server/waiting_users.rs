@@ -1,3 +1,4 @@
+use crate::common::SocketMessage;
 use crate::server::User;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -6,8 +7,30 @@ use tokio::sync::Mutex;
 pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
-    pub async fn queue(&self, user: User) {
+    pub async fn queue(&self, mut user: User) {
         let mut lock = self.0.lock().await;
+
+        for current_user in lock.iter_mut() {
+            if current_user.id == user.id {
+                let res1 = current_user
+                    .socket
+                    .send(SocketMessage::info_msg(
+                        "error: other instance trying to connect".to_string(),
+                    ))
+                    .await;
+                let res2 = user
+                    .socket
+                    .send(SocketMessage::info_msg(
+                        "error: you are already in queue".to_string(),
+                    ))
+                    .await;
+
+                if res1.is_err() || res2.is_err() {
+                    tracing::error!("{:?}, {:?}", res1, res2);
+                }
+            }
+        }
+
         lock.push(user);
         tracing::info!("users waiting for peer: {}", lock.len());
     }
