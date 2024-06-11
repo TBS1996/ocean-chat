@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache Dependancies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-oceanchat-cache
+
+    - name: Build Backend
+      run: cargo build --features server --profile release-server
+
+    - name: Install Dioxus CLI
+      run: cargo install dioxus-cli
+
+    - name: Build Frontend
+      run: dx build --release
+    
+    - name: Bundle Build Artifacts
+      run: mkdir oceanchat-${{ github.run_number }} && cp -r ./dist ./oceanchat-${{ github.run_number }}/dist && cp ./target/release-server/ocean-chat ./oceanchat-${{ github.run_number }}/ocean-chat && zip -r oceanchat-${{ github.run_number }}.zip oceanchat-${{ github.run_number }}
+
+    - name: Upload Bundled Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        path: ./oceanchat-${{ github.run_number }}.zip
