@@ -43,3 +43,15 @@ strum_macros = "0.26.2"
 
 [features]
 server = ["axum", "tokio"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+incremental = false
+
+[profile.release-server]
+inherits = "release"
+opt-level = 3
