@@ -42,7 +42,7 @@ impl WaitingUsers {
 
         let right = users.remove(right_index);
 
-        tracing::info!("two users paired up!");
+        tracing::info!("two users paired up! {} and {}", &left.id, &right.id);
         tracing::info!("remaining users: {}", users.len());
 
         Some((left, right))

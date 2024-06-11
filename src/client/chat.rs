@@ -260,6 +260,7 @@ async fn connect_to_peer(
                     return;
                 }
                 SocketMessage::ConnectionClosed => {
+                    log_to_console("received 'connection closed' from server");
                     state.clear_socket();
                     return;
                 }

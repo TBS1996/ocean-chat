@@ -152,7 +152,10 @@ impl Connection {
                                 _ => {},
                             }
                         },
-                        _ => {}
+                        other => {
+                            let x = format!("{:?}", other);
+                            tracing::error!("unexpected message received: {}", x);
+                        }
                     }
                 }
                 Some(Ok(msg)) = left_rx.next() => {
@@ -175,7 +178,10 @@ impl Connection {
                                 _ => {},
                             }
                         },
-                        _ => {}
+                        other => {
+                            let x = format!("{:?}", other);
+                            tracing::error!("unexpected message received: {}", x);
+                        }
                     }
                 }
                 else => {
