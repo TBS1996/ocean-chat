@@ -15,6 +15,7 @@ Personality is defined by the big 5 test. You can take the test here: https://op
 Run the backend with `cargo run --features server`.
 
 Open project in another terminal, do `dx serve`.
+
 Open in yet another terminal, do `dx serve --port 8081` (or any free port other than first one)
 
 > [!NOTE]
