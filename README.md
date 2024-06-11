@@ -22,4 +22,5 @@ Open in yet another terminal, do `dx serve --port 8081` (or any free port other 
 
 ## For building locally:
 To build the backend, run `cargo build --features server --profile release-server`
+
 To build the frontend, run `dx build --release`
