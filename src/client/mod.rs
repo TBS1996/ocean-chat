@@ -175,6 +175,7 @@ impl State {
     }
 
     pub fn set_socket(&self, socket: WebSocket) {
+        log_to_console("setting socket");
         self.inner.lock().unwrap().chat.socket = Some(socket);
         *self.not_connected().write() = false;
     }
@@ -184,13 +185,15 @@ impl State {
     }
 
     fn clear_socket(&self) {
+        log_to_console("clearing socket");
         self.inner.lock().unwrap().chat.socket = None;
         *self.not_connected().write() = true;
     }
 
     pub fn send_message(&self, msg: Vec<u8>) -> bool {
         if let Some(socket) = &self.inner.lock().unwrap().chat.socket {
-            let _ = socket.send_with_u8_array(&msg);
+            let res = socket.send_with_u8_array(&msg);
+            log_to_console(("message sent", res));
             true
         } else {
             log_to_console("attempted to send msg without a socket configured");
@@ -199,6 +202,7 @@ impl State {
     }
 
     pub fn clear_peer(&self) {
+        log_to_console("clear peer");
         let mut lock = self.inner.lock().unwrap();
         if let Some(socket) = &lock.chat.socket {
             socket.close().unwrap();

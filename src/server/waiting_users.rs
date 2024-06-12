@@ -1,15 +1,22 @@
+use crate::common::SocketMessage;
 use crate::server::User;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Default, Clone)]
-pub struct WaitingUsers(pub Arc<Mutex<Vec<User>>>);
+pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
-    pub async fn queue(&self, user: User) {
+    pub async fn queue(&self, mut user: User) {
         let mut lock = self.0.lock().await;
+
+        tracing::info!("queuing user: {}", &user.id);
         lock.push(user);
         tracing::info!("users waiting for peer: {}", lock.len());
+    }
+
+    pub async fn len(&self) -> usize {
+        self.0.lock().await.len()
     }
 
     /// If 2 or more users are present, it'll pop the longest-waiting user along with
@@ -38,7 +45,7 @@ impl WaitingUsers {
 
         let right = users.remove(right_index);
 
-        tracing::info!("two users paired up!");
+        tracing::info!("two users paired up! {} and {}", &left.id, &right.id);
         tracing::info!("remaining users: {}", users.len());
 
         Some((left, right))

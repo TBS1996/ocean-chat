@@ -89,7 +89,7 @@ impl State {
         tokio::spawn(async move {
             loop {
                 let stat = {
-                    let waiting = waits.0.lock().await.len();
+                    let waiting = waits.len().await;
                     let connected = cons.connected_users_qty().await;
                     (waiting, connected)
                 };
@@ -119,11 +119,16 @@ impl State {
                             // If they're the same user, put the newest connection back in queue
                             // (if pingable).
                             if right.id == left.id {
+                                tracing::error!("same user connecting twice");
                                 if right.con_time > left.con_time && right_pinged {
+                                    tracing::info!("pushing back user: {}", &right.id);
                                     users.queue(right).await;
+                                    tracing::info!("closing user: {}", &left.id);
                                     let _ = left.socket.close().await;
                                 } else if right.con_time < left.con_time && left_pinged {
+                                    tracing::info!("pushing back user: {}", &left.id);
                                     users.queue(left).await;
+                                    tracing::info!("closing user: {}", &right.id);
                                     let _ = right.socket.close().await;
                                 }
                                 return;

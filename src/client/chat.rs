@@ -27,7 +27,7 @@ pub fn Chat() -> Element {
     };
 
     let is_init = state.is_init();
-    log_to_console(&is_init);
+    log_to_console(("chat refresh, is_init: ", &is_init));
     let mut is_init = use_signal(move || is_init);
     let peer_score = use_signal(|| state.peer_scores());
 
@@ -260,6 +260,7 @@ async fn connect_to_peer(
                     return;
                 }
                 SocketMessage::ConnectionClosed => {
+                    log_to_console("received 'connection closed' from server");
                     state.clear_socket();
                     return;
                 }
