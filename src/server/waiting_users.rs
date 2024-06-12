@@ -9,9 +9,21 @@ impl WaitingUsers {
     pub async fn queue(&self, user: User) {
         let mut lock = self.0.lock().await;
 
-        tracing::info!("queuing user: {}", &user.id);
-        lock.push(user);
-        tracing::info!("users waiting for peer: {}", lock.len());
+        let pos = lock.iter().position(|waiters| waiters.id == user.id);
+
+        match pos {
+            Some(pos) => {
+                let _ = user.socket.close().await;
+                let _ = lock.remove(pos).socket.close().await;
+
+                tracing::error!("User already in queue: {}", &user.id);
+            }
+            None => {
+                tracing::info!("queuing user: {}", &user.id);
+                lock.push(user);
+                tracing::info!("users waiting for peer: {}", lock.len());
+            }
+        }
     }
 
     pub async fn len(&self) -> usize {
