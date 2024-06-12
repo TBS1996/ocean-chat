@@ -96,18 +96,19 @@ impl Inner {
     fn next_question(&mut self, answer: Answer) -> Option<ScoreTally> {
         let q = self.pending_questions.pop().unwrap();
         self.answered_questions.push((q, answer));
-        *self.current_question.write() = q;
 
-        let tally = if self.pending_questions.is_empty() {
-            let tally = self.tally_up();
-            self.reset();
-            Some(tally)
-        } else {
-            None
-        };
-
-        self.update_percentage();
-        tally
+        match self.pending_questions.last() {
+            Some(q) => {
+                *self.current_question.write() = *q;
+                self.update_percentage();
+                None
+            }
+            None => {
+                let tally = self.tally_up();
+                self.reset();
+                Some(tally)
+            }
+        }
     }
 
     fn tally_up(&self) -> ScoreTally {
