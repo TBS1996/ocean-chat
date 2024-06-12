@@ -13,8 +13,7 @@ impl WaitingUsers {
 
         match pos {
             Some(pos) => {
-                let _ = user.socket.close().await;
-                let _ = lock.remove(pos).socket.close().await;
+                let _ = lock.remove(pos);
 
                 tracing::error!("User already in queue: {}", &user.id);
             }
@@ -34,6 +33,8 @@ impl WaitingUsers {
     /// another user who has the closest personality.
     pub async fn pop_pair(&self) -> Option<(User, User)> {
         let mut users = self.0.lock().await;
+
+        users.retain_mut(|user| user.is_legit());
 
         let len = users.len();
         if len < 2 {

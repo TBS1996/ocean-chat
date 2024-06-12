@@ -46,6 +46,11 @@ impl SocketMessage {
         Message::Text(s)
     }
 
+    pub fn into_message(self) -> Message {
+        let s = serde_json::to_string(&self).unwrap();
+        Message::Text(s)
+    }
+
     pub fn close_connection() -> Message {
         let s = serde_json::to_string(&Self::ConnectionClosed).unwrap();
         Message::Text(s)
