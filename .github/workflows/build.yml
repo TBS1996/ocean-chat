@@ -23,7 +23,7 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
-        key: ${{ runner.os }}-oceanchat-cache
+        key: ${{ runner.os }}-oceanchat-cache-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Build Backend
       run: cargo build --features server --profile release-server
