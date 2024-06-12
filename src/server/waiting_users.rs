@@ -1,4 +1,3 @@
-use crate::common::SocketMessage;
 use crate::server::User;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -7,7 +6,7 @@ use tokio::sync::Mutex;
 pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
-    pub async fn queue(&self, mut user: User) {
+    pub async fn queue(&self, user: User) {
         let mut lock = self.0.lock().await;
 
         tracing::info!("queuing user: {}", &user.id);
