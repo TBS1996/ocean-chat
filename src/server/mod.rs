@@ -1,5 +1,5 @@
 use axum::{
-    extract::ws::{Message, WebSocket, WebSocketUpgrade},
+    extract::ws::{WebSocket, WebSocketUpgrade},
     extract::Extension,
     extract::Path,
     response::IntoResponse,
@@ -11,7 +11,6 @@ use crate::common;
 
 use crate::server::ConnectionManager;
 use common::Scores;
-use common::SocketMessage;
 use common::CONFIG;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -20,41 +19,12 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 
 mod connection;
+mod user;
 mod waiting_users;
 
 use connection::*;
+use user::*;
 use waiting_users::*;
-
-pub struct User {
-    pub scores: Scores,
-    pub socket: WebSocket,
-    pub id: String,
-    pub con_time: SystemTime,
-}
-
-impl User {
-    async fn ping(&mut self) -> bool {
-        let ping_timeout = tokio::time::Duration::from_millis(2000);
-        if self.socket.send(SocketMessage::ping()).await.is_err() {
-            return false;
-        }
-
-        while let Ok(Some(Ok(Message::Binary(msg)))) =
-            tokio::time::timeout(ping_timeout, self.socket.recv()).await
-        {
-            if let Ok(SocketMessage::Pong) = serde_json::from_slice(&msg) {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    async fn drain_socket(&mut self) {
-        let drain_timeout = tokio::time::Duration::from_millis(100);
-        while let Ok(Some(_)) = tokio::time::timeout(drain_timeout, self.socket.recv()).await {}
-    }
-}
 
 #[derive(Default, Clone)]
 struct State {
