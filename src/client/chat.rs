@@ -16,6 +16,13 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::WebSocket;
 
+use once_cell::sync::Lazy;
+use std::sync::atomic;
+use std::sync::Arc;
+
+pub static PINGER_ACTIVATED: Lazy<Arc<atomic::AtomicBool>> =
+    Lazy::new(|| Arc::new(atomic::AtomicBool::new(false)));
+
 #[component]
 pub fn Chat() -> Element {
     let state = use_context::<State>();
@@ -32,8 +39,22 @@ pub fn Chat() -> Element {
     let peer_score = use_signal(|| state.peer_scores());
 
     let state2 = state.clone();
+    let state3 = state.clone();
 
     let disabled = true;
+
+    spawn_local(async move {
+        if PINGER_ACTIVATED.swap(true, atomic::Ordering::SeqCst) {
+            return;
+        }
+
+        log_to_console("Start pinging loop");
+        loop {
+            log_to_console("pinging server");
+            state3.send_message(SocketMessage::ping());
+            gloo_timers::future::sleep(std::time::Duration::from_secs(5)).await;
+        }
+    });
 
     rsx! {
         Navbar { active_chat: true },
