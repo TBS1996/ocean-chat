@@ -67,6 +67,13 @@ impl SocketMessage {
         writer
     }
 
+    pub fn ping() -> Vec<u8> {
+        let mut writer: Vec<u8> = vec![];
+        let val = Self::Ping;
+        serde_json::to_writer(&mut writer, &val).unwrap();
+        writer
+    }
+
     pub fn pong() -> Vec<u8> {
         let mut writer: Vec<u8> = vec![];
         let val = Self::Pong;
