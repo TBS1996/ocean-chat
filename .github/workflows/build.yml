@@ -29,7 +29,12 @@ jobs:
       run: cargo build --features server --profile release-server
 
     - name: Install Dioxus CLI
-      run: cargo install dioxus-cli
+      run: |
+        if ! command -v dx &> /dev/null; then
+          cargo install dioxus-cli
+        else
+          echo "Dioxus CLI is already installed"
+        fi
 
     - name: Build Frontend
       run: dx build --release
