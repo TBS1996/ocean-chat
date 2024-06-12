@@ -35,9 +35,10 @@ jobs:
       run: dx build --release
     
     - name: Bundle Build Artifacts
-      run: mkdir oceanchat-${{ github.run_number }} && cp -r ./dist ./oceanchat-${{ github.run_number }}/dist && cp ./target/release-server/ocean-chat ./oceanchat-${{ github.run_number }}/ocean-chat && zip -r oceanchat-${{ github.run_number }}.zip oceanchat-${{ github.run_number }}
+      run: mkdir oceanchat-${{ github.run_number }} && cp -r ./dist ./oceanchat-${{ github.run_number }}/dist && cp ./target/release-server/ocean-chat ./oceanchat-${{ github.run_number }}/ocean-chat
 
     - name: Upload Bundled Artifacts
       uses: actions/upload-artifact@v4
       with:
-        path: ./oceanchat-${{ github.run_number }}.zip
+        path: ./oceanchat-${{ github.run_number }}
+        name: oceanchat-${{ github.run_number }}
