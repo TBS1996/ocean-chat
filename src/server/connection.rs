@@ -104,28 +104,19 @@ impl Connection {
     async fn run(mut self) {
         tracing::info!("communication starting between a pair");
         let msg = "connected to peer!".to_string();
-        let _ = self
-            .right
-            .sender
-            .send(SocketMessage::Info(msg.clone()))
-            .await;
-
-        let _ = self
-            .left
-            .sender
-            .send(SocketMessage::Info(msg.clone()))
-            .await;
+        let _ = self.right.send(SocketMessage::Info(msg.clone())).await;
+        let _ = self.left.send(SocketMessage::Info(msg)).await;
 
         loop {
             tokio::select! {
                 Some(msg) = self.left.receiver.recv() => {
-                    if self.right.sender.send(msg).await.is_err(){
+                    if self.right.send(msg).await.is_err(){
                         break;
                     };
 
                 },
                 Some(msg) = self.right.receiver.recv() => {
-                 if   self.left.sender.send(msg).await.is_err() {
+                 if self.left.send(msg).await.is_err() {
                      break;
                  };
 

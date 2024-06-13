@@ -13,7 +13,6 @@ use crate::server::ConnectionManager;
 use common::Scores;
 use common::CONFIG;
 use std::sync::Arc;
-use std::time::SystemTime;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -41,19 +40,7 @@ impl State {
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
     async fn queue(&self, scores: Scores, id: String, socket: WebSocket) {
-        tracing::info!("user queued ");
-        let con_time = SystemTime::now();
-        use tokio::sync::mpsc::channel;
-
-        let (sender, receiver) = channel(32);
-        let receiver = SocketStuff::new(socket, receiver);
-        let user = User {
-            scores,
-            sender,
-            receiver,
-            id,
-            con_time,
-        };
+        let user = User::new(scores, id, socket);
         self.waiting_users.queue(user).await;
     }
 

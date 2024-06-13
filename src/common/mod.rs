@@ -18,7 +18,7 @@ pub use sloan::*;
 use axum::extract::ws::Message;
 
 /// The type that gets sent from server to client through socket.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum SocketMessage {
     User(String),
     Info(String),
