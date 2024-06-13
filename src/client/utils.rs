@@ -54,13 +54,18 @@ pub fn Navbar(active_chat: bool) -> Element {
     rsx! {
         nav {
             ul {
-               img {
-                   src: "logo.png",
-                   alt: "Oceanchat Logo",
-                   width: "80px",
-                   height: "80px",
-                   margin_right: "20px",
-               }
+                Link {
+                    to: Route::Home {},
+                       img {
+                           src: "logo.png",
+                           alt: "Oceanchat Logo",
+                           width: "80px",
+                           height: "80px",
+                           margin_right: "20px",
+                       }
+                    background_color: "transparent",
+
+                }
                 li {
                     Link {
                         to: Route::Chat {},
@@ -145,6 +150,25 @@ pub fn test_msg() -> Element {
                     "test"
                 }
                 "."
+            }
+        }
+    }
+}
+
+pub fn footer() -> Element {
+    rsx! {
+        div {
+       //     margin_top: "20px",
+            display: "flex",
+            flex_direction: "row",
+            font_size: "0.8em",
+            justify_items: "center",
+            color: "#666",
+            div {
+                Link {
+                    to: Route::Privacypolicy {},
+                    "Privacy Policy"
+                }
             }
         }
     }

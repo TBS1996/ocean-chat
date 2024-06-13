@@ -20,12 +20,15 @@ pub fn top_bar() -> Element {
                 align_items: "center",
                 justify_content: "center",
 
-                img {
-                    src: "logo.png",
-                    alt: "Oceanchat Logo",
-                    width: "80px",
-                    height: "80px",
-                    margin_right: "20px",
+                Link {
+                    to: Route::Home {},
+                    img {
+                        src: "logo.png",
+                        alt: "Oceanchat Logo",
+                        width: "80px",
+                        height: "80px",
+                        margin_right: "20px",
+                    }
                 }
 
                 div {
