@@ -14,6 +14,7 @@ mod chat;
 mod getstarted;
 mod manual;
 mod personality;
+mod privacypolicy;
 mod splash;
 mod test;
 mod utils;
@@ -22,6 +23,7 @@ use chat::*;
 use getstarted::*;
 use manual::*;
 use personality::*;
+use privacypolicy::*;
 use splash::*;
 use test::*;
 use utils::*;
@@ -33,6 +35,7 @@ pub fn run_app() {
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 pub enum Route {
+    #[layout(Wrapper)]
     #[route("/")]
     Home {},
     #[route("/invalid")]
@@ -49,6 +52,23 @@ pub enum Route {
     Personality {},
     #[route("/pretest")]
     Pretest {},
+    #[route("/privacypolicy")]
+    Privacypolicy {},
+}
+
+#[component]
+fn Wrapper() -> Element {
+    rsx! {
+        Outlet::<Route> {}
+
+
+        div {
+            display: "flex",
+            justify_content: "center",
+            { footer() }
+        }
+    //    footer { { footer() } }
+    }
 }
 
 fn App() -> Element {

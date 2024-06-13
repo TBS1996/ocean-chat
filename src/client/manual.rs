@@ -9,6 +9,7 @@ use common::Trait;
 use client::save_scores;
 use client::test_msg;
 use client::top_bar;
+use client::utils::footer;
 use client::Navbar;
 use client::Route;
 use client::State;
@@ -105,6 +106,7 @@ pub fn Manual() -> Element {
                     { test_msg() }
                 }
             }
+      //      { footer() }
         }
 
     }
