@@ -225,8 +225,6 @@ pub fn Test() -> Element {
                         }
                     }
                     { manual_msg() }
-              //      { footer() }
             }
-
     }
 }

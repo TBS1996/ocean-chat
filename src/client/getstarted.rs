@@ -26,7 +26,6 @@ pub fn Pretest() -> Element {
                 h2 { "Start test" }
             }
             { manual_msg() }
-       //     { footer() }
         }
     }
 }

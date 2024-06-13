@@ -95,7 +95,6 @@ pub fn Splash() -> Element {
             {text_part},
             { buttons },
             }
-       //     { footer() }
         }
     }
 }

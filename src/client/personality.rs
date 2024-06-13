@@ -4,7 +4,6 @@ use crate::client;
 use crate::common;
 
 use client::markdown_converter;
-use client::utils::footer;
 use client::Navbar;
 use client::Route;
 use client::State;
@@ -126,7 +125,6 @@ fn trait_bar(tr: Trait, score: u32, label_top: bool) -> Element {
             }
         }
 
-    //    { footer() }
     }
 }
 

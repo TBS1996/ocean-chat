@@ -67,7 +67,6 @@ fn Wrapper() -> Element {
             justify_content: "center",
             { footer() }
         }
-    //    footer { { footer() } }
     }
 }
 
