@@ -184,9 +184,22 @@ impl State {
         self.inner.lock().unwrap().chat.connected.clone()
     }
 
-    fn clear_socket(&self) {
+    fn x_clear_socket(&self) {
         log_to_console("clearing socket");
         self.inner.lock().unwrap().chat.socket = None;
+        *self.not_connected().write() = true;
+    }
+
+    fn clear_socket(&self) {
+        log_to_console("clearing socket");
+
+        if let Some(ws) = &self.inner.lock().unwrap().chat.socket {
+            let x = ws.close();
+            log_to_console(x);
+        }
+
+        self.inner.lock().unwrap().chat.socket = None;
+
         *self.not_connected().write() = true;
     }
 

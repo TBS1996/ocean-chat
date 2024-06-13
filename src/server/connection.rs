@@ -1,13 +1,9 @@
 use crate::common::SocketMessage;
 use crate::server::User;
-use axum::extract::ws::Message;
-use futures_util::SinkExt;
-use futures_util::StreamExt;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
-use tokio::time;
 
 type UserId = String;
 type ConnectionId = (UserId, UserId);
@@ -104,96 +100,45 @@ impl Connection {
         Self { left, right }
     }
 
-    //  Removes all the pending messages in the streams.
-    async fn drain_streams(&mut self) {
-        let drain_timeout = time::Duration::from_millis(100);
-
-        while let Ok(Some(_)) = time::timeout(drain_timeout, self.left.socket.recv()).await {}
-        while let Ok(Some(_)) = time::timeout(drain_timeout, self.right.socket.recv()).await {}
-    }
-
     /// Handles sending messages from one peer to another.
     async fn run(mut self) {
         tracing::info!("communication starting between a pair");
         let msg = "connected to peer!".to_string();
-
-        self.drain_streams().await;
-        let (mut left_tx, mut left_rx) = self.left.socket.split();
-        let (mut right_tx, mut right_rx) = self.right.socket.split();
-
-        let _ = right_tx.send(SocketMessage::info_msg(msg.clone())).await;
-        let _ = left_tx.send(SocketMessage::info_msg(msg)).await;
-        let _ = right_tx
-            .send(SocketMessage::peer_scores(self.left.scores))
+        let _ = self.right.send(SocketMessage::Info(msg.clone())).await;
+        let _ = self.left.send(SocketMessage::Info(msg)).await;
+        let _ = self
+            .right
+            .send(SocketMessage::PeerScores(self.left.scores))
             .await;
-        let _ = left_tx
-            .send(SocketMessage::peer_scores(self.right.scores))
+        let _ = self
+            .left
+            .send(SocketMessage::PeerScores(self.right.scores))
             .await;
 
         loop {
             tokio::select! {
-                Some(Ok(msg)) = right_rx.next() => {
-                    match msg {
-                        Message::Close(_) => {
-                            let _ = left_tx.send(SocketMessage::close_connection()).await;
-                            break;
-                        },
-                        Message::Binary(bytes) => {
-                            match serde_json::from_slice(&bytes) {
-                                Ok(SocketMessage::User(msg)) => {
-                                    tracing::info!("{}: {}", &self.right.id, &msg);
-                                    if left_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
-                                        let _ = left_tx.send(SocketMessage::close_connection()).await;
-                                        tracing::error!("Failed to send message to left");
-                                        break;
-                                    }
+                Some(msg) = self.left.receive() => {
+                    tracing::info!("{}: {:?}", &self.left.id, &msg);
+                    if self.right.send(msg).await.is_err(){
+                        tracing::error!("error sending message to: {}", &self.right.id);
+                        break;
+                    };
 
-                                },
-                                _ => {},
-                            }
-                        },
-                        other => {
-                            let x = format!("{:?}", other);
-                            tracing::error!("unexpected message received: {}", x);
-                        }
-                    }
-                }
-                Some(Ok(msg)) = left_rx.next() => {
-                    match msg {
-                        Message::Close(_) => {
-                            let _ = right_tx.send(SocketMessage::close_connection()).await;
-                            break;
-                        },
-                        Message::Binary(bytes) => {
-                            match serde_json::from_slice(&bytes) {
-                                Ok(SocketMessage::User(msg)) => {
-                                    tracing::info!("{}: {}", &self.left.id, &msg);
-                                    if right_tx.send(SocketMessage::user_msg(msg)).await.is_err() {
-                                        let _ = left_tx.send(SocketMessage::close_connection()).await;
-                                        tracing::error!("Failed to send message to right");
-                                        break;
-                                    }
+                },
+                Some(msg) = self.right.receive() => {
+                    tracing::info!("{}: {:?}", &self.right.id, &msg);
+                     if self.left.send(msg).await.is_err() {
+                        tracing::error!("error sending message to: {}", &self.left.id);
+                         break;
+                     };
 
-                                },
-                                _ => {},
-                            }
-                        },
-                        other => {
-                            let x = format!("{:?}", other);
-                            tracing::error!("unexpected message received: {}", x);
-                        }
-                    }
-                }
+                },
                 else => {
-                    let _ = left_tx.send(SocketMessage::close_connection()).await;
-                    let _ = right_tx.send(SocketMessage::close_connection()).await;
+                    tracing::error!("weird error");
                     break;
                 }
             }
         }
-
-        let _ = left_tx.close().await;
-        let _ = right_tx.close().await;
 
         tracing::info!("closing connection");
     }

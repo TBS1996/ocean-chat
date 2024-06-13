@@ -13,7 +13,6 @@ use crate::server::ConnectionManager;
 use common::Scores;
 use common::CONFIG;
 use std::sync::Arc;
-use std::time::SystemTime;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -41,14 +40,7 @@ impl State {
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
     async fn queue(&self, scores: Scores, id: String, socket: WebSocket) {
-        tracing::info!("user queued ");
-        let con_time = SystemTime::now();
-        let user = User {
-            scores,
-            socket,
-            id,
-            con_time,
-        };
+        let user = User::new(scores, id, socket);
         self.waiting_users.queue(user).await;
     }
 
@@ -79,40 +71,10 @@ impl State {
         tokio::spawn(async move {
             loop {
                 {
-                    while let Some((mut left, mut right)) = users.pop_pair().await {
-                        let users = users.clone();
+                    while let Some((left, right)) = users.pop_pair().await {
                         let connections = connections.clone();
                         tokio::spawn(async move {
-                            let left_pinged = left.ping().await;
-                            let right_pinged = right.ping().await;
-
-                            // If they're the same user, put the newest connection back in queue
-                            // (if pingable).
-                            if right.id == left.id {
-                                tracing::error!("same user connecting twice: {}", &right.id);
-                                let _ = right.socket.close().await;
-                                let _ = left.socket.close().await;
-
-                                return;
-                            }
-
-                            match (left_pinged, right_pinged) {
-                                (true, true) => {
-                                    tracing::info!("ping successful");
-                                    connections.connect(left, right).await;
-                                }
-                                (true, false) => {
-                                    tracing::error!("failed to ping right");
-                                    users.queue(left).await;
-                                }
-                                (false, true) => {
-                                    tracing::error!("failed to ping left");
-                                    users.queue(right).await;
-                                }
-                                (false, false) => {
-                                    tracing::error!("failed to ping both right and left");
-                                }
-                            }
+                            connections.connect(left, right).await;
                         });
                     }
                 }

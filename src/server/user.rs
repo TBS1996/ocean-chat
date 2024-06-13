@@ -1,36 +1,98 @@
 use crate::common;
+
 use axum::extract::ws::{Message, WebSocket};
 use common::Scores;
 use common::SocketMessage;
+use futures_util::StreamExt;
 use std::time::SystemTime;
+
+use tokio::sync::mpsc::error::SendError;
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+
+use futures_util::SinkExt;
+
+/// Takes care of sending to and receiving from a websocket.
+fn handle_socket(socket: WebSocket) -> (Sender<SocketMessage>, Receiver<SocketMessage>) {
+    let (x_sender, mut x_receiver) = channel::<SocketMessage>(32);
+    let (sender, receiver) = channel(32);
+
+    tokio::spawn(async move {
+        let (mut tx, mut rx) = socket.split();
+
+        loop {
+            tokio::select! {
+                Some(socketmessage) = x_receiver.recv() => {
+                    let _ = tx.send(socketmessage.into_message()).await;
+                },
+
+                Some(Ok(msg)) = rx.next() => {
+                    match msg {
+                        Message::Close(_) => {
+                            tracing::info!("right closed connection");
+                            let _ = sender.send(SocketMessage::ConnectionClosed).await;
+                            break;
+                        },
+                        Message::Binary(bytes) => {
+                            match serde_json::from_slice(&bytes) {
+                                Ok(SocketMessage::Ping | SocketMessage::Pong) => {},
+                                Ok(socket_message) => {
+                                    let _ = sender.send(socket_message).await;
+
+                                    },
+                                _ => {},
+                                }
+                            }
+                        _ => {},
+                        }
+                    }
+                else => {}
+            }
+        }
+    });
+
+    (x_sender, receiver)
+}
 
 pub struct User {
     pub scores: Scores,
-    pub socket: WebSocket,
     pub id: String,
     pub con_time: SystemTime,
+    pub receiver: Receiver<SocketMessage>,
+    pub sender: Sender<SocketMessage>,
 }
 
 impl User {
-    pub async fn ping(&mut self) -> bool {
-        let ping_timeout = tokio::time::Duration::from_millis(2000);
-        if self.socket.send(SocketMessage::ping()).await.is_err() {
-            return false;
-        }
+    pub fn new(scores: Scores, id: String, socket: WebSocket) -> Self {
+        tracing::info!("user queued ");
+        let con_time = SystemTime::now();
 
-        while let Ok(Some(Ok(Message::Binary(msg)))) =
-            tokio::time::timeout(ping_timeout, self.socket.recv()).await
-        {
-            if let Ok(SocketMessage::Pong) = serde_json::from_slice(&msg) {
+        let (sender, receiver) = handle_socket(socket);
+
+        User {
+            scores,
+            sender,
+            receiver,
+            id,
+            con_time,
+        }
+    }
+
+    pub async fn send(&mut self, msg: SocketMessage) -> Result<(), SendError<SocketMessage>> {
+        self.sender.send(msg).await
+    }
+
+    pub async fn receive(&mut self) -> Option<SocketMessage> {
+        self.receiver.recv().await
+    }
+
+    pub fn is_closed(&mut self) -> bool {
+        while let Ok(msg) = self.receiver.try_recv() {
+            if matches!(msg, SocketMessage::ConnectionClosed) {
+                tracing::info!("user closed: {}", &self.id);
                 return true;
             }
         }
 
         false
-    }
-
-    pub async fn drain_socket(&mut self) {
-        let drain_timeout = tokio::time::Duration::from_millis(100);
-        while let Ok(Some(_)) = tokio::time::timeout(drain_timeout, self.socket.recv()).await {}
     }
 }

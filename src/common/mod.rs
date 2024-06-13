@@ -18,7 +18,7 @@ pub use sloan::*;
 use axum::extract::ws::Message;
 
 /// The type that gets sent from server to client through socket.
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum SocketMessage {
     User(String),
     Info(String),
@@ -43,6 +43,11 @@ impl SocketMessage {
 
     pub fn peer_scores(scores: Scores) -> Message {
         let s = serde_json::to_string(&Self::PeerScores(scores)).unwrap();
+        Message::Text(s)
+    }
+
+    pub fn into_message(self) -> Message {
+        let s = serde_json::to_string(&self).unwrap();
         Message::Text(s)
     }
 
@@ -80,4 +85,8 @@ impl SocketMessage {
         serde_json::to_writer(&mut writer, &val).unwrap();
         writer
     }
+}
+
+impl SocketMessage {
+    pub fn is_ping() {}
 }
