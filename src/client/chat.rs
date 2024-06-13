@@ -196,7 +196,6 @@ pub fn Chat() -> Element {
                                 border_color: "gray",
                                 disabled: "{disabled}",
                                 background_color: "gray",
-                              //  oninput: move |event| input.set(event.value()),
                             }
                             button {
                                 r#type: "submit",
@@ -212,22 +211,6 @@ pub fn Chat() -> Element {
                             }
                         }
                     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             }
         }
     }
@@ -286,6 +269,7 @@ async fn connect_to_peer(
                     return;
                 }
                 SocketMessage::PeerScores(peer_scores) => {
+                    log_to_console(("peer score received", &peer_scores));
                     *peer_score_signal.write_unchecked() = Some(peer_scores);
                     state.set_peer_scores(peer_scores);
                     return;

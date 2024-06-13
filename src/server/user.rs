@@ -22,7 +22,6 @@ fn handle_socket(socket: WebSocket) -> (Sender<SocketMessage>, Receiver<SocketMe
         loop {
             tokio::select! {
                 Some(socketmessage) = x_receiver.recv() => {
-                    dbg!(&socketmessage);
                     let _ = tx.send(socketmessage.into_message()).await;
                 },
 
@@ -35,6 +34,7 @@ fn handle_socket(socket: WebSocket) -> (Sender<SocketMessage>, Receiver<SocketMe
                         },
                         Message::Binary(bytes) => {
                             match serde_json::from_slice(&bytes) {
+                                Ok(SocketMessage::Ping | SocketMessage::Pong) => {},
                                 Ok(socket_message) => {
                                     let _ = sender.send(socket_message).await;
 
@@ -81,14 +81,18 @@ impl User {
         self.sender.send(msg).await
     }
 
-    pub fn is_legit(&mut self) -> bool {
+    pub async fn receive(&mut self) -> Option<SocketMessage> {
+        self.receiver.recv().await
+    }
+
+    pub fn is_closed(&mut self) -> bool {
         while let Ok(msg) = self.receiver.try_recv() {
             if matches!(msg, SocketMessage::ConnectionClosed) {
                 tracing::info!("user closed: {}", &self.id);
-                return false;
+                return true;
             }
         }
 
-        true
+        false
     }
 }

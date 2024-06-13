@@ -34,7 +34,7 @@ impl WaitingUsers {
     pub async fn pop_pair(&self) -> Option<(User, User)> {
         let mut users = self.0.lock().await;
 
-        users.retain_mut(|user| user.is_legit());
+        users.retain_mut(|user| !user.is_closed());
 
         let len = users.len();
         if len < 2 {

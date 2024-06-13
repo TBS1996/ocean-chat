@@ -106,22 +106,35 @@ impl Connection {
         let msg = "connected to peer!".to_string();
         let _ = self.right.send(SocketMessage::Info(msg.clone())).await;
         let _ = self.left.send(SocketMessage::Info(msg)).await;
+        let _ = self
+            .right
+            .send(SocketMessage::PeerScores(self.left.scores))
+            .await;
+        let _ = self
+            .left
+            .send(SocketMessage::PeerScores(self.right.scores))
+            .await;
 
         loop {
             tokio::select! {
-                Some(msg) = self.left.receiver.recv() => {
+                Some(msg) = self.left.receive() => {
+                    tracing::info!("{}: {:?}", &self.left.id, &msg);
                     if self.right.send(msg).await.is_err(){
+                        tracing::error!("error sending message to: {}", &self.right.id);
                         break;
                     };
 
                 },
-                Some(msg) = self.right.receiver.recv() => {
-                 if self.left.send(msg).await.is_err() {
-                     break;
-                 };
+                Some(msg) = self.right.receive() => {
+                    tracing::info!("{}: {:?}", &self.right.id, &msg);
+                     if self.left.send(msg).await.is_err() {
+                        tracing::error!("error sending message to: {}", &self.left.id);
+                         break;
+                     };
 
                 },
                 else => {
+                    tracing::error!("weird error");
                     break;
                 }
             }
