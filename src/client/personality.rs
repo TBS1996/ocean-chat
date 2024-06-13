@@ -124,7 +124,6 @@ fn trait_bar(tr: Trait, score: u32, label_top: bool) -> Element {
                 }
             }
         }
-
     }
 }
 

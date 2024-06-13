@@ -31,7 +31,6 @@ pub fn top_bar() -> Element {
                     }
                 }
 
-
                 div {
                     font_size: "2.5em",
                     color: "white",
