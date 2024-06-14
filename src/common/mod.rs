@@ -86,9 +86,3 @@ impl SocketMessage {
         writer
     }
 }
-
-impl SocketMessage {
-    pub fn is_closed(&self) -> bool {
-        matches!(&self, SocketMessage::ConnectionClosed)
-    }
-}
