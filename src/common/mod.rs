@@ -88,5 +88,7 @@ impl SocketMessage {
 }
 
 impl SocketMessage {
-    pub fn is_ping() {}
+    pub fn is_closed(&self) -> bool {
+        matches!(&self, SocketMessage::ConnectionClosed)
+    }
 }
