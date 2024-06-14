@@ -119,19 +119,39 @@ impl Connection {
             tokio::select! {
                 Some(msg) = self.left.receive() => {
                     tracing::info!("{}: {:?}", &self.left.id, &msg);
-                    if self.right.send(msg).await.is_err(){
-                        tracing::error!("error sending message to: {}", &self.right.id);
-                        break;
+                    match msg {
+                        msg @ SocketMessage::User(_) => {
+                            if self.right.send(msg).await.is_err(){
+                                tracing::error!("error sending message to: {}", &self.right.id);
+                                break;
+                            };
+                        },
+                        msg @ SocketMessage::ConnectionClosed => {
+                            let _ = self.right.send(msg).await;
+                            break;
+                        },
+                        _ => {
+                            tracing::error!("unexpected message");
+                        }
                     };
-
                 },
                 Some(msg) = self.right.receive() => {
                     tracing::info!("{}: {:?}", &self.right.id, &msg);
-                     if self.left.send(msg).await.is_err() {
-                        tracing::error!("error sending message to: {}", &self.left.id);
-                         break;
-                     };
-
+                    match msg {
+                        msg @ SocketMessage::User(_) => {
+                            if self.left.send(msg).await.is_err(){
+                                tracing::error!("error sending message to: {}", &self.left.id);
+                                break;
+                            };
+                        }
+                        msg @ SocketMessage::ConnectionClosed => {
+                            let _ = self.left.send(msg).await;
+                            break;
+                        },
+                        _ => {
+                            tracing::error!("unexpected message");
+                        }
+                    };
                 },
                 else => {
                     tracing::error!("weird error");
@@ -139,7 +159,6 @@ impl Connection {
                 }
             }
         }
-
         tracing::info!("closing connection");
     }
 }

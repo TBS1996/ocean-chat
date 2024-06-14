@@ -86,7 +86,3 @@ impl SocketMessage {
         writer
     }
 }
-
-impl SocketMessage {
-    pub fn is_ping() {}
-}

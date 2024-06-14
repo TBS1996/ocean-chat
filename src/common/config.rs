@@ -6,8 +6,12 @@ pub static CONFIG: Lazy<Arc<Config>> = Lazy::new(|| Arc::new(Config::load()));
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
+    #[serde(default = "default_local")]
     pub local: bool,
+    #[serde(default = "default_pair_interval_millis")]
     pub pair_interval_millis: u64,
+    #[serde(default = "default_timeout")]
+    pub timeout_secs: u64,
 }
 
 impl Config {
@@ -46,11 +50,24 @@ impl Config {
     }
 }
 
+fn default_pair_interval_millis() -> u64 {
+    1000
+}
+
+fn default_local() -> bool {
+    false
+}
+
+fn default_timeout() -> u64 {
+    120
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
-            local: true,
-            pair_interval_millis: 1000,
+            local: default_local(),
+            pair_interval_millis: default_pair_interval_millis(),
+            timeout_secs: default_timeout(),
         }
     }
 }

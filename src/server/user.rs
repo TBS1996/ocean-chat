@@ -1,23 +1,29 @@
 use crate::common;
 
 use axum::extract::ws::{Message, WebSocket};
-use common::Scores;
-use common::SocketMessage;
+use common::CONFIG;
+use common::{Scores, SocketMessage};
 use futures_util::StreamExt;
 use std::time::SystemTime;
 
+use futures_util::SinkExt;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-
-use futures_util::SinkExt;
+use tokio::time::{sleep, Duration, Instant};
 
 /// Takes care of sending to and receiving from a websocket.
-fn handle_socket(socket: WebSocket) -> (Sender<SocketMessage>, Receiver<SocketMessage>) {
+fn handle_socket(
+    socket: WebSocket,
+    id: String,
+) -> (Sender<SocketMessage>, Receiver<SocketMessage>) {
     let (x_sender, mut x_receiver) = channel::<SocketMessage>(32);
     let (sender, receiver) = channel(32);
 
     tokio::spawn(async move {
         let (mut tx, mut rx) = socket.split();
+        let timeout_duration = Duration::from_secs(CONFIG.timeout_secs);
+        let timeout = sleep(timeout_duration);
+        tokio::pin!(timeout);
 
         loop {
             tokio::select! {
@@ -28,24 +34,30 @@ fn handle_socket(socket: WebSocket) -> (Sender<SocketMessage>, Receiver<SocketMe
                 Some(Ok(msg)) = rx.next() => {
                     match msg {
                         Message::Close(_) => {
-                            tracing::info!("right closed connection");
+                            tracing::info!("{}: client closed connection", &id);
                             let _ = sender.send(SocketMessage::ConnectionClosed).await;
                             break;
                         },
                         Message::Binary(bytes) => {
                             match serde_json::from_slice(&bytes) {
-                                Ok(SocketMessage::Ping | SocketMessage::Pong) => {},
+                                Ok(SocketMessage::Ping) => {
+                                    timeout.as_mut().reset(Instant::now() + timeout_duration);
+                                },
                                 Ok(socket_message) => {
                                     let _ = sender.send(socket_message).await;
-
-                                    },
+                                },
                                 _ => {},
-                                }
                             }
+                        },
                         _ => {},
-                        }
                     }
-                else => {}
+                },
+
+                _ = &mut timeout => {
+                    tracing::info!("{}: Timeout occurred, closing connection", &id);
+                    let _ = sender.send(SocketMessage::ConnectionClosed).await;
+                    break;
+                }
             }
         }
     });
@@ -66,7 +78,7 @@ impl User {
         tracing::info!("user queued ");
         let con_time = SystemTime::now();
 
-        let (sender, receiver) = handle_socket(socket);
+        let (sender, receiver) = handle_socket(socket, id.clone());
 
         User {
             scores,
