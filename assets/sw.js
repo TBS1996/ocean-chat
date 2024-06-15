@@ -15,6 +15,9 @@ var offlineFundamentals = [
   // add here the files you want to cache
   'favicon.ico',
   'logo.png',
+  'icons/192x192.png',
+  'icons/512x512.png',
+  'main.css',
 ];
 
 /* The install event fires when the service worker is first installed.
