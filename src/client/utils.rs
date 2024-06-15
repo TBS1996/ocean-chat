@@ -249,8 +249,11 @@ pub fn Navbar(active_chat: bool) -> Element {
                     img {
                         src: "logo.png",
                         alt: "Oceanchat Logo",
-                        class: "logo"
+                        class: "logo",
+                        width: "80px",
+                        height: "80px"
                     }
+
                     background_color: "transparent",
                 }
                 li {
