@@ -49,42 +49,6 @@ pub fn log_to_console(message: impl std::fmt::Debug) {
     console::log_1(&JsValue::from_str(&message));
 }
 
-#[component]
-pub fn Navbar(active_chat: bool) -> Element {
-    rsx! {
-        nav {
-            ul {
-                Link {
-                    to: Route::Home {},
-                       img {
-                           src: "logo.png",
-                           alt: "Oceanchat Logo",
-                           width: "80px",
-                           height: "80px",
-                           margin_right: "20px",
-                       }
-                    background_color: "transparent",
-
-                }
-                li {
-                    Link {
-                        to: Route::Chat {},
-                        "Chat",
-                        class: if active_chat { "active" } else { "" }
-                    }
-                }
-                li {
-                    Link { to: Route::Personality {},
-                    "My personality",
-                    class: if !active_chat { "active" } else { "" }
-
-                    }
-                }
-            }
-        }
-    }
-}
-
 fn default_scores() -> Scores {
     static COOKIE: Lazy<Option<Scores>> = Lazy::new(|| {
         let scores = block_on(fetch_scores_storage());
@@ -269,6 +233,39 @@ pub fn markdown_converter(s: &str) -> Element {
             } else {
                 p {
                     "{line}"
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn Navbar(active_chat: bool) -> Element {
+    rsx! {
+        nav {
+            ul {
+                Link {
+                    to: Route::Home {},
+                    img {
+                        src: "logo.png",
+                        alt: "Oceanchat Logo",
+                        class: "logo"
+                    }
+                    background_color: "transparent",
+                }
+                li {
+                    Link {
+                        to: Route::Chat {},
+                        "Chat",
+                        class: if active_chat { "active" } else { "" }
+                    }
+                }
+                li {
+                    Link {
+                        to: Route::Personality {},
+                        "My personality",
+                        class: if !active_chat { "active" } else { "" }
+                    }
                 }
             }
         }
