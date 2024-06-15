@@ -75,22 +75,6 @@ nav {
     padding: 0 20px; 
 }
 
-nav ul {
-    display: flex;
-    justify-content: flex-start;
-    padding: 0;
-    margin: 0;
-    list-style: none;
-    height: 100%; 
-    align-items: center; 
-}
-
-nav li {
-    margin: 0 20px;
-    height: 100%; 
-    display: flex;
-    align-items: center; 
-}
 
 nav a {
     text-decoration: none;
@@ -264,5 +248,54 @@ nav a.active {
     border-radius: 25px 0 0 25px; 
     transition: width 0.5s;
     line-height: 30px;
+}
+
+/* General styles for the nav */
+nav ul {
+    display: flex;
+    justify-content: flex-start;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    height: 100%; 
+    align-items: center;
+    width: 100%; /* Ensure ul takes the full width */
+}
+
+nav li {
+    margin: 0 20px;
+    height: 100%; 
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    width: 80px;
+    height: 80px;
+    margin-right: 20px;
+}
+
+/* Media query for smaller screens */
+@media (max-width: 600px) {
+    .logo {
+        display: none;
+    }
+
+    nav ul {
+        justify-content: flex-start; /* Ensure items align to the left */
+        align-items: flex-start; /* Override align-items */
+    }
+
+    nav li {
+        margin: 0 10px;
+    }
+}
+
+/* Media query for shorter screens */
+@media (max-height: 400px) {
+    nav li {
+        margin: 0 5px;
+        padding: 0 5px;
+    }
 }
 
