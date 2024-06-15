@@ -57,21 +57,21 @@ pub fn Chat() -> Element {
     rsx! {
             Navbar { active_chat: true },
             if is_init() {
-                { enabled_chat(input, peer_score, scores, messages) }
+                { enabled_chat(state, input, peer_score, scores, messages) }
             }
             else {
-                { disabled_chat(is_init, peer_score, scores, messages)}
+                { disabled_chat(state,is_init, peer_score, scores, messages)}
         }
     }
 }
 
 fn enabled_chat(
+    state: State,
     mut input: Signal<String>,
     peer_score: Signal<Option<Scores>>,
     scores: Scores,
     mut messages: Signal<Vec<Message>>,
 ) -> Element {
-    let state = use_context::<State>();
     let state2 = state.clone();
 
     rsx! {
@@ -159,12 +159,12 @@ fn enabled_chat(
 }
 
 fn disabled_chat(
+    state: State,
     mut is_init: Signal<bool>,
     peer_score: Signal<Option<Scores>>,
     scores: Scores,
     mut messages: Signal<Vec<Message>>,
 ) -> Element {
-    let state = use_context::<State>();
     let disabled = true;
 
     rsx! {
