@@ -23,26 +23,7 @@ use std::sync::Arc;
 pub static PINGER_ACTIVATED: Lazy<Arc<atomic::AtomicBool>> =
     Lazy::new(|| Arc::new(atomic::AtomicBool::new(false)));
 
-#[component]
-pub fn Chat() -> Element {
-    let state = use_context::<State>();
-    let mut input = state.input();
-    let mut messages = state.messages();
-
-    let Some(scores) = state.scores() else {
-        return Splash();
-    };
-
-    let is_init = state.is_init();
-    log_to_console(("chat refresh, is_init: ", &is_init));
-    let mut is_init = use_signal(move || is_init);
-    let peer_score = use_signal(|| state.peer_scores());
-
-    let state2 = state.clone();
-    let state3 = state.clone();
-
-    let disabled = true;
-
+fn start_pinger(state: State) {
     spawn_local(async move {
         if PINGER_ACTIVATED.swap(true, atomic::Ordering::SeqCst) {
             return;
@@ -51,105 +32,174 @@ pub fn Chat() -> Element {
         log_to_console("Start pinging loop");
         loop {
             log_to_console("pinging server");
-            state3.send_message(SocketMessage::ping());
+            state.send_message(SocketMessage::ping());
             gloo_timers::future::sleep(std::time::Duration::from_secs(5)).await;
         }
     });
+}
+
+fn form_group(
+    state: State,
+    mut input: Signal<String>,
+    peer_score: Signal<Option<Scores>>,
+    scores: Scores,
+    mut messages: Signal<Vec<Message>>,
+    enabled: bool,
+) -> Element {
+    rsx! {
+        div { class: "form-group",
+            div { class: "input-group",
+                input {
+                    r#type: "text",
+                    name: "msg",
+                    value: input(),
+                    disabled: !enabled,
+                    autocomplete: "off",
+                    background_color: if !enabled {"gray"} else {"white"},
+                    border_color: if !enabled {"gray"} else {"white"},
+                    oninput: move |event| input.set(event.value()),
+                }
+                button {
+                    r#type: "submit",
+                    class: "confirm",
+                    background_color: if !enabled {"gray"} else {""},
+                    "Send"
+                }
+                button {
+                    prevent_default: "onclick",
+                    class: "danger",
+                    onclick: move |_| {
+                        if !enabled {
+                            return;
+                        }
+
+                        let thestate = state.clone();
+                        messages.write().clear();
+                        state.clear_peer();
+                        spawn_local(async move {
+                            let socket = connect_to_peer(scores, thestate.clone(), peer_score.clone())
+                                .await
+                                .unwrap();
+                            thestate.set_socket(socket);
+                        });
+                        let msg = Message {
+                            origin: Origin::Info,
+                            content: "searching for peer...".to_string()};
+                        messages.write().push(msg);
+                        input.set(String::new());
+                    },
+                    background_color: if !enabled {"gray"} else {""},
+                    "New peer"
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn Chat() -> Element {
+    let state = use_context::<State>();
+    let Some(scores) = state.scores() else {
+        return Splash();
+    };
+
+    let input = state.input();
+    let messages = state.messages();
+    let is_init = state.is_init();
+    let is_init = use_signal(move || is_init);
+    log_to_console(("chat refresh, is_init: ", &is_init));
+    let peer_score = use_signal(|| state.peer_scores());
+
+    start_pinger(state.clone());
 
     rsx! {
         Navbar { active_chat: true },
         if is_init() {
-            div {
-                display: "flex",
-                flex_direction: "row",
-                form {
-                    display: "flex",
-                    margin_left: "20px",
-                    width: "700px",
-                    onsubmit: move |event| {
-                        let state = state2.clone();
-                        let msg = event.data().values().get("msg").unwrap().as_value();
-                        input.set(String::new());
-                        state.insert_message(Message::new(Origin::Me, msg.clone()));
-                        let msg = SocketMessage::user_msg(msg);
-                        if state.send_message(msg) {
-                            log_to_console("message submitted");
-                        }
-                    },
-                    div {
-                        class: "chat-app",
-                        MessageList { messages: messages.read().to_vec() }
-                    }
-                    div { class: "form-group",
-                        div { class: "input-group",
-                            input {
-                                r#type: "text",
-                                name: "msg",
-                                value: "{input}",
-                                autocomplete: "off",
-                                oninput: move |event| input.set(event.value()),
-                            }
-                            button {
-                                r#type: "submit",
-                                class: "confirm",
-                                "Send"
-                            }
-                            button {
-                                prevent_default: "onclick",
-                                class: "danger",
-                                onclick: move |_| {
-                                    let thestate = state.clone();
-                                    messages.write().clear();
-                                    state.clear_peer();
-                                    spawn_local(async move {
-                                        let socket = connect_to_peer(scores, thestate.clone(), peer_score.clone())
-                                            .await
-                                            .unwrap();
-                                        thestate.set_socket(socket);
-                                    });
-                                    let msg = Message {
-                                        origin: Origin::Info,
-                                        content: "searching for peer...".to_string()};
-                                    messages.write().push(msg);
-                                    input.set(String::new());
-                                },
-                                "New peer"
-                            }
-                        }
-                    }
-                }
-                div {
-                    width: "500px",
-                    margin_left: "100px",
-                    match peer_score() {
-                        Some(score) => {
-                            let more_similar = format!("{:.1}", scores.percentage_similarity(score));
-                            rsx! {
-                                div {
-                                    h4 { "Your peer's personality:" }
-                                    { score_cmp(scores, score) }
-                                    p {
-                                        "{more_similar}% of people are more similar to you than your peer."
-                                    }
-                                }
-                            }
-                        },
-                        None => { rsx!{""} },
-                    }
-                }
-            }
+            { enabled_chat(state, input, peer_score, scores, messages) }
         }
         else {
-            div {
+            { disabled_chat(state, is_init, peer_score, scores, messages, input) }
+        }
+    }
+}
+
+fn enabled_chat(
+    state: State,
+    mut input: Signal<String>,
+    peer_score: Signal<Option<Scores>>,
+    scores: Scores,
+    messages: Signal<Vec<Message>>,
+) -> Element {
+    let state2 = state.clone();
+
+    rsx! {
+        div {
+            display: "flex",
+            flex_direction: "row",
+            form {
                 display: "flex",
                 margin_left: "20px",
                 width: "700px",
-                flex_direction: "column",
+                onsubmit: move |event| {
+                    let state = state2.clone();
+                    let msg = event.data().values().get("msg").unwrap().as_value();
+                    input.set(String::new());
+                    state.insert_message(Message::new(Origin::Me, msg.clone()));
+                    let msg = SocketMessage::user_msg(msg);
+                    if state.send_message(msg) {
+                        log_to_console("message submitted");
+                    }
+                },
                 div {
-                    class: "message-list",
-                    display: "flex",
-                    width: "700px",
+                    class: "chat-app",
+                    MessageList { messages: messages.read().to_vec() }
+                }
 
+
+            { form_group(state.clone(), input, peer_score, scores, messages, true ) }
+
+            }
+            div {
+                width: "500px",
+                margin_left: "100px",
+                match peer_score() {
+                    Some(score) => {
+                        let more_similar = format!("{:.1}", scores.percentage_similarity(score));
+                        rsx! {
+                            div {
+                                h4 { "Your peer's personality:" }
+                                { score_cmp(scores, score) }
+                                p {
+                                    "{more_similar}% of people are more similar to you than your peer."
+                                }
+                            }
+                        }
+                    },
+                    None => { rsx!{""} },
+                }
+            }
+        }
+    }
+}
+
+fn disabled_chat(
+    state: State,
+    mut is_init: Signal<bool>,
+    peer_score: Signal<Option<Scores>>,
+    scores: Scores,
+    mut messages: Signal<Vec<Message>>,
+    input: Signal<String>,
+) -> Element {
+    rsx! {
+        div {
+            display: "flex",
+            margin_left: "20px",
+            width: "700px",
+            flex_direction: "column",
+            div {
+                class: "message-list",
+                display: "flex",
+                width: "700px",
                 button {
                     class: "mybutton",
                     width: "200px",
@@ -179,39 +229,10 @@ pub fn Chat() -> Element {
                     },
                     "Start chatting!"
                 }
-
-
-
-                }
-
-
-
-                    div { class: "form-group",
-                        div { class: "input-group",
-                            input {
-                                r#type: "text",
-                                name: "msg",
-                                value: "{input}",
-                                autocomplete: "off",
-                                border_color: "gray",
-                                disabled: "{disabled}",
-                                background_color: "gray",
-                            }
-                            button {
-                                r#type: "submit",
-                                class: "confirm",
-                                background_color: "gray",
-                                "Send"
-                            }
-                            button {
-                                prevent_default: "onclick",
-                                class: "danger",
-                                background_color: "gray",
-                                "New peer"
-                            }
-                        }
-                    }
             }
+
+            { form_group(state.clone(), input, peer_score, scores, messages, false ) }
+
         }
     }
 }
