@@ -38,6 +38,36 @@ fn start_pinger(state: State) {
     });
 }
 
+#[component]
+pub fn Chat() -> Element {
+    let state = use_context::<State>();
+    let Some(scores) = state.scores() else {
+        return Splash();
+    };
+
+    let input = state.input();
+    let messages = state.messages();
+    let is_init = state.is_init();
+    let is_init = use_signal(move || is_init);
+    log_to_console(("chat refresh, is_init: ", &is_init));
+    let peer_score = use_signal(|| state.peer_scores());
+    let popup = state.popup();
+
+    log_to_console(&popup);
+
+    start_pinger(state.clone());
+
+    rsx! {
+        Navbar { active_chat: true },
+        if is_init() {
+            { enabled_chat(state, input, peer_score, scores, messages, popup.clone()) }
+        }
+        else {
+            { disabled_chat(state, is_init, peer_score, scores, messages, input) }
+        }
+    }
+}
+
 fn form_group(
     state: State,
     mut input: Signal<String>,
@@ -96,46 +126,30 @@ fn form_group(
     }
 }
 
-#[component]
-pub fn Chat() -> Element {
-    let state = use_context::<State>();
-    let Some(scores) = state.scores() else {
-        return Splash();
-    };
-
-    let input = state.input();
-    let messages = state.messages();
-    let is_init = state.is_init();
-    let is_init = use_signal(move || is_init);
-    log_to_console(("chat refresh, is_init: ", &is_init));
-    let peer_score = use_signal(|| state.peer_scores());
-
-    start_pinger(state.clone());
-
-    rsx! {
-        Navbar { active_chat: true },
-        if is_init() {
-            { enabled_chat(state, input, peer_score, scores, messages) }
-        }
-        else {
-            { disabled_chat(state, is_init, peer_score, scores, messages, input) }
-        }
-    }
-}
-
 fn enabled_chat(
     state: State,
     mut input: Signal<String>,
     peer_score: Signal<Option<Scores>>,
     scores: Scores,
     messages: Signal<Vec<Message>>,
+    mut popup: Signal<bool>,
 ) -> Element {
     let state2 = state.clone();
 
     rsx! {
-        div {
-            display: "flex",
-            flex_direction: "row",
+
+        if !popup() {
+            div {
+
+            button {
+                prevent_default: "onclick",
+                onclick: move |event| {
+                    event.stop_propagation();
+                    log_to_console("overlay clicked");
+                    *popup.write() = true;
+                },
+                "Overlay Button"
+            },
             form {
                 display: "flex",
                 margin_left: "20px",
@@ -150,15 +164,33 @@ fn enabled_chat(
                         log_to_console("message submitted");
                     }
                 },
+
                 div {
-                    class: "chat-app",
                     MessageList { messages: messages.read().to_vec() }
                 }
-
-
-            { form_group(state.clone(), input, peer_score, scores, messages, true ) }
+                { form_group(state.clone(), input, peer_score, scores, messages, true ) }
+            }
 
             }
+        } else {
+            div {
+                display: "flex",
+                flex_direction: "column",
+                margin_left: "20px",
+                width: "700px",
+
+            button {
+                prevent_default: "onclick",
+                onclick: move |event| {
+                    event.stop_propagation();
+                    log_to_console("go back clicked");
+                    *popup.write() = false;
+                },
+                "go back!"
+            },
+
+
+
             div {
                 width: "500px",
                 margin_left: "100px",
@@ -178,6 +210,10 @@ fn enabled_chat(
                     None => { rsx!{""} },
                 }
             }
+
+
+            }
+
         }
     }
 }

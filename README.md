@@ -31,4 +31,22 @@ To build the frontend, run `dx build --release`
 
 
 
-
+            div {
+                width: "500px",
+                margin_left: "100px",
+                match peer_score() {
+                    Some(score) => {
+                        let more_similar = format!("{:.1}", scores.percentage_similarity(score));
+                        rsx! {
+                            div {
+                                h4 { "Your peer's personality:" }
+                                { score_cmp(scores, score) }
+                                p {
+                                    "{more_similar}% of people are more similar to you than your peer."
+                                }
+                            }
+                        }
+                    },
+                    None => { rsx!{""} },
+                }
+            }
