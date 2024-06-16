@@ -2,7 +2,7 @@
   "name": "OceanChat",
   "short_name": "OceanChat",
   "description": "Chat with your personality-match",
-  "start_url": "/index.html",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
