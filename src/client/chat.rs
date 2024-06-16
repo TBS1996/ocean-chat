@@ -55,12 +55,12 @@ pub fn Chat() -> Element {
     start_pinger(state.clone());
 
     rsx! {
-            Navbar { active_chat: true },
-            if is_init() {
-                { enabled_chat(state, input, peer_score, scores, messages) }
-            }
-            else {
-                { disabled_chat(state,is_init, peer_score, scores, messages)}
+        Navbar { active_chat: true },
+        if is_init() {
+            { enabled_chat(state, input, peer_score, scores, messages) }
+        }
+        else {
+            { disabled_chat(state, is_init, peer_score, scores, messages) }
         }
     }
 }
@@ -75,86 +75,85 @@ fn enabled_chat(
     let state2 = state.clone();
 
     rsx! {
-
-            div {
+        div {
+            display: "flex",
+            flex_direction: "row",
+            form {
                 display: "flex",
-                flex_direction: "row",
-                form {
-                    display: "flex",
-                    margin_left: "20px",
-                    width: "700px",
-                    onsubmit: move |event| {
-                        let state = state2.clone();
-                        let msg = event.data().values().get("msg").unwrap().as_value();
-                        input.set(String::new());
-                        state.insert_message(Message::new(Origin::Me, msg.clone()));
-                        let msg = SocketMessage::user_msg(msg);
-                        if state.send_message(msg) {
-                            log_to_console("message submitted");
-                        }
-                    },
-                    div {
-                        class: "chat-app",
-                        MessageList { messages: messages.read().to_vec() }
+                margin_left: "20px",
+                width: "700px",
+                onsubmit: move |event| {
+                    let state = state2.clone();
+                    let msg = event.data().values().get("msg").unwrap().as_value();
+                    input.set(String::new());
+                    state.insert_message(Message::new(Origin::Me, msg.clone()));
+                    let msg = SocketMessage::user_msg(msg);
+                    if state.send_message(msg) {
+                        log_to_console("message submitted");
                     }
-                    div { class: "form-group",
-                        div { class: "input-group",
-                            input {
-                                r#type: "text",
-                                name: "msg",
-                                value: "{input}",
-                                autocomplete: "off",
-                                oninput: move |event| input.set(event.value()),
-                            }
-                            button {
-                                r#type: "submit",
-                                class: "confirm",
-                                "Send"
-                            }
-                            button {
-                                prevent_default: "onclick",
-                                class: "danger",
-                                onclick: move |_| {
-                                    let thestate = state.clone();
-                                    messages.write().clear();
-                                    state.clear_peer();
-                                    spawn_local(async move {
-                                        let socket = connect_to_peer(scores, thestate.clone(), peer_score.clone())
-                                            .await
-                                            .unwrap();
-                                        thestate.set_socket(socket);
-                                    });
-                                    let msg = Message {
-                                        origin: Origin::Info,
-                                        content: "searching for peer...".to_string()};
-                                    messages.write().push(msg);
-                                    input.set(String::new());
-                                },
-                                "New peer"
-                            }
-                        }
-                    }
-                }
+                },
                 div {
-                    width: "500px",
-                    margin_left: "100px",
-                    match peer_score() {
-                        Some(score) => {
-                            let more_similar = format!("{:.1}", scores.percentage_similarity(score));
-                            rsx! {
-                                div {
-                                    h4 { "Your peer's personality:" }
-                                    { score_cmp(scores, score) }
-                                    p {
-                                        "{more_similar}% of people are more similar to you than your peer."
-                                    }
-                                }
-                            }
-                        },
-                        None => { rsx!{""} },
+                    class: "chat-app",
+                    MessageList { messages: messages.read().to_vec() }
+                }
+                div { class: "form-group",
+                    div { class: "input-group",
+                        input {
+                            r#type: "text",
+                            name: "msg",
+                            value: "{input}",
+                            autocomplete: "off",
+                            oninput: move |event| input.set(event.value()),
+                        }
+                        button {
+                            r#type: "submit",
+                            class: "confirm",
+                            "Send"
+                        }
+                        button {
+                            prevent_default: "onclick",
+                            class: "danger",
+                            onclick: move |_| {
+                                let thestate = state.clone();
+                                messages.write().clear();
+                                state.clear_peer();
+                                spawn_local(async move {
+                                    let socket = connect_to_peer(scores, thestate.clone(), peer_score.clone())
+                                        .await
+                                        .unwrap();
+                                    thestate.set_socket(socket);
+                                });
+                                let msg = Message {
+                                    origin: Origin::Info,
+                                    content: "searching for peer...".to_string()};
+                                messages.write().push(msg);
+                                input.set(String::new());
+                            },
+                            "New peer"
+                        }
                     }
                 }
             }
+            div {
+                width: "500px",
+                margin_left: "100px",
+                match peer_score() {
+                    Some(score) => {
+                        let more_similar = format!("{:.1}", scores.percentage_similarity(score));
+                        rsx! {
+                            div {
+                                h4 { "Your peer's personality:" }
+                                { score_cmp(scores, score) }
+                                p {
+                                    "{more_similar}% of people are more similar to you than your peer."
+                                }
+                            }
+                        }
+                    },
+                    None => { rsx!{""} },
+                }
+            }
+        }
     }
 }
 
@@ -177,62 +176,61 @@ fn disabled_chat(
                 class: "message-list",
                 display: "flex",
                 width: "700px",
-
-            button {
-                class: "mybutton",
-                width: "200px",
-                height: "200px",
-                margin_top: "175px",
-                margin_left: "225px",
-                onclick: move |_| {
-                    is_init.toggle();
-                    state.set_init(true);
-                    use_effect({
-                        let state = state.clone();
-                        move || {
+                button {
+                    class: "mybutton",
+                    width: "200px",
+                    height: "200px",
+                    margin_top: "175px",
+                    margin_left: "225px",
+                    onclick: move |_| {
+                        is_init.toggle();
+                        state.set_init(true);
+                        use_effect({
                             let state = state.clone();
-                            spawn_local(async move {
-                                if !state.has_socket() {
-                                    let msg = Message {
-                                        origin: Origin::Info,
-                                        content: "searching for peer...".to_string(),
-                                    };
-                                    messages.write().push(msg);
-                                    let socket = connect_to_peer(scores, state.clone(), peer_score.clone()).await.unwrap();
-                                    state.set_socket(socket);
-                                }
-                            });
-                        }
-                    });
-                },
-                "Start chatting!"
+                            move || {
+                                let state = state.clone();
+                                spawn_local(async move {
+                                    if !state.has_socket() {
+                                        let msg = Message {
+                                            origin: Origin::Info,
+                                            content: "searching for peer...".to_string(),
+                                        };
+                                        messages.write().push(msg);
+                                        let socket = connect_to_peer(scores, state.clone(), peer_score.clone()).await.unwrap();
+                                        state.set_socket(socket);
+                                    }
+                                });
+                            }
+                        });
+                    },
+                    "Start chatting!"
+                }
             }
-            }
-                div { class: "form-group",
-                    div { class: "input-group",
-                        input {
-                            r#type: "text",
-                            name: "msg",
-                            value: "",
-                            autocomplete: "off",
-                            border_color: "gray",
-                            disabled: "{disabled}",
-                            background_color: "gray",
-                        }
-                        button {
-                            r#type: "submit",
-                            class: "confirm",
-                            background_color: "gray",
-                            "Send"
-                        }
-                        button {
-                            prevent_default: "onclick",
-                            class: "danger",
-                            background_color: "gray",
-                            "New peer"
-                        }
+            div { class: "form-group",
+                div { class: "input-group",
+                    input {
+                        r#type: "text",
+                        name: "msg",
+                        value: "",
+                        autocomplete: "off",
+                        border_color: "gray",
+                        disabled: "{disabled}",
+                        background_color: "gray",
+                    }
+                    button {
+                        r#type: "submit",
+                        class: "confirm",
+                        background_color: "gray",
+                        "Send"
+                    }
+                    button {
+                        prevent_default: "onclick",
+                        class: "danger",
+                        background_color: "gray",
+                        "New peer"
                     }
                 }
+            }
         }
     }
 }
@@ -408,3 +406,4 @@ fn MessageList(mut msgs: MessageListProps) -> Element {
         }
     )
 }
+
