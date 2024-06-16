@@ -4,6 +4,7 @@ var version = 'v1.0.0::';
 console.log('Service Worker: Version', version, 'starting.');
 
 var offlineFundamentals = [
+  `/`,
   '/favicon.ico',
   '/logo.png',
   '/assets/icons/192x192.png',
