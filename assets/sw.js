@@ -3,6 +3,7 @@
 var version = 'v1.0.0::';
 console.log('Service Worker: Version', version, 'starting.');
 
+const updateInterval = 4 * 60 * 60 * 1000 // 4 hours in ms
 var offlineFundamentals = [
   `/`,
   '/favicon.ico',
@@ -11,6 +12,12 @@ var offlineFundamentals = [
   '/assets/icons/512x512.png',
   '/main.css',
 ];
+
+function checkForUpdates() {
+  self.registration.update();
+}
+
+setInterval(checkForUpdates, updateInterval);
 
 self.addEventListener("install", function(event) {
   console.log('Service Worker: Install event in progress.');
@@ -27,6 +34,7 @@ self.addEventListener("install", function(event) {
         console.error('Service Worker: Install failed:', error);
       })
   );
+  self.skipWaiting(); // Immediatly activate after an update
 });
 
 self.addEventListener("fetch", function(event) {
