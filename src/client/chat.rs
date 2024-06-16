@@ -38,6 +38,64 @@ fn start_pinger(state: State) {
     });
 }
 
+fn form_group(
+    state: State,
+    mut input: Signal<String>,
+    peer_score: Signal<Option<Scores>>,
+    scores: Scores,
+    mut messages: Signal<Vec<Message>>,
+    enabled: bool,
+) -> Element {
+    rsx! {
+        div { class: "form-group",
+            div { class: "input-group",
+                input {
+                    r#type: "text",
+                    name: "msg",
+                    value: input(),
+                    disabled: !enabled,
+                    autocomplete: "off",
+                    background_color: if !enabled {"gray"} else {"white"},
+                    border_color: if !enabled {"gray"} else {"white"},
+                    oninput: move |event| input.set(event.value()),
+                }
+                button {
+                    r#type: "submit",
+                    class: "confirm",
+                    background_color: if !enabled {"gray"} else {""},
+                    "Send"
+                }
+                button {
+                    prevent_default: "onclick",
+                    class: "danger",
+                    onclick: move |_| {
+                        if !enabled {
+                            return;
+                        }
+
+                        let thestate = state.clone();
+                        messages.write().clear();
+                        state.clear_peer();
+                        spawn_local(async move {
+                            let socket = connect_to_peer(scores, thestate.clone(), peer_score.clone())
+                                .await
+                                .unwrap();
+                            thestate.set_socket(socket);
+                        });
+                        let msg = Message {
+                            origin: Origin::Info,
+                            content: "searching for peer...".to_string()};
+                        messages.write().push(msg);
+                        input.set(String::new());
+                    },
+                    background_color: if !enabled {"gray"} else {""},
+                    "New peer"
+                }
+            }
+        }
+    }
+}
+
 #[component]
 pub fn Chat() -> Element {
     let state = use_context::<State>();
@@ -60,7 +118,7 @@ pub fn Chat() -> Element {
             { enabled_chat(state, input, peer_score, scores, messages) }
         }
         else {
-            { disabled_chat(state, is_init, peer_score, scores, messages) }
+            { disabled_chat(state, is_init, peer_score, scores, messages, input) }
         }
     }
 }
@@ -70,7 +128,7 @@ fn enabled_chat(
     mut input: Signal<String>,
     peer_score: Signal<Option<Scores>>,
     scores: Scores,
-    mut messages: Signal<Vec<Message>>,
+    messages: Signal<Vec<Message>>,
 ) -> Element {
     let state2 = state.clone();
 
@@ -96,43 +154,10 @@ fn enabled_chat(
                     class: "chat-app",
                     MessageList { messages: messages.read().to_vec() }
                 }
-                div { class: "form-group",
-                    div { class: "input-group",
-                        input {
-                            r#type: "text",
-                            name: "msg",
-                            value: "{input}",
-                            autocomplete: "off",
-                            oninput: move |event| input.set(event.value()),
-                        }
-                        button {
-                            r#type: "submit",
-                            class: "confirm",
-                            "Send"
-                        }
-                        button {
-                            prevent_default: "onclick",
-                            class: "danger",
-                            onclick: move |_| {
-                                let thestate = state.clone();
-                                messages.write().clear();
-                                state.clear_peer();
-                                spawn_local(async move {
-                                    let socket = connect_to_peer(scores, thestate.clone(), peer_score.clone())
-                                        .await
-                                        .unwrap();
-                                    thestate.set_socket(socket);
-                                });
-                                let msg = Message {
-                                    origin: Origin::Info,
-                                    content: "searching for peer...".to_string()};
-                                messages.write().push(msg);
-                                input.set(String::new());
-                            },
-                            "New peer"
-                        }
-                    }
-                }
+
+
+            { form_group(state.clone(), input, peer_score, scores, messages, true ) }
+
             }
             div {
                 width: "500px",
@@ -163,9 +188,8 @@ fn disabled_chat(
     peer_score: Signal<Option<Scores>>,
     scores: Scores,
     mut messages: Signal<Vec<Message>>,
+    input: Signal<String>,
 ) -> Element {
-    let disabled = true;
-
     rsx! {
         div {
             display: "flex",
@@ -206,31 +230,9 @@ fn disabled_chat(
                     "Start chatting!"
                 }
             }
-            div { class: "form-group",
-                div { class: "input-group",
-                    input {
-                        r#type: "text",
-                        name: "msg",
-                        value: "",
-                        autocomplete: "off",
-                        border_color: "gray",
-                        disabled: "{disabled}",
-                        background_color: "gray",
-                    }
-                    button {
-                        r#type: "submit",
-                        class: "confirm",
-                        background_color: "gray",
-                        "Send"
-                    }
-                    button {
-                        prevent_default: "onclick",
-                        class: "danger",
-                        background_color: "gray",
-                        "New peer"
-                    }
-                }
-            }
+
+            { form_group(state.clone(), input, peer_score, scores, messages, false ) }
+
         }
     }
 }
@@ -406,4 +408,3 @@ fn MessageList(mut msgs: MessageListProps) -> Element {
         }
     )
 }
-
