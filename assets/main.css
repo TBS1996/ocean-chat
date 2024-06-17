@@ -319,3 +319,11 @@ nav a.active {
     background-color: #57b5f4;
     font-weight: bold;
 }
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(98vh - 50px); /* Adjust based on your navbar height */
+  max-height: 600px;
+  overflow-y: auto;
+}
