@@ -137,9 +137,121 @@ fn enabled_chat(
     let state2 = state.clone();
 
     rsx! {
+        if !popup() {
+            div {
+                display: "flex",
+                margin_left: "20px",
+                width: "700px",
+                flex_direction: "column",
+                position: "relative",
+
+                if peer_score().is_some() {
+                    button {
+                            position: "absolute",
+                            top: "5px",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            z_index: "10",
+                            prevent_default: "onclick",
+                            onclick: move |event| {
+                                event.stop_propagation();
+                                log_to_console("overlay clicked");
+                                *popup.write() = true;
+                            },
+                        "Compare scores"
+                    }
+                }
+
+                form {
+                    onsubmit: move |event| {
+                        let state = state2.clone();
+                        let msg = event.data().values().get("msg").unwrap().as_value();
+                        input.set(String::new());
+                        state.insert_message(Message::new(Origin::Me, msg.clone()));
+                        let msg = SocketMessage::user_msg(msg);
+                        if state.send_message(msg) {
+                            log_to_console("message submitted");
+                        }
+                    },
+
+                    div {
+                        MessageList { messages: messages.read().to_vec() }
+                    }
+                    { form_group(state.clone(), input, peer_score, scores, messages, true ) }
+                }
+            }
+        } else {
+            div {
+                display: "flex",
+                flex_direction: "column",
+                margin_left: "20px",
+                width: "700px",
+
+                div {
+                    display: "flex",
+                    justify_content: "center",
+                    margin_bottom: "50px",
+
+                    button {
+                        width: "250px",
+                        prevent_default: "onclick",
+                        onclick: move |event| {
+                            event.stop_propagation();
+                            log_to_console("go back clicked");
+                            *popup.write() = false;
+                        },
+                        "go back!"
+                    },
+                }
+
+                div {
+                    width: "500px",
+                    margin_left: "100px",
+                    match peer_score() {
+                        Some(score) => {
+                            let more_similar = format!("{:.1}", scores.percentage_similarity(score));
+                            rsx! {
+                                div {
+                                    h4 { "Your peer's personality:" }
+                                    { score_cmp(scores, score) }
+                                    p {
+                                        "{more_similar}% of people are more similar to you than your peer."
+                                    }
+                                }
+                            }
+                        },
+                        None => { rsx!{""} },
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn xenabled_chat(
+    state: State,
+    mut input: Signal<String>,
+    peer_score: Signal<Option<Scores>>,
+    scores: Scores,
+    messages: Signal<Vec<Message>>,
+    mut popup: Signal<bool>,
+) -> Element {
+    let state2 = state.clone();
+
+    rsx! {
 
         if !popup() {
             div {
+
+                display: "flex",
+                margin_left: "20px",
+                width: "700px",
+                flex_direction: "column",
+
+                div {
+                    display: "flex",
+                    justify_content: "center",
+                    flex_direction: "row",
 
             button {
                 prevent_default: "onclick",
@@ -150,10 +262,9 @@ fn enabled_chat(
                 },
                 "Overlay Button"
             },
+
+                }
             form {
-                display: "flex",
-                margin_left: "20px",
-                width: "700px",
                 onsubmit: move |event| {
                     let state = state2.clone();
                     let msg = event.data().values().get("msg").unwrap().as_value();
@@ -210,8 +321,6 @@ fn enabled_chat(
                     None => { rsx!{""} },
                 }
             }
-
-
             }
 
         }
