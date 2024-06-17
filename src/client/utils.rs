@@ -245,13 +245,12 @@ pub fn Navbar(active_chat: bool) -> Element {
         nav {
             ul {
                 Link {
+
                     to: Route::Home {},
                     img {
                         src: "logo.png",
                         alt: "Oceanchat Logo",
                         class: "logo",
-                        width: "80px",
-                        height: "80px"
                     }
 
                     background_color: "transparent",
