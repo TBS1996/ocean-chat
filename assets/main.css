@@ -180,7 +180,6 @@ nav a.active {
     flex: 0;
     margin-left: 8px; 
     height: 30px; 
-    min-width: 100px; 
     white-space: nowrap; 
 }
 
