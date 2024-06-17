@@ -5,7 +5,7 @@ console.log('Service Worker: Version', version, 'starting.');
 
 const updateInterval = 4 * 60 * 60 * 1000 // 4 hours in ms
 var offlineFundamentals = [
-  `/`,
+  '/',
   '/favicon.ico',
   '/logo.png',
   '/assets/icons/192x192.png',
