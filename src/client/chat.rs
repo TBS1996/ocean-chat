@@ -141,7 +141,7 @@ fn enabled_chat(
             div {
                 display: "flex",
                 margin_left: "20px",
-                width: "700px",
+                max_width: "700px",
                 flex_direction: "column",
                 position: "relative",
 
@@ -242,12 +242,12 @@ fn disabled_chat(
         div {
             display: "flex",
             margin_left: "20px",
-            width: "700px",
+            max_width: "700px",
             flex_direction: "column",
             div {
                 class: "message-list",
                 display: "flex",
-                width: "700px",
+                max_width: "700px",
                 button {
                     class: "mybutton",
                     width: "200px",
