@@ -100,6 +100,7 @@ struct ChatState {
     messages: Signal<Vec<Message>>,
     input: Signal<String>,
     connected: Signal<bool>,
+    popup: Signal<bool>,
     init: bool,
 }
 
@@ -141,6 +142,10 @@ impl State {
             log_to_console("score not set!");
         };
         s
+    }
+
+    pub fn popup(&self) -> Signal<bool> {
+        self.inner.lock().unwrap().chat.popup.clone()
     }
 
     fn is_init(&self) -> bool {
