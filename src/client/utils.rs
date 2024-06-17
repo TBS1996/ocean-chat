@@ -6,6 +6,8 @@ use common::Scores;
 
 use crate::client::Route;
 
+use crate::client::State;
+use common::SocketMessage;
 use dioxus::prelude::*;
 use futures::executor::block_on;
 use once_cell::sync::Lazy;
@@ -13,6 +15,10 @@ use std::str::FromStr;
 use uuid::Uuid;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
+
+use common::CONFIG;
+use wasm_bindgen::JsCast;
+use web_sys::WebSocket;
 
 #[component]
 pub fn Invalid() -> Element {
@@ -123,6 +129,7 @@ pub fn footer() -> Element {
     rsx! {
         div {
        //     margin_top: "20px",
+            height: "20px",
             display: "flex",
             flex_direction: "row",
             font_size: "0.8em",
@@ -237,6 +244,185 @@ pub fn markdown_converter(s: &str) -> Element {
             }
         }
     }
+}
+
+pub async fn connect_to_peer(
+    scores: Scores,
+    state: State,
+    peer_score_signal: Signal<Option<Scores>>,
+) -> Result<WebSocket, String> {
+    log_to_console("Starting to connect");
+    let url = format!(
+        "{}/pair/{}/{}",
+        CONFIG.server_address(),
+        scores,
+        state.id().simple().to_string()
+    );
+
+    // Attempt to create the WebSocket
+    let ws = web_sys::WebSocket::new(&url).map_err(|err| {
+        let err_msg = format!("Failed to create WebSocket: {:?}", err);
+        log_to_console(&err_msg);
+        err_msg
+    })?;
+    log_to_console("WebSocket created");
+
+    // Handle WebSocket open event
+    let onopen_callback = Closure::wrap(Box::new(move |_| {
+        log_to_console("Connection opened");
+    }) as Box<dyn FnMut(JsValue)>);
+    ws.set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
+    onopen_callback.forget();
+
+    let the_state = state.clone();
+    // Handle WebSocket message event
+    let onmessage_callback = Closure::wrap(Box::new(move |e: web_sys::MessageEvent| {
+        let state = the_state.clone();
+        if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
+            let txt = txt.as_string().unwrap();
+
+            let message = match serde_json::from_str(&txt).unwrap() {
+                SocketMessage::User(msg) => Message::new(Origin::Peer, msg),
+                SocketMessage::Info(msg) => Message::new(Origin::Info, msg),
+                SocketMessage::Ping => {
+                    let msg = SocketMessage::pong();
+                    state.send_message(msg);
+                    return;
+                }
+                SocketMessage::Pong => {
+                    log_to_console("unexpected pong!");
+                    return;
+                }
+                SocketMessage::ConnectionClosed => {
+                    log_to_console("received 'connection closed' from server");
+                    state.clear_socket();
+                    return;
+                }
+                SocketMessage::PeerScores(peer_scores) => {
+                    log_to_console(("peer score received", &peer_scores));
+                    *peer_score_signal.write_unchecked() = Some(peer_scores);
+                    state.set_peer_scores(peer_scores);
+
+                    let more_similar = format!("{:.1}", scores.percentage_similarity(peer_scores));
+                    let s = format!(
+                        "{}% of people are more similar to you than your peer.",
+                        more_similar
+                    );
+
+                    Message::new(Origin::Info, s)
+                }
+            };
+
+            state.insert_message(message);
+
+            log_to_console(&format!("Received message: {}", txt));
+        }
+    }) as Box<dyn FnMut(_)>);
+    ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
+    onmessage_callback.forget();
+
+    let the_state = state.clone();
+    // Handle WebSocket error event
+    let onerror_callback = Closure::wrap(Box::new(move |e: web_sys::ErrorEvent| {
+        let err_msg = format!(
+            "WebSocket error: {:?}, message: {:?}, filename: {:?}, line: {:?}, col: {:?}",
+            e,
+            e.message(),
+            e.filename(),
+            e.lineno(),
+            e.colno()
+        );
+        the_state.insert_message(Message::new(
+            Origin::Info,
+            "unexpected error occured".into(),
+        ));
+        log_to_console(&err_msg);
+    }) as Box<dyn FnMut(_)>);
+    ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
+    onerror_callback.forget();
+
+    // Handle WebSocket close event
+    let onclose_callback = Closure::wrap(Box::new(move |_| {
+        state.clear_socket();
+        log_to_console("WebSocket connection closed");
+        state.insert_message(Message::new(Origin::Info, "Connection closed".into()));
+    }) as Box<dyn FnMut(JsValue)>);
+    ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
+    onclose_callback.forget();
+    Ok(ws)
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Origin {
+    Me,
+    Peer,
+    Info,
+}
+
+impl Origin {
+    fn class(&self) -> &'static str {
+        match self {
+            Self::Me => "message me",
+            Self::Peer => "message peer",
+            Self::Info => "message info",
+        }
+    }
+
+    fn str(&self) -> &'static str {
+        match self {
+            Self::Me => "You: ",
+            Self::Peer => "Peer: ",
+            Self::Info => "Info: ",
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Message {
+    pub origin: Origin,
+    pub content: String,
+}
+
+impl Message {
+    pub fn new(origin: Origin, content: String) -> Self {
+        Self { origin, content }
+    }
+}
+
+#[derive(Props, PartialEq, Clone)]
+struct MessageProps {
+    content: String,
+    class: &'static str,
+    sender: &'static str,
+}
+
+fn Message(msg: MessageProps) -> Element {
+    rsx!(
+        div {
+            class: "{msg.class}",
+            strong { "{msg.sender}" }
+            span { "{msg.content}" }
+        }
+    )
+}
+
+#[derive(Props, PartialEq, Clone)]
+pub struct MessageListProps {
+    messages: Vec<Message>,
+}
+
+pub fn MessageList(mut msgs: MessageListProps) -> Element {
+    msgs.messages.reverse();
+    rsx!(
+        div {
+            class: "message-list",
+            display: "flex",
+            flex_direction: "column-reverse",
+            for msg in msgs.messages{
+                Message {class: msg.origin.class(), sender: msg.origin.str(), content: msg.content}
+            }
+        }
+    )
 }
 
 #[component]
