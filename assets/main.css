@@ -292,6 +292,10 @@ nav a {
     align-items: center; 
 }
 
+.navmargin {
+  margin-top: 100px;
+}
+
 
 /* Media query for shorter screens */
 @media (max-height: 600px) {
@@ -308,6 +312,10 @@ nav a {
     height: 40px;
     width: auto;
     margin-right: 20px;
+  }
+
+  .navmargin {
+    margin-top: 50px;
   }
 }
 

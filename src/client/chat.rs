@@ -61,14 +61,18 @@ pub fn Chat() -> Element {
         div {
             display: "flex",
             flex_direction: "column",
-            height: "98vh",
+            height: "95vh",
 
             Navbar { active_chat: true },
-            if is_init() {
-                { enabled_chat(state, input, peer_score, scores, messages, popup.clone()) }
-            }
-            else {
-                { disabled_chat(state, is_init, peer_score, scores, messages, input) }
+            div {
+                class: "navmargin",
+
+                if is_init() {
+                    { enabled_chat(state, input, peer_score, scores, messages, popup.clone()) }
+                }
+                else {
+                    { disabled_chat(state, is_init, peer_score, scores, messages, input) }
+                }
             }
         }
     }

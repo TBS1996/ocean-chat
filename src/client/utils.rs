@@ -429,6 +429,9 @@ pub fn MessageList(mut msgs: MessageListProps) -> Element {
 pub fn Navbar(active_chat: bool) -> Element {
     rsx! {
         nav {
+            position: "fixed",
+            //margin_bottom: "102px",
+
             ul {
                 Link {
 
