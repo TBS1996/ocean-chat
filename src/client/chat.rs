@@ -153,6 +153,7 @@ fn enabled_chat(
                             transform: "translateX(-50%)",
                             z_index: "10",
                             prevent_default: "onclick",
+                            class: "mybutton",
                             onclick: move |event| {
                                 event.stop_propagation();
                                 log_to_console("overlay clicked");
@@ -195,6 +196,7 @@ fn enabled_chat(
                     button {
                         width: "250px",
                         prevent_default: "onclick",
+                        class: "mybutton",
                         onclick: move |event| {
                             event.stop_propagation();
                             log_to_console("go back clicked");
@@ -224,105 +226,6 @@ fn enabled_chat(
                     }
                 }
             }
-        }
-    }
-}
-
-fn xenabled_chat(
-    state: State,
-    mut input: Signal<String>,
-    peer_score: Signal<Option<Scores>>,
-    scores: Scores,
-    messages: Signal<Vec<Message>>,
-    mut popup: Signal<bool>,
-) -> Element {
-    let state2 = state.clone();
-
-    rsx! {
-
-        if !popup() {
-            div {
-
-                display: "flex",
-                margin_left: "20px",
-                width: "700px",
-                flex_direction: "column",
-
-                div {
-                    display: "flex",
-                    justify_content: "center",
-                    flex_direction: "row",
-
-            button {
-                prevent_default: "onclick",
-                onclick: move |event| {
-                    event.stop_propagation();
-                    log_to_console("overlay clicked");
-                    *popup.write() = true;
-                },
-                "Overlay Button"
-            },
-
-                }
-            form {
-                onsubmit: move |event| {
-                    let state = state2.clone();
-                    let msg = event.data().values().get("msg").unwrap().as_value();
-                    input.set(String::new());
-                    state.insert_message(Message::new(Origin::Me, msg.clone()));
-                    let msg = SocketMessage::user_msg(msg);
-                    if state.send_message(msg) {
-                        log_to_console("message submitted");
-                    }
-                },
-
-                div {
-                    MessageList { messages: messages.read().to_vec() }
-                }
-                { form_group(state.clone(), input, peer_score, scores, messages, true ) }
-            }
-
-            }
-        } else {
-            div {
-                display: "flex",
-                flex_direction: "column",
-                margin_left: "20px",
-                width: "700px",
-
-            button {
-                prevent_default: "onclick",
-                onclick: move |event| {
-                    event.stop_propagation();
-                    log_to_console("go back clicked");
-                    *popup.write() = false;
-                },
-                "go back!"
-            },
-
-
-
-            div {
-                width: "500px",
-                margin_left: "100px",
-                match peer_score() {
-                    Some(score) => {
-                        let more_similar = format!("{:.1}", scores.percentage_similarity(score));
-                        rsx! {
-                            div {
-                                h4 { "Your peer's personality:" }
-                                { score_cmp(scores, score) }
-                                p {
-                                    "{more_similar}% of people are more similar to you than your peer."
-                                }
-                            }
-                        }
-                    },
-                    None => { rsx!{""} },
-                }
-            }
-            }
-
         }
     }
 }
@@ -438,7 +341,14 @@ async fn connect_to_peer(
                     log_to_console(("peer score received", &peer_scores));
                     *peer_score_signal.write_unchecked() = Some(peer_scores);
                     state.set_peer_scores(peer_scores);
-                    return;
+
+                    let more_similar = format!("{:.1}", scores.percentage_similarity(peer_scores));
+                    let s = format!(
+                        "{}% of people are more similar to you than your peer.",
+                        more_similar
+                    );
+
+                    Message::new(Origin::Info, s)
                 }
             };
 
