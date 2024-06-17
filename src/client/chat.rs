@@ -141,7 +141,7 @@ fn enabled_chat(
             div {
                 display: "flex",
                 margin_left: "20px",
-                width: "700px",
+                max_width: "700px",
                 flex_direction: "column",
                 position: "relative",
 
@@ -241,19 +241,20 @@ fn disabled_chat(
     rsx! {
         div {
             display: "flex",
-            margin_left: "20px",
-            width: "700px",
+            justify_content: "center",
+            padding: "20px",
+            max_width: "700px",
             flex_direction: "column",
             div {
                 class: "message-list",
                 display: "flex",
-                width: "700px",
+                justify_content: "center",
+                width: "100%",
                 button {
                     class: "mybutton",
                     width: "200px",
                     height: "200px",
-                    margin_top: "175px",
-                    margin_left: "225px",
+                    margin: "auto",
                     onclick: move |_| {
                         is_init.toggle();
                         state.set_init(true);
