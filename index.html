@@ -8,6 +8,17 @@
           "{base_path}/sw.js"
       );
     }
+
+    // Add the JavaScript to adjust chat height
+    function adjustChatHeight() {
+      const chatContainer = document.querySelector('.chat-container');
+      if (chatContainer) {
+        chatContainer.style.height = `${window.innerHeight}px`;
+      }
+    }
+
+    window.addEventListener('resize', adjustChatHeight);
+    window.addEventListener('load', adjustChatHeight);
   </script>
   <link rel="manifest" href="manifest.json">
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
@@ -28,3 +39,4 @@
   {script_include}
 </body>
 </html>
+

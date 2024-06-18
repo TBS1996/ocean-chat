@@ -90,7 +90,8 @@ form {
 
 
 .message-list {
-    height: 600px;
+    height: 90%;
+    max-height: 600px;
     overflow-y: auto;
     padding: 10px;
     border: 1px solid #ccc;
@@ -291,6 +292,10 @@ nav a {
     align-items: center; 
 }
 
+.navmargin {
+  margin-top: 100px;
+}
+
 
 /* Media query for shorter screens */
 @media (max-height: 600px) {
@@ -308,6 +313,10 @@ nav a {
     width: auto;
     margin-right: 20px;
   }
+
+  .navmargin {
+    margin-top: 50px;
+  }
 }
 
 nav a:hover {
@@ -317,4 +326,12 @@ nav a:hover {
 nav a.active {
     background-color: #57b5f4;
     font-weight: bold;
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(98vh - 50px); /* Adjust based on your navbar height */
+  max-height: 600px;
+  overflow-y: auto;
 }

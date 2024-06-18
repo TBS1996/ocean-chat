@@ -59,9 +59,8 @@ pub enum Route {
 #[component]
 fn Wrapper() -> Element {
     rsx! {
+
         Outlet::<Route> {}
-
-
         div {
             display: "flex",
             justify_content: "center",
