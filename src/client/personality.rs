@@ -25,8 +25,13 @@ pub fn Personality() -> Element {
 
     rsx! {
         div {
+        display: "flex",
+        flex_direction: "column",
+
         Navbar{active_chat: false}
+
         div {
+            class: "navmargin",
             style { { include_str!("personality.css") } },
 
             div {
