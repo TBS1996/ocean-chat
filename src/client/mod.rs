@@ -74,9 +74,7 @@ fn Wrapper() -> Element {
     let on_chat_window = use_route::<Route>().on_chat();
 
     rsx! {
-
         Outlet::<Route> {}
-
         div {
             display: "flex",
             justify_content: "center",
