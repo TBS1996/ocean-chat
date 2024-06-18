@@ -71,7 +71,7 @@ impl Route {
 
 #[component]
 fn Wrapper() -> Element {
-    let full_route = use_route::<Route>();
+    let on_chat_window = use_route::<Route>().on_chat();
 
     rsx! {
 
@@ -80,7 +80,7 @@ fn Wrapper() -> Element {
         div {
             display: "flex",
             justify_content: "center",
-            if !full_route.on_chat() {
+            if !on_chat_window {
                 { footer() }
             }
         }
