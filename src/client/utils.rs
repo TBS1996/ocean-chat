@@ -430,7 +430,7 @@ pub fn Navbar(active_chat: bool) -> Element {
     rsx! {
         nav {
             position: "fixed",
-            //margin_bottom: "102px",
+            z_index: "1000",
 
             ul {
                 Link {
