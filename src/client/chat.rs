@@ -88,6 +88,8 @@ fn form_group(
 ) -> Element {
     rsx! {
         div { class: "form-group",
+            margin_bottom: "30px",
+
             div { class: "input-group",
                 input {
                     r#type: "text",
@@ -154,7 +156,7 @@ fn enabled_chat(
                 max_width: "700px",
                 flex_direction: "column",
                 position: "relative",
-                height: "calc(98vh - 50px)", // Adjust based on your navbar height
+                height: "calc(98vh - 50px)",
                 max_height: "600px",
                 if peer_score().is_some() {
                     button {
