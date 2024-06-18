@@ -25,18 +25,23 @@ pub fn Personality() -> Element {
 
     rsx! {
         div {
+            display: "flex",
+            flex_direction: "column",
+            height: "95vh",
         Navbar{active_chat: false}
         div {
+            class: "navmargin",
+
             style { { include_str!("personality.css") } },
 
             div {
-                width: "50%",
+                max_width: "800px",
                 margin: "auto",
                 padding: "20px",
                 font_family: "Arial, sans-serif",
 
                 h1 { "{sloan}" }
-                {  big_five_bars(scores, false) }
+                { big_five_bars(scores, false) }
                 div {
                     display: "flex",
                     flex_direction: "row",
@@ -59,7 +64,6 @@ pub fn Personality() -> Element {
                 div {
                     padding_top: "50px",
                     { summary }
-
                 }
             }
         }
@@ -73,7 +77,7 @@ fn trait_bar(tr: Trait, score: u32, label_top: bool) -> Element {
     let high_type = tr.high_type();
 
     let color = tr.color();
-    let score_position = (score as f64 / 100.0) * 500.0;
+    let score_position = (score as f64 / 100.0) * 100.0; // Now based on percentage
 
     let left_weight = if score < 50 { "bold" } else { "normal" };
     let right_weight = if score >= 50 { "bold" } else { "normal" };
@@ -89,6 +93,7 @@ fn trait_bar(tr: Trait, score: u32, label_top: bool) -> Element {
                 display: "flex",
                 flex_direction: "row",
                 justify_content: "space-between",
+                width: "100%", // Full width
 
                 div {
                     padding_right: "10px",
@@ -103,12 +108,12 @@ fn trait_bar(tr: Trait, score: u32, label_top: bool) -> Element {
                     justify_content: "center",
                     position: "relative",
                     height: "30px",
-                    width: "500px",
+                    width: "calc(100% - 220px)", // 100% minus side labels
                     background_color: "{color}",
 
                     div {
                         position: "absolute",
-                        left: "{score_position}px",
+                        left: "{score_position}%",
                         height: "100%",
                         width: "10px",
                         background_color: "black",
@@ -187,3 +192,4 @@ pub fn big_five_bars(scores: Scores, label_top: bool) -> Element {
         }
     }
 }
+
