@@ -227,7 +227,7 @@ nav ul {
     list-style: none;
     height: 100%; 
     align-items: center;
-    width: 100%; /* Ensure ul takes the full width */
+    width: 100%;
 }
 
 nav li {
@@ -252,8 +252,8 @@ nav li {
     }
 
     nav ul {
-        justify-content: flex-start; /* Ensure items align to the left */
-        align-items: flex-start; /* Override align-items */
+        justify-content: flex-start; 
+        align-items: flex-start; 
     }
 
     nav li {

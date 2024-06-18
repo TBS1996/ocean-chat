@@ -76,7 +76,7 @@ fn trait_bar(tr: Trait, score: u32, label_top: bool) -> Element {
     let high_type = tr.high_type();
 
     let color = tr.color();
-    let score_position = (score as f64 / 100.0) * 100.0; // Now based on percentage
+    let score_position = (score as f64 / 100.0) * 100.0;
 
     let left_weight = if score < 50 { "bold" } else { "normal" };
     let right_weight = if score >= 50 { "bold" } else { "normal" };
@@ -92,7 +92,7 @@ fn trait_bar(tr: Trait, score: u32, label_top: bool) -> Element {
                 display: "flex",
                 flex_direction: "row",
                 justify_content: "space-between",
-                width: "100%", // Full width
+                width: "100%",
 
                 div {
                     padding_right: "10px",
@@ -107,7 +107,7 @@ fn trait_bar(tr: Trait, score: u32, label_top: bool) -> Element {
                     justify_content: "center",
                     position: "relative",
                     height: "30px",
-                    width: "calc(100% - 220px)", // 100% minus side labels
+                    width: "calc(100% - 220px)",
                     background_color: "{color}",
 
                     div {
