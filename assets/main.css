@@ -136,6 +136,7 @@ form {
 .input-group {
     display: flex;
     align-items: center;
+    margin-bottom: 50px;
 }
 
 .input-group input[type="text"] {

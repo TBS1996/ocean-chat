@@ -87,7 +87,9 @@ fn form_group(
     enabled: bool,
 ) -> Element {
     rsx! {
-        div { class: "form-group",
+        div {
+            class: "form-group",
+            margin_bottom: "50px",
             div { class: "input-group",
                 input {
                     r#type: "text",
