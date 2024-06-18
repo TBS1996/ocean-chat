@@ -9,3 +9,10 @@ h1 {
     padding-right: 10px; 
 }
 
+
+@media (max-width: 600px) {
+    .trait-bar, .percentile-bar-raw {
+        max-width: calc(100vw - 50px);
+    }
+}
+
