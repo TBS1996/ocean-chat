@@ -56,15 +56,31 @@ pub enum Route {
     Privacypolicy {},
 }
 
+impl Route {
+    fn on_chat(&self) -> bool {
+        let state = use_context::<State>();
+
+        // Being 'Home' puts you in chat window if you've already selected your scores.
+        if matches!(self, Route::Home {}) && state.scores().is_some() {
+            return true;
+        }
+
+        matches!(self, Route::Chat {})
+    }
+}
+
 #[component]
 fn Wrapper() -> Element {
-    rsx! {
+    let on_chat_window = use_route::<Route>().on_chat();
 
+    rsx! {
         Outlet::<Route> {}
         div {
             display: "flex",
             justify_content: "center",
-            { footer() }
+            if !on_chat_window {
+                { footer() }
+            }
         }
     }
 }
