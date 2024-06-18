@@ -432,8 +432,6 @@ pub fn Navbar(active_chat: bool) -> Element {
             position: "fixed",
             z_index: "1000",
 
-            //margin_bottom: "102px",
-
             ul {
                 Link {
 

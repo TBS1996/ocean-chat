@@ -134,13 +134,17 @@ pub fn Test() -> Element {
     let quiz1 = quiz.clone();
 
     rsx! {
+        div {
+        display: "flex",
+        flex_direction: "column",
+
                 if show_navbar { Navbar{active_chat: false} } else {  { top_bar() } }
                 div {
                     display: "flex",
                     justify_content: "center",
-                    margin: "20px",
                     flex_direction: "column",
                     align_items: "center",
+                    class: "navmargin",
 
                     div {
                         display: "flex",
@@ -226,5 +230,6 @@ pub fn Test() -> Element {
                     }
                     { manual_msg() }
             }
+    }
     }
 }
