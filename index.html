@@ -4,38 +4,35 @@
   <title>{app_title}</title>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register(
-          "{base_path}/sw.js"
-      );
+      navigator.serviceWorker.register("{base_path}/sw.js");
     }
 
-    // Function to adjust chat height considering the virtual keyboard
-    function adjustChatHeight() {
-      const chatContainer = document.querySelector('.chat-container');
-      if (chatContainer) {
-        // Calculate the available height with a buffer of 20 pixels
-        const availableHeight = window.innerHeight - (window.outerHeight - window.innerHeight) - 20;
-        chatContainer.style.height = `${availableHeight}px`;
-      }
+    // Function to adjust the height of the root element
+    function adjustRootHeight() {
+      document.documentElement.style.height = `${window.innerHeight}px`;
     }
 
-    // Adjust chat height on window resize and load
-    window.addEventListener('resize', adjustChatHeight);
-    window.addEventListener('load', adjustChatHeight);
+    // Adjust the height when the window is resized or loaded
+    window.addEventListener('resize', adjustRootHeight);
+    window.addEventListener('load', adjustRootHeight);
 
-    // Adjust chat height on focus and blur events
-    window.addEventListener('focus', adjustChatHeight);
-    window.addEventListener('blur', adjustChatHeight);
+    // Adjust the height when an input element is focused or blurred
+    function handleInputFocusBlur() {
+      setTimeout(adjustRootHeight, 50); // Slight delay to account for keyboard animation
+    }
 
+    document.addEventListener('focusin', handleInputFocusBlur);
+    document.addEventListener('focusout', handleInputFocusBlur);
   </script>
   <link rel="manifest" href="manifest.json">
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="UTF-8" />
+  <link rel="stylesheet" href="path/to/main.css"> <!-- Your main CSS file -->
   {style_include}
 </head>
 <body>
-  <div id="main"></div>
+  <div id="main" class="full-height"></div> <!-- Use your existing CSS classes -->
   <script type="module">
     import init from "{base_path}/assets/dioxus/{app_name}.js";
     init("{base_path}/assets/dioxus/{app_name}_bg.wasm").then(wasm => {
