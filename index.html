@@ -9,18 +9,38 @@
       );
     }
 
-    // Add the JavaScript to adjust chat height
+    // Add the JavaScript to adjust chat height and scroll to bottom
     function adjustChatHeight() {
       const chatContainer = document.querySelector('.chat-container');
       if (chatContainer) {
-        const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        chatContainer.style.height = `${viewportHeight}px`;
+        // Calculate available height minus the input field
+        const inputField = document.querySelector('.chat-input');
+        const inputFieldHeight = inputField ? inputField.offsetHeight : 0;
+        chatContainer.style.height = `${window.innerHeight - inputFieldHeight}px`;
+      }
+    }
+
+    function scrollToBottom() {
+      const chatContainer = document.querySelector('.chat-container');
+      if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
       }
     }
 
     window.addEventListener('resize', adjustChatHeight);
-    window.addEventListener('load', adjustChatHeight);
-    window.visualViewport.addEventListener('resize', adjustChatHeight);
+    window.addEventListener('load', () => {
+      adjustChatHeight();
+      scrollToBottom();
+    });
+
+    document.addEventListener('focusin', (event) => {
+      if (event.target.classList.contains('chat-input')) {
+        setTimeout(() => {
+          adjustChatHeight();
+          scrollToBottom();
+        }, 300); // Delay to account for keyboard animation
+      }
+    });
   </script>
   <link rel="manifest" href="manifest.json">
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
@@ -29,7 +49,10 @@
   {style_include}
 </head>
 <body>
-  <div id="main"></div>
+  <div id="main">
+    <div class="chat-container"></div>
+    <input type="text" class="chat-input" placeholder="Type a message...">
+  </div>
   <script type="module">
     import init from "{base_path}/assets/dioxus/{app_name}.js";
     init("{base_path}/assets/dioxus/{app_name}_bg.wasm").then(wasm => {
