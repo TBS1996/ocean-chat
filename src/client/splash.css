@@ -45,8 +45,8 @@ p {
 }
 
 .main-box{
-    width: 300px;
-    height: 150px;
+    max_width: 300px;
+    max_height: 150px;
     padding: 15px;
     margin: 10px 0;
     color: #fff;
@@ -60,4 +60,20 @@ p {
 
 .main-box:hover{
     background-color: #4935c4;
+}
+
+
+.content {
+    flex: 1;
+    display: flex;
+    align_items: top;
+    padding: 20px;
+    flex-direction: row;
+}
+
+
+@media (max-width: 500px) {
+  .content {
+    flex-direction: column;
+  }
 }
