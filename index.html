@@ -9,24 +9,24 @@
       );
     }
 
-    // Add the JavaScript to adjust chat height
+    // Function to adjust chat height considering the virtual keyboard
     function adjustChatHeight() {
       const chatContainer = document.querySelector('.chat-container');
       if (chatContainer) {
-        const viewportHeight = window.innerHeight;
-        const inputHeight = document.querySelector('.input-container').offsetHeight || 50; // Assuming input-container is the class of your input bar
-        chatContainer.style.height = `${viewportHeight - inputHeight}px`;
+        // Calculate the available height with a buffer of 20 pixels
+        const availableHeight = window.innerHeight - (window.outerHeight - window.innerHeight) - 20;
+        chatContainer.style.height = `${availableHeight}px`;
       }
     }
 
+    // Adjust chat height on window resize and load
     window.addEventListener('resize', adjustChatHeight);
     window.addEventListener('load', adjustChatHeight);
+
+    // Adjust chat height on focus and blur events
     window.addEventListener('focus', adjustChatHeight);
     window.addEventListener('blur', adjustChatHeight);
 
-    // Additional listener for input focus
-    document.addEventListener('focusin', adjustChatHeight);
-    document.addEventListener('focusout', adjustChatHeight);
   </script>
   <link rel="manifest" href="manifest.json">
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
@@ -35,10 +35,7 @@
   {style_include}
 </head>
 <body>
-  <div class="chat-container" id="main"></div>
-  <div class="input-container">
-    <!-- Your input bar content -->
-  </div>
+  <div id="main"></div>
   <script type="module">
     import init from "{base_path}/assets/dioxus/{app_name}.js";
     init("{base_path}/assets/dioxus/{app_name}_bg.wasm").then(wasm => {
