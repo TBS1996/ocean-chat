@@ -437,7 +437,7 @@ pub fn Navbar(active_chat: bool) -> Element {
 
                     to: Route::Home {},
                     img {
-                        src: "logo.png",
+                        src: "logo.svg",
                         alt: "Oceanchat Logo",
                         class: "logo",
                     }
