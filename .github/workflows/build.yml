@@ -9,6 +9,7 @@ env:
 
 jobs:
   build:
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
@@ -41,6 +42,12 @@ jobs:
 
     - name: Build Frontend
       run: dx build --release
+
+    - name: Minify Assets
+      uses: docker://devatherock/minify-js:3.1.0
+      with:
+        directory: 'dist'
+        add_suffix: false 
     
     - name: Bundle Build Artifacts
       run: mkdir oceanchat-${{ github.run_number }} && cp -r ./dist ./oceanchat-${{ github.run_number }}/dist && cp ./target/release-server/ocean-chat ./oceanchat-${{ github.run_number }}/ocean-chat
