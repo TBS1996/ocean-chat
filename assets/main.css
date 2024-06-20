@@ -267,6 +267,12 @@ nav li {
         margin: 0 5px;
         padding: 0 5px;
     }
+
+
+  .message {
+      padding: 5px;
+      margin-bottom: 3px;
+  }
 }
 
 nav {
@@ -343,6 +349,10 @@ nav a.active {
 
     .label {
         width: auto;
+    }
+
+    .message-list {
+      border: none;
     }
 }
 
