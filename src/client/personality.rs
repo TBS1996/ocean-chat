@@ -25,48 +25,48 @@ pub fn Personality() -> Element {
 
     rsx! {
         div {
-        display: "flex",
-        flex_direction: "column",
-        Navbar{active_chat: false}
-
-        div {
-            class: "navmargin",
-            style { { include_str!("personality.css") } },
+            display: "flex",
+            flex_direction: "column",
+            Navbar{active_chat: false}
 
             div {
-                max_width: "800px",
-                margin: "auto",
-                padding: "20px",
-                font_family: "Arial, sans-serif",
-
-                h1 { "{sloan}" }
-                { big_five_bars(scores, false) }
-                div {
-                    display: "flex",
-                    flex_direction: "row",
-                    justify_content: "center",
-                    margin_top: "25px",
-                    margin_bottom: "50px",
-
-                    Link {
-                        padding_right: "10px",
-                        to: Route::Manual {},
-                        "Edit values"
-                    }
-                    Link {
-                        to: Route::Test {},
-                        "Take the test"
-                    }
-                }
-                h2 {"You are weirder than {weirdness}% of the general population!"},
+                class: "navmargin",
+                style { { include_str!("personality.css") } },
 
                 div {
-                    padding_top: "50px",
-                    { summary }
+                    max_width: "800px",
+                    margin: "auto",
+                    padding: "20px",
+                    font_family: "Arial, sans-serif",
+
+                    h1 { "{sloan}" }
+                    { big_five_bars(scores, false) }
+                    div {
+                        display: "flex",
+                        flex_direction: "row",
+                        justify_content: "center",
+                        margin_top: "25px",
+                        margin_bottom: "50px",
+
+                        Link {
+                            padding_right: "10px",
+                            to: Route::Manual {},
+                            "Edit values"
+                        }
+                        Link {
+                            to: Route::Test {},
+                            "Take the test"
+                        }
+                    }
+                    h2 {"You are weirder than {weirdness}% of the general population!"},
+
+                    div {
+                        padding_top: "50px",
+                        { summary }
+                    }
                 }
             }
         }
-    }
     }
 }
 
