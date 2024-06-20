@@ -62,10 +62,6 @@ form {
     gap: 5px;
 }
 
-
-
-
-
 .default {
     background-color: gray;
 }
@@ -75,7 +71,7 @@ form {
     transition: background-color 0.3s ease;
 }
 
-.confirm: hover {
+.confirm:hover {
     background-color: #4935c4;
 }
 
