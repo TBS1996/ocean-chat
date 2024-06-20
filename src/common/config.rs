@@ -45,7 +45,7 @@ impl Config {
         if self.local {
             "ws://127.0.0.1:3000"
         } else {
-            "wss://95.179.226.104:443"
+            "wss://oceanchat.app"
         }
     }
 }
