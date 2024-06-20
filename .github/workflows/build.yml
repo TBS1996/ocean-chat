@@ -25,6 +25,8 @@ jobs:
           ~/.cargo/git/db/
           target/
         key: ${{ runner.os }}-oceanchat-cache-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-oceanchat-cache-
       
     - name: Update Rust
       run: rustup update
