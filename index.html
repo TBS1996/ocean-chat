@@ -36,12 +36,13 @@
 
     gtag('config', 'AW-16602317877');
   </script>
-  
 </head>
 <body>
   <div id="main"></div>
+  <button id="install-button" style="display: none;">Install App</button>
   <script type="module">
     import init from "{base_path}/assets/dioxus/{app_name}.js";
+
     init("{base_path}/assets/dioxus/{app_name}_bg.wasm").then(wasm => {
       if (wasm.__wbindgen_start == undefined) {
         wasm.main();
@@ -49,6 +50,35 @@
     });
   </script>
   {script_include}
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let deferredPrompt;
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent the mini-infobar from appearing
+        e.preventDefault();
+        // Stash the event so it can be triggered later.
+        deferredPrompt = e;
+        // Show the install button
+        document.getElementById('install-button').style.display = 'block';
+      });
+
+      document.getElementById('install-button').addEventListener('click', async () => {
+        if (deferredPrompt) {
+          // Show the install prompt
+          deferredPrompt.prompt();
+          // Wait for the user to respond to the prompt
+          const { outcome } = await deferredPrompt.userChoice;
+          console.log(`User response to the install prompt: ${outcome}`);
+          // Reset the deferred prompt variable, since it can only be used once.
+          deferredPrompt = null;
+          // Hide the install button
+          document.getElementById('install-button').style.display = 'none';
+        }
+      });
+    });
+  </script>
 </body>
 </html>
 

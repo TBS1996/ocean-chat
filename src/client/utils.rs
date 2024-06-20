@@ -458,7 +458,24 @@ pub fn Navbar(active_chat: bool) -> Element {
                         class: if !active_chat { "active" } else { "" }
                     }
                 }
+                if is_mobile_device() {
+                    li {
+                        button {
+                            id: "install-button",
+                            "Install App"
+                        }
+
+                    }
+                }
             }
         }
     }
+}
+
+pub fn is_mobile_device() -> bool {
+    let user_agent = web_sys::window().unwrap().navigator().user_agent().unwrap();
+    user_agent.contains("Android")
+        || user_agent.contains("iPhone")
+        || user_agent.contains("iPad")
+        || user_agent.contains("iPod")
 }
