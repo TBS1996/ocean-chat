@@ -23,7 +23,7 @@ pub fn top_bar() -> Element {
                 Link {
                     to: Route::Home {},
                     img {
-                        src: "logo.png",
+                        src: "logo.svg",
                         alt: "Oceanchat Logo",
                         width: "80px",
                         height: "80px",

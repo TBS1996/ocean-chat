@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Logo" width="150" />
+  <img src="assets/logo.svg" alt="Logo" width="150" />
 </p>
 <h1 align="center">Ocean Chat</h1>
 
