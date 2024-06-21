@@ -216,6 +216,10 @@ impl ScoreTally {
                 let column = column.trim_end_matches('\r');
                 let column_name = column_names[idx].trim_end_matches('\r');
                 if let Ok(question) = Question::from_str(column_name) {
+                    if !question.short_version() {
+                        continue;
+                    }
+
                     let answer_val: u32 = column.parse().unwrap();
                     let answer = Answer::from_val(answer_val);
                     tally.add_answer(question, answer);

@@ -1,4 +1,5 @@
 use crate::common;
+use common::Answer;
 use common::ScoreTally;
 use common::Scores;
 use once_cell::sync::Lazy;
@@ -7,16 +8,19 @@ use std::io::Write;
 use std::mem;
 use std::path::PathBuf;
 
+pub const Q_PER_TRAIT: usize = 4;
+pub const CARDINALITY: usize = Q_PER_TRAIT * Answer::MAX_POINTS - Q_PER_TRAIT + 1;
+
 #[cfg(not(feature = "server"))]
 pub static DISTS: Lazy<Distributions> = Lazy::new(|| Distributions::load());
 
 #[derive(Debug)]
 pub struct Distributions {
-    pub o: [f32; 41],
-    pub c: [f32; 41],
-    pub e: [f32; 41],
-    pub a: [f32; 41],
-    pub n: [f32; 41],
+    pub o: [f32; CARDINALITY],
+    pub c: [f32; CARDINALITY],
+    pub e: [f32; CARDINALITY],
+    pub a: [f32; CARDINALITY],
+    pub n: [f32; CARDINALITY],
 }
 
 impl Distributions {
@@ -64,17 +68,18 @@ impl Distributions {
 
         let s: String = serde_json::to_string_pretty(&map_repr).unwrap();
         let p = PathBuf::from("files/dist");
+        let p = PathBuf::from("files/smalldist");
         let mut f = std::fs::File::create(&p).unwrap();
         f.write_all(&s.as_bytes()).unwrap();
     }
 
     pub fn convert(&self, tally: ScoreTally) -> Scores {
         Scores {
-            o: self.o[tally.o as usize - 10],
-            c: self.c[tally.c as usize - 10],
-            e: self.e[tally.e as usize - 10],
-            a: self.a[tally.a as usize - 10],
-            n: self.n[tally.n as usize - 10],
+            o: self.o[tally.o as usize - Q_PER_TRAIT],
+            c: self.c[tally.c as usize - Q_PER_TRAIT],
+            e: self.e[tally.e as usize - Q_PER_TRAIT],
+            a: self.a[tally.a as usize - Q_PER_TRAIT],
+            n: self.n[tally.n as usize - Q_PER_TRAIT],
         }
     }
 
@@ -103,7 +108,7 @@ impl Distributions {
     }
 }
 
-fn calculate_percentiles(scores: &[u32]) -> [f32; 41] {
+fn calculate_percentiles(scores: &[u32]) -> [f32; CARDINALITY] {
     let mut sorted_scores = scores.to_vec();
     sorted_scores.sort();
 
@@ -115,10 +120,10 @@ fn calculate_percentiles(scores: &[u32]) -> [f32; 41] {
         percentiles.insert(score, percentile);
     }
 
-    let mut output = [0.; 41];
+    let mut output = [0.; CARDINALITY];
 
     for (idx, value) in percentiles {
-        output[idx as usize - 10] = value;
+        output[idx as usize - Q_PER_TRAIT] = value;
     }
 
     output
