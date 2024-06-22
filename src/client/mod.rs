@@ -17,7 +17,7 @@ mod personality;
 mod privacypolicy;
 mod splash;
 mod test;
-mod utils;
+pub mod utils;
 
 use chat::*;
 use getstarted::*;

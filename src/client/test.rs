@@ -11,8 +11,11 @@ use common::Answer;
 use common::Question;
 use common::ScoreTally;
 use common::DISTS;
+use common::SHORT_DISTS;
 use dioxus::prelude::*;
 use std::sync::{Arc, Mutex};
+
+const Q_QTY: usize = 5 * common::Q_PER_TRAIT;
 
 use super::*;
 
@@ -26,6 +29,14 @@ impl Quiz {
         Self {
             inner: Arc::new(Mutex::new(Inner::new())),
         }
+    }
+
+    pub fn reset_short(&self) {
+        self.inner.lock().unwrap().reset_short();
+    }
+
+    pub fn reset_long(&self) {
+        self.inner.lock().unwrap().reset_long();
     }
 
     pub fn reset(&self) {
@@ -46,6 +57,10 @@ impl Quiz {
 
         (s1, s2)
     }
+
+    pub fn shortened(&self) -> bool {
+        self.inner.lock().unwrap().shortened
+    }
 }
 
 struct Inner {
@@ -53,6 +68,7 @@ struct Inner {
     answered_questions: Vec<(Question, Answer)>,
     current_question: Signal<Question>,
     progress: Signal<u32>,
+    shortened: bool,
 }
 
 impl Inner {
@@ -62,6 +78,7 @@ impl Inner {
             answered_questions: vec![],
             current_question: Signal::new(Question::E1), // dummy value
             progress: Signal::new(0),
+            shortened: false,
         };
 
         s.reset();
@@ -70,7 +87,8 @@ impl Inner {
     }
 
     fn update_percentage(&mut self) {
-        let p = (((50 - self.pending_questions.len()) as f32 / 50.) * 100.) as u32;
+        let tot_q = if self.shortened { 20 } else { 50 };
+        let p = (((tot_q - self.pending_questions.len()) as f32 / tot_q as f32) * 100.) as u32;
         *self.progress.write() = p;
     }
 
@@ -85,12 +103,35 @@ impl Inner {
         self.update_percentage();
     }
 
-    fn reset(&mut self) {
-        self.pending_questions = Question::all_questions();
+    fn reset_short(&mut self) {
+        self.pending_questions = Question::all_questions()
+            .into_iter()
+            .filter(|q| q.short_version())
+            .collect();
+
         self.answered_questions.clear();
         let current_question = self.pending_questions.last().unwrap();
         *self.current_question.write() = *current_question;
+        self.shortened = true;
         self.update_percentage();
+    }
+
+    fn reset_long(&mut self) {
+        self.pending_questions = Question::all_questions();
+
+        self.answered_questions.clear();
+        let current_question = self.pending_questions.last().unwrap();
+        *self.current_question.write() = *current_question;
+        self.shortened = false;
+        self.update_percentage();
+    }
+
+    fn reset(&mut self) {
+        if self.shortened {
+            self.reset_short();
+        } else {
+            self.reset_long();
+        }
     }
 
     fn next_question(&mut self, answer: Answer) -> Option<ScoreTally> {
@@ -132,6 +173,7 @@ pub fn Test() -> Element {
 
     let show_navbar = state.scores().is_some();
     let quiz1 = quiz.clone();
+    let quiz2 = quiz.clone();
 
     rsx! {
         div {
@@ -158,10 +200,16 @@ pub fn Test() -> Element {
                                 prevent_default: "onclick",
                                 onclick: move |_| {
                                     if let Some(tally) = quiz.next_question(*answer) {
-                                        let scores = DISTS.convert(tally);
+                                        let scores = if quiz.shortened() {
+                                            SHORT_DISTS.convert(tally)
+                                        } else {
+                                            DISTS.convert(tally)
+                                        };
+
                                         save_scores(scores);
                                         state.set_scores(scores);
                                         navigator.replace(Route::Personality{});
+                                        quiz.reset();
 
                                     }
 
@@ -195,9 +243,29 @@ pub fn Test() -> Element {
                         width: "150px",
                         prevent_default: "onclick",
                         onclick: move |_| {
-                            quiz.reset();
+                            quiz2.reset();
                         },
                         "reset"
+                    }
+
+                    button {
+                        class: "mybutton",
+                        background_color: "black",
+                        width: "150px",
+                        prevent_default: "onclick",
+                        onclick: move |_| {
+                            if quiz.shortened(){
+                                quiz.reset_long();
+                            } else {
+                                quiz.reset_short();
+
+                            };
+                        },
+                        if quiz.shortened() {
+                            "Take full version"
+                        } else {
+                            "Take short version"
+                        }
                     }
 
                 }
@@ -230,6 +298,6 @@ pub fn Test() -> Element {
                     }
                     { manual_msg() }
             }
-    }
+        }
     }
 }

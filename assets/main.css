@@ -338,6 +338,11 @@ nav a.active {
   overflow-y: auto;
 }
 
+.narrowcol {
+  display: flex;
+  flex-direction: row;
+}
+
 @media (max-width: 600px) {
     .bar {
         width: 100%;
@@ -350,6 +355,11 @@ nav a.active {
     .message-list {
       border: none;
     }
+
+
+  .narrowcol {
+    flex-direction: column;
+  }
 }
 
 
