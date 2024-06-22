@@ -30,6 +30,10 @@ use utils::*;
 
 #[wasm_bindgen(start)]
 pub fn run_app() {
+    let _guard = sentry::init(("https://82a5dff7f96df1604ae5630030d75b6e@o4505092893573120.ingest.us.sentry.io/4507478207561728", sentry::ClientOptions {
+  release: sentry::release_name!(),
+  ..Default::default()
+}));
     launch(App);
 }
 
