@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 #[cfg(not(feature = "server"))]
-mod client;
+pub mod client;
 
 mod common;
 
