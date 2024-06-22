@@ -73,7 +73,7 @@ impl Distributions<17> {
     }
 }
 
-#[cfg(not(feature = "server"))]
+//#[cfg(not(feature = "server"))]
 impl Distributions<41> {
     pub fn load() -> Self {
         let s: &'static str = include_str!("../../files/dist");
