@@ -87,6 +87,7 @@ impl State {
     }
 }
 
+#[cfg(test)]
 async fn queue(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
     serde_json::to_string(&state.waiting_users.user_ids().await).unwrap()
 }

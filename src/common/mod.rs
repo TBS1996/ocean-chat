@@ -86,12 +86,3 @@ impl SocketMessage {
         writer
     }
 }
-
-pub fn peer_connect(scores: Scores, id: String) -> Result<web_sys::WebSocket, String> {
-    let url = format!("{}/pair/{}/{}", CONFIG.server_address(), scores, id,);
-
-    web_sys::WebSocket::new(&url).map_err(|err| {
-        let err_msg = format!("Failed to create WebSocket: {:?}", err);
-        err_msg
-    })
-}
