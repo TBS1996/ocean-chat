@@ -89,6 +89,11 @@ impl State {
 
 #[cfg(test)]
 async fn queue(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
+    serde_json::to_string(&state.connections.pairs().await).unwrap()
+}
+
+#[cfg(test)]
+async fn cons(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
     serde_json::to_string(&state.waiting_users.user_ids().await).unwrap()
 }
 
@@ -136,7 +141,7 @@ pub async fn run() {
     let router = Router::new().route("/pair/:scores/:id", get(pair_handler));
 
     #[cfg(test)]
-    let router = router.route("/queue", get(queue));
+    let router = router.route("/queue", get(queue)).route("cons", get(cons));
 
     let app = router
         .layer(cors)
