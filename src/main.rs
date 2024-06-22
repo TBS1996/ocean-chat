@@ -34,7 +34,7 @@ fn main() {
 }
 
 fn generate_files() {
-    let tallies = ScoreTally::load();
+    let tallies = ScoreTally::load(false);
     let dist = Distributions::from_tallies(&tallies);
     dist.write_to_disk();
     let scores: Vec<Scores> = tallies

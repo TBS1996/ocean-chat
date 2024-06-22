@@ -199,7 +199,7 @@ pub struct ScoreTally {
 }
 
 impl ScoreTally {
-    pub fn load() -> Vec<Self> {
+    pub fn load(short_version: bool) -> Vec<Self> {
         let s = include_str!("../../files/data.csv");
         let s = &s[..s.len() - 1];
 
@@ -216,7 +216,7 @@ impl ScoreTally {
                 let column = column.trim_end_matches('\r');
                 let column_name = column_names[idx].trim_end_matches('\r');
                 if let Ok(question) = Question::from_str(column_name) {
-                    if !question.short_version() {
+                    if short_version && !question.short_version() {
                         continue;
                     }
 
