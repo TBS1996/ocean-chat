@@ -15,6 +15,7 @@ use common::CONFIG;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
+#[cfg(not(test))]
 use tracing_subscriber::layer::SubscriberExt;
 
 mod connection;
@@ -89,12 +90,12 @@ impl State {
 
 #[cfg(test)]
 async fn queue(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
-    serde_json::to_string(&state.connections.pairs().await).unwrap()
+    serde_json::to_string(&state.waiting_users.user_ids().await).unwrap()
 }
 
 #[cfg(test)]
 async fn cons(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
-    serde_json::to_string(&state.waiting_users.user_ids().await).unwrap()
+    serde_json::to_string(&state.connections.pairs().await).unwrap()
 }
 
 async fn pair_handler(
@@ -113,10 +114,13 @@ async fn pair_handler(
     })
 }
 
-pub async fn run() {
+pub async fn run(port: u16) {
+    #[cfg(not(test))]
     let file_appender = tracing_appender::rolling::daily("log", "ocean-chat.log");
+    #[cfg(not(test))]
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
+    #[cfg(not(test))]
     let subscriber = tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -126,6 +130,7 @@ pub async fn run() {
         .with(tracing_subscriber::fmt::layer())
         .with(tracing_subscriber::fmt::layer().with_writer(non_blocking));
 
+    #[cfg(not(test))]
     tracing::subscriber::set_global_default(subscriber).expect("Unable to set a global subscriber");
 
     tracing::info!("starting server ");
@@ -141,14 +146,14 @@ pub async fn run() {
     let router = Router::new().route("/pair/:scores/:id", get(pair_handler));
 
     #[cfg(test)]
-    let router = router.route("/queue", get(queue)).route("cons", get(cons));
+    let router = router.route("/queue", get(queue)).route("/cons", get(cons));
 
     let app = router
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .layer(Extension(Arc::new(state)));
 
-    let addr = "0.0.0.0:3000".parse().unwrap();
+    let addr = format!("0.0.0.0:{}", port).parse().unwrap();
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
@@ -165,53 +170,101 @@ mod tests {
 
     type WebSocket = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
 
-    fn start_server() {
-        tokio::spawn(async move {
-            run().await;
-        });
+    struct TestFramework {
+        port: u16,
     }
 
-    async fn get_waiting_users() -> Vec<String> {
-        let response = reqwest::get("http://127.0.0.1:3000/queue")
+    impl TestFramework {
+        fn new(port: u16) -> Self {
+            Self::start_server(port);
+            Self { port }
+        }
+
+        async fn get_pairs(&self) -> Vec<(String, String)> {
+            let url = format!("http://127.0.0.1:{}/cons", self.port);
+            let response = reqwest::get(url).await.unwrap().text().await.unwrap();
+            serde_json::from_str(&response).unwrap()
+        }
+
+        async fn get_waiting_users(&self) -> Vec<String> {
+            let url = format!("http://127.0.0.1:{}/queue", self.port);
+            let response = reqwest::get(url).await.unwrap().text().await.unwrap();
+            serde_json::from_str(&response).unwrap()
+        }
+
+        async fn queue_user(&self, id: impl Into<String>) -> WebSocket {
+            self.queue_user_with_score(Scores::mid(), id).await
+        }
+
+        async fn queue_user_with_score(&self, s: Scores, id: impl Into<String>) -> WebSocket {
+            let id = id.into();
+            let port = self.port;
+
+            tokio::spawn(async move {
+                let f = format!("ws://127.0.0.1:{}", port);
+
+                let url = format!("{}/pair/{}/{}", f, s, id);
+                let url = Url::parse(&url);
+                let url = url.unwrap();
+                let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
+                ws_stream
+            })
             .await
             .unwrap()
-            .text()
-            .await
-            .unwrap();
-        serde_json::from_str(&response).unwrap()
-    }
+        }
 
-    async fn queue_user(s: Scores, id: impl Into<String>) -> WebSocket {
-        let id = id.into();
-        tokio::spawn(async move {
-            let url = format!("{}/pair/{}/{}", CONFIG.server_address(), s, id);
-            let url = Url::parse(&url);
-            let url = url.unwrap();
-            let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
-            ws_stream
-        })
-        .await
-        .unwrap()
-    }
+        async fn assert_pair(&self, left: &str, right: &str) {
+            let mut pair_found = false;
 
-    async fn assert_waiting_users(expected: Vec<&str>) {
-        let waiting_users = get_waiting_users().await;
-        assert_eq!(expected.len(), waiting_users.len());
+            for (xleft, xright) in self.get_pairs().await {
+                if (xleft == left && xright == right) || (xleft == right && xright == left) {
+                    pair_found = true;
+                }
+            }
 
-        for user in expected {
-            assert!(waiting_users.contains(&user.to_string()));
+            assert!(pair_found);
+        }
+
+        async fn assert_waiting_users(&self, expected: Vec<&str>) {
+            let waiting_users = self.get_waiting_users().await;
+            assert_eq!(expected.len(), waiting_users.len());
+
+            for user in expected {
+                assert!(waiting_users.contains(&user.to_string()));
+            }
+        }
+
+        fn start_server(port: u16) {
+            tokio::spawn(async move {
+                run(port).await;
+            });
         }
     }
 
     #[tokio::test]
     async fn test_queue_user() {
-        start_server();
+        let tfw = TestFramework::new(3000);
 
         let id = "heythere";
-        let _ws = queue_user(Scores::mid(), id).await;
+        let _ws = tfw.queue_user(id).await;
 
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::thread::sleep(std::time::Duration::from_secs(1));
 
-        assert_waiting_users(vec![id]).await;
+        tfw.assert_waiting_users(vec![id]).await;
+    }
+
+    #[tokio::test]
+    async fn test_connect_pair() {
+        let tfw = TestFramework::new(3001);
+        let id = "foo";
+        let id2 = "bar";
+
+        let _ws = tfw.queue_user(id).await;
+        let _ws2 = tfw.queue_user(id2).await;
+        std::thread::sleep(std::time::Duration::from_secs(3));
+
+        // They should have paired up and thus nobody in waiting quue.
+        tfw.assert_waiting_users(vec![]).await;
+        tfw.assert_pair(id, id2).await;
     }
 }
