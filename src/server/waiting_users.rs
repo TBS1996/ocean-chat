@@ -6,6 +6,7 @@ use tokio::sync::Mutex;
 pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
+    #[cfg(test)]
     pub async fn user_ids(&self) -> Vec<String> {
         self.0
             .lock()
