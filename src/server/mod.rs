@@ -87,6 +87,11 @@ impl State {
     }
 }
 
+#[cfg(test)]
+async fn queue(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
+    serde_json::to_string(&state.waiting_users.user_ids().await).unwrap()
+}
+
 async fn pair_handler(
     Path((scores, id)): Path<(String, String)>,
     ws: WebSocketUpgrade,
@@ -128,8 +133,12 @@ pub async fn run() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let app = Router::new()
-        .route("/pair/:scores/:id", get(pair_handler))
+    let router = Router::new().route("/pair/:scores/:id", get(pair_handler));
+
+    #[cfg(test)]
+    let router = router.route("/queue", get(queue));
+
+    let app = router
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .layer(Extension(Arc::new(state)));
@@ -139,4 +148,65 @@ pub async fn run() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio_tungstenite::connect_async;
+    use tokio_tungstenite::MaybeTlsStream;
+    use tokio_tungstenite::WebSocketStream;
+    use url::Url;
+
+    type WebSocket = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
+
+    fn start_server() {
+        tokio::spawn(async move {
+            run().await;
+        });
+    }
+
+    async fn get_waiting_users() -> Vec<String> {
+        let response = reqwest::get("http://127.0.0.1:3000/queue")
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+        serde_json::from_str(&response).unwrap()
+    }
+
+    async fn queue_user(s: Scores, id: impl Into<String>) -> WebSocket {
+        let id = id.into();
+        tokio::spawn(async move {
+            let url = format!("{}/pair/{}/{}", CONFIG.server_address(), s, id);
+            let url = Url::parse(&url);
+            let url = url.unwrap();
+            let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
+            ws_stream
+        })
+        .await
+        .unwrap()
+    }
+
+    async fn assert_waiting_users(expected: Vec<&str>) {
+        let waiting_users = get_waiting_users().await;
+        assert_eq!(expected.len(), waiting_users.len());
+
+        for user in expected {
+            assert!(waiting_users.contains(&user.to_string()));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_queue_user() {
+        start_server();
+
+        let id = "heythere";
+        let _ws = queue_user(Scores::mid(), id).await;
+
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
+        assert_waiting_users(vec![id]).await;
+    }
 }
