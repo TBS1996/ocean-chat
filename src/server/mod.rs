@@ -15,8 +15,6 @@ use common::CONFIG;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-#[cfg(not(test))]
-use tracing_subscriber::layer::SubscriberExt;
 
 mod connection;
 mod user;
@@ -116,22 +114,24 @@ async fn pair_handler(
 
 pub async fn run(port: u16) {
     #[cfg(not(test))]
-    let file_appender = tracing_appender::rolling::daily("log", "ocean-chat.log");
-    #[cfg(not(test))]
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    {
+        use tracing_subscriber::layer::SubscriberExt;
 
-    #[cfg(not(test))]
-    let subscriber = tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "ocean_chat=debug,tower_http=debug,axum::rejection=trace".into()
-            }),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .with(tracing_subscriber::fmt::layer().with_writer(non_blocking));
+        let file_appender = tracing_appender::rolling::daily("log", "ocean-chat.log");
+        let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
-    #[cfg(not(test))]
-    tracing::subscriber::set_global_default(subscriber).expect("Unable to set a global subscriber");
+        let subscriber = tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                    "ocean_chat=debug,tower_http=debug,axum::rejection=trace".into()
+                }),
+            )
+            .with(tracing_subscriber::fmt::layer())
+            .with(tracing_subscriber::fmt::layer().with_writer(non_blocking));
+
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("Unable to set a global subscriber");
+    }
 
     tracing::info!("starting server ");
     let state = State::new();
