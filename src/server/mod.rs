@@ -88,8 +88,7 @@ impl State {
 }
 
 async fn queue(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
-    dbg!("lets queeeeeeeeeeeeeeeeeeeeeeee");
-    dbg!(serde_json::to_string(&state.waiting_users.user_ids().await).unwrap())
+    serde_json::to_string(&state.waiting_users.user_ids().await).unwrap()
 }
 
 async fn pair_handler(

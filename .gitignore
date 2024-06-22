@@ -5,3 +5,4 @@ config.toml
 /files/dist
 /files/scores
 /log
+shell.nix
