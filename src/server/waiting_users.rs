@@ -6,6 +6,15 @@ use tokio::sync::Mutex;
 pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
+    pub async fn user_ids(&self) -> Vec<String> {
+        self.0
+            .lock()
+            .await
+            .iter()
+            .map(|user| user.id.to_owned())
+            .collect()
+    }
+
     pub async fn queue(&self, user: User) {
         let mut lock = self.0.lock().await;
 
