@@ -19,6 +19,8 @@ fn handle_socket(
     let (x_sender, mut x_receiver) = channel::<SocketMessage>(32);
     let (sender, receiver) = channel(32);
 
+    let mut closed = false;
+
     tokio::spawn(async move {
         let (mut tx, mut rx) = socket.split();
         let timeout_duration = Duration::from_secs(CONFIG.timeout_secs);
@@ -35,10 +37,17 @@ fn handle_socket(
                     match msg {
                         Message::Close(_) => {
                             tracing::info!("{}: client closed connection", &id);
-                            let _ = sender.send(SocketMessage::ConnectionClosed).await;
-                            break;
+                            closed = true;
+
+                           // let _ = sender.send(SocketMessage::ConnectionClosed).await;
+                           // break;
                         },
                         Message::Binary(bytes) => {
+                            if closed {
+                                // This shouldn't be possible.
+                                tracing::error!("{}: received message after closed client", &id);
+                            }
+
                             match serde_json::from_slice(&bytes) {
                                 Ok(SocketMessage::Ping) => {
                                     timeout.as_mut().reset(Instant::now() + timeout_duration);
