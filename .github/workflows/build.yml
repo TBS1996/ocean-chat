@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Cache Dependancies
+    - name: Cache Dependencies
       uses: actions/cache@v4
       with:
         path: |
@@ -50,7 +50,10 @@ jobs:
       with:
         directory: 'dist'
         add_suffix: false 
-    
+
+    - name: Run backend tests
+      run: cargo test --features server
+
     - name: Bundle Build Artifacts
       run: mkdir oceanchat-${{ github.run_number }} && cp -r ./dist ./oceanchat-${{ github.run_number }}/dist && cp ./target/release-server/ocean-chat ./oceanchat-${{ github.run_number }}/ocean-chat
 
@@ -59,3 +62,4 @@ jobs:
       with:
         path: ./oceanchat-${{ github.run_number }}
         name: oceanchat-${{ github.run_number }}
+
