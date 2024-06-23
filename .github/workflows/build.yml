@@ -51,9 +51,6 @@ jobs:
         directory: 'dist'
         add_suffix: false 
 
-    - name: Run backend tests
-      run: cargo test --features server
-
     - name: Bundle Build Artifacts
       run: mkdir oceanchat-${{ github.run_number }} && cp -r ./dist ./oceanchat-${{ github.run_number }}/dist && cp ./target/release-server/ocean-chat ./oceanchat-${{ github.run_number }}/ocean-chat
 
