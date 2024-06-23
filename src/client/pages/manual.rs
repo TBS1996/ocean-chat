@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
 
 use crate::client;
+use crate::client::components::nav_bar::top_bar;
+use crate::client::components::nav_bar::Navbar;
 use crate::common;
 
 use client::log_to_console;
@@ -8,8 +10,6 @@ use common::Trait;
 
 use client::save_scores;
 use client::test_msg;
-use client::top_bar;
-use client::Navbar;
 use client::Route;
 use client::State;
 use common::Scores;

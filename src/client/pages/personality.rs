@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
 
 use crate::client;
+use crate::client::components::nav_bar::Navbar;
 use crate::common;
 
 use client::markdown_converter;
-use client::Navbar;
 use client::Route;
 use client::State;
 use common::Sloan;
@@ -31,7 +31,7 @@ pub fn Personality() -> Element {
 
             div {
                 class: "navmargin",
-                style { { include_str!("personality.css") } },
+                style { { include_str!("css/personality.css") } },
 
                 div {
                     max_width: "800px",

@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 use crate::client;
+use crate::client::components::nav_bar::Navbar;
+use crate::client::Splash;
 use crate::common;
 
 use client::connect_to_peer;
@@ -7,9 +9,7 @@ use client::log_to_console;
 use client::score_cmp;
 use client::Message;
 use client::MessageList;
-use client::Navbar;
 use client::Origin;
-use client::Splash;
 use client::State;
 use common::Scores;
 use common::SocketMessage;
@@ -257,14 +257,13 @@ fn disabled_chat(
 ) -> Element {
     rsx! {
         div {
-
-                display: "flex",
-                margin_left: "20px",
-                max_width: "700px",
-                flex_direction: "column",
-                position: "relative",
-                height: "calc(98vh - 50px)",
-                max_height: "600px",
+            display: "flex",
+            margin_left: "20px",
+            max_width: "700px",
+            flex_direction: "column",
+            position: "relative",
+            height: "calc(98vh - 50px)",
+            max_height: "600px",
 
             div {
                 class: "message-list",

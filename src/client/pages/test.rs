@@ -4,13 +4,14 @@ use crate::client;
 use crate::common;
 
 use client::save_scores;
-use client::Navbar;
 use client::Route;
 use client::State;
 use common::Answer;
 use common::Question;
 use common::ScoreTally;
 use common::DISTS;
+use components::nav_bar::top_bar;
+use components::nav_bar::Navbar;
 use dioxus::prelude::*;
 use std::sync::{Arc, Mutex};
 
@@ -135,43 +136,41 @@ pub fn Test() -> Element {
 
     rsx! {
         div {
-        display: "flex",
-        flex_direction: "column",
+            display: "flex",
+            flex_direction: "column",
 
-                if show_navbar { Navbar{active_chat: false} } else {  { top_bar() } }
+            if show_navbar { Navbar{active_chat: false} } else {  { top_bar() } }
+            div {
+                display: "flex",
+                justify_content: "center",
+                flex_direction: "column",
+                align_items: "center",
+                class: "navmargin",
+
                 div {
                     display: "flex",
                     justify_content: "center",
-                    flex_direction: "column",
-                    align_items: "center",
-                    class: "navmargin",
-
-                    div {
-                        display: "flex",
-                        justify_content: "center",
-                        font_size: "1.5em",
-                        padding_bottom: "30px", "{curr_question}" }
-                    div { class: "buttons",
-                        for (answer, (state, quiz)) in Answer::ALL.iter().zip(std::iter::repeat((state.clone(), quiz.clone()))) {
-                            button {
-                                class: "mybutton",
-                                prevent_default: "onclick",
-                                onclick: move |_| {
-                                    if let Some(tally) = quiz.next_question(*answer) {
-                                        let scores = DISTS.convert(tally);
-                                        save_scores(scores);
-                                        state.set_scores(scores);
-                                        navigator.replace(Route::Personality{});
-
-                                    }
-
-
-                                },
-                                "{answer}"
-                            }
+                    font_size: "1.5em",
+                    padding_bottom: "30px", "{curr_question}"
+                }
+                div {
+                    class: "buttons",
+                    for (answer, (state, quiz)) in Answer::ALL.iter().zip(std::iter::repeat((state.clone(), quiz.clone()))) {
+                        button {
+                            class: "mybutton",
+                            prevent_default: "onclick",
+                            onclick: move |_| {
+                                if let Some(tally) = quiz.next_question(*answer) {
+                                    let scores = DISTS.convert(tally);
+                                    save_scores(scores);
+                                    state.set_scores(scores);
+                                    navigator.replace(Route::Personality{});
+                                }
+                            },
+                            "{answer}"
                         }
                     }
-
+                }
 
                 div {
                     margin_top: "20px",
@@ -199,37 +198,35 @@ pub fn Test() -> Element {
                         },
                         "reset"
                     }
-
                 }
-
-                }
+            }
+            div {
+                display: "flex",
+                justify_content: "center",
+                align_items: "center",
+                flex_direction: "column",
+                p {"{progress}%"}
                 div {
                     display: "flex",
-                    justify_content: "center",
-                    align_items: "center",
-                    flex_direction: "column",
-                    p {"{progress}%"}
+                    justify_content: "left",
+                    background_color: "#f1f1f1",
+                    overflow: "hidden",
+                    height: "30px",
+                    width: "500px",
                     div {
                         display: "flex",
-                        justify_content: "left",
-                        background_color: "#f1f1f1",
-                        overflow: "hidden",
-                        height: "30px",
-                        width: "500px",
-                        div {
-                            display: "flex",
-                            align_items: "left",
-                            justify_content: "center",
-                            height: "100%",
-                            color: "white",
-                            border_radius: "25px 0 0 25px",
-                            transition: "width 0.5s",
-                            width: "{progress}%",
-                            background_color: "red",
-                        }
+                        align_items: "left",
+                        justify_content: "center",
+                        height: "100%",
+                        color: "white",
+                        border_radius: "25px 0 0 25px",
+                        transition: "width 0.5s",
+                        width: "{progress}%",
+                        background_color: "red",
                     }
-                    { manual_msg() }
+                }
+                { manual_msg() }
             }
-    }
+        }
     }
 }

@@ -1,3 +1,5 @@
+use components::nav_bar::top_bar;
+
 use super::*;
 
 pub fn Pretest() -> Element {
@@ -12,8 +14,7 @@ pub fn Pretest() -> Element {
             align_items: "center",
             p {
                 margin_top: "50px",
-                "Obviously, to pair you up with similar people we have to know who you are.
-    ",
+                "Obviously, to pair you up with similar people we have to know who you are.",
             }
             p {
                 "Start taking the standard Big-5 test, and you'll be ready in just 3-5 minutes.",
