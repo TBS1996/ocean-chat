@@ -313,6 +313,17 @@ pub async fn connect_to_peer(
                 }
             };
 
+            /*
+            std::thread::spawn(|| {
+                let js_code = r#"
+                    var audio = new Audio('/newmessage.mp3');
+                    audio.play();
+                "#;
+                eval(js_code);
+                std::thread::sleep(std::time::Duration::from_secs(5));
+            });
+            */
+
             state.insert_message(message);
 
             log_to_console(&format!("Received message: {}", txt));
