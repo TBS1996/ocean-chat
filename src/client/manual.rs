@@ -43,7 +43,7 @@ pub fn Manual() -> Element {
     let trait_vals = traits.iter().zip(default_vals.iter());
 
     let js_code = r#"
-                    var audio = new Audio('/newmessage.mp3');
+                    var audio = new Audio('music.mp3');
                     audio.play();
                 "#;
     eval(js_code);

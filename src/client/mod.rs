@@ -5,7 +5,9 @@ use common::Scores;
 
 use dioxus::prelude::*;
 use futures::executor::block_on;
+use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 use wasm_bindgen::prelude::*;
 use web_sys::WebSocket;
@@ -135,6 +137,14 @@ impl InnerState {
     }
 }
 
+pub static LAST_NOTIF: Lazy<Arc<Mutex<SystemTime>>> =
+    Lazy::new(|| Arc::new(Mutex::new(SystemTime::UNIX_EPOCH)));
+
+#[wasm_bindgen]
+extern "C" {
+    fn playSound(filePath: &str);
+}
+
 impl State {
     pub fn load() -> Self {
         let id = match block_on(fetch_id_storage()) {
@@ -178,7 +188,22 @@ impl State {
     pub fn insert_message(&self, message: Message) {
         log_to_console("inserting msg");
         log_to_console(&message);
-        self.inner.lock().unwrap().chat.messages.push(message);
+
+        self.inner
+            .lock()
+            .unwrap()
+            .chat
+            .messages
+            .push(message.clone());
+
+        if let Origin::Peer = message.origin {
+            let last_notif = *LAST_NOTIF.lock().unwrap();
+
+            if last_notif + Duration::from_secs(5) > SystemTime::now() {
+                playSound("newmessage.mp3");
+                *LAST_NOTIF.lock().unwrap() = SystemTime::now();
+            }
+        }
     }
 
     pub fn input(&self) -> Signal<String> {
