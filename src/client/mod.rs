@@ -7,7 +7,6 @@ use dioxus::prelude::*;
 use futures::executor::block_on;
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 use wasm_bindgen::prelude::*;
 use web_sys::WebSocket;
@@ -186,8 +185,7 @@ impl State {
     }
 
     pub fn insert_message(&self, message: Message) {
-        log_to_console("inserting msg");
-        log_to_console(&message);
+        log_to_console(("inserting msg:", &message));
 
         self.inner
             .lock()
@@ -199,13 +197,10 @@ impl State {
         if let Origin::Peer = message.origin {
             let last_notif = *LAST_NOTIF.lock().unwrap();
             let current = currTime();
-            log_to_console((&current, last_notif));
 
             if last_notif + 5. < current {
                 playSound("newmessage.mp3");
                 *LAST_NOTIF.lock().unwrap() = current;
-            } else {
-                log_to_console((last_notif + 5.));
             }
         }
     }

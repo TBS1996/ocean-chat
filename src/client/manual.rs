@@ -42,12 +42,6 @@ pub fn Manual() -> Element {
 
     let trait_vals = traits.iter().zip(default_vals.iter());
 
-    let js_code = r#"
-                    var audio = new Audio('music.mp3');
-                    audio.play();
-                "#;
-    eval(js_code);
-
     rsx! {
         div {
             display: "flex",
@@ -65,8 +59,6 @@ pub fn Manual() -> Element {
 
                 form {
                     onsubmit:  move |event| {
-
-
                         log_to_console("clicked submit");
                         match Scores::try_from(event.data().deref()) {
                             Ok(scores) => {
