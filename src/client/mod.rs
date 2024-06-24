@@ -137,12 +137,13 @@ impl InnerState {
     }
 }
 
-pub static LAST_NOTIF: Lazy<Arc<Mutex<SystemTime>>> =
-    Lazy::new(|| Arc::new(Mutex::new(SystemTime::UNIX_EPOCH)));
+pub static LAST_NOTIF: Lazy<Arc<Mutex<f64>>> = Lazy::new(|| Arc::new(Mutex::new(0.)));
 
 #[wasm_bindgen]
 extern "C" {
     fn playSound(filePath: &str);
+
+    fn currTime() -> f64;
 }
 
 impl State {
@@ -198,10 +199,11 @@ impl State {
 
         if let Origin::Peer = message.origin {
             let last_notif = *LAST_NOTIF.lock().unwrap();
+            let current = currTime();
 
-            if last_notif + Duration::from_secs(5) > SystemTime::now() {
+            if last_notif + 5000. > current {
                 playSound("newmessage.mp3");
-                *LAST_NOTIF.lock().unwrap() = SystemTime::now();
+                *LAST_NOTIF.lock().unwrap() = current;
             }
         }
     }

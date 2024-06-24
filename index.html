@@ -19,7 +19,9 @@
       }
     }
 
-    
+    function currTime() {
+	return Math.floor(Date.now() / 1000);
+    }
 
     function playSound(filePath) {
       if (document.hidden) {
@@ -31,6 +33,7 @@
     }
 
     window.playSound = playSound;
+    window.currTime = currTime;
 
     window.addEventListener('resize', adjustChatHeight);
     window.addEventListener('load', adjustChatHeight);
