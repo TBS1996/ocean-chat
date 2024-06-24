@@ -142,7 +142,6 @@ pub static LAST_NOTIF: Lazy<Arc<Mutex<f64>>> = Lazy::new(|| Arc::new(Mutex::new(
 #[wasm_bindgen]
 extern "C" {
     fn playSound(filePath: &str);
-
     fn currTime() -> f64;
 }
 
@@ -200,10 +199,13 @@ impl State {
         if let Origin::Peer = message.origin {
             let last_notif = *LAST_NOTIF.lock().unwrap();
             let current = currTime();
+            log_to_console((&current, last_notif));
 
-            if last_notif + 5000. > current {
+            if last_notif + 5. < current {
                 playSound("newmessage.mp3");
                 *LAST_NOTIF.lock().unwrap() = current;
+            } else {
+                log_to_console((last_notif + 5.));
             }
         }
     }
