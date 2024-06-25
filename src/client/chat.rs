@@ -13,12 +13,55 @@ use client::Splash;
 use client::State;
 use common::Scores;
 use common::SocketMessage;
+use common::UserStatus;
+use common::CONFIG;
 use dioxus::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use once_cell::sync::Lazy;
 use std::sync::atomic;
 use std::sync::Arc;
+
+pub async fn get_status() -> Option<UserStatus> {
+    use futures::future::{select, Either};
+    use gloo_timers::future::TimeoutFuture;
+    use wasm_bindgen::prelude::*;
+    use wasm_bindgen_futures::JsFuture;
+    use web_sys::{Request, RequestInit, RequestMode, Response};
+
+    let state = use_context::<State>();
+
+    let url = format!(
+        "{}/status/{}",
+        CONFIG.server_address(),
+        state.id().simple().to_string()
+    );
+
+    let opts = {
+        let mut opts = RequestInit::new();
+        opts.method("GET");
+        opts.mode(RequestMode::Cors);
+        opts
+    };
+
+    let request = Request::new_with_str_and_init(&url, &opts).ok()?;
+
+    let fetch_future = {
+        let window = web_sys::window()?;
+        JsFuture::from(window.fetch_with_request(&request))
+    };
+
+    let result = select(fetch_future, TimeoutFuture::new(5000)).await;
+    match result {
+        Either::Left((fetch_result, _)) => {
+            let resp: Response = fetch_result.ok()?.dyn_into().ok()?;
+            let text = JsFuture::from(resp.text().ok()?).await.ok()?.as_string()?;
+            let status: UserStatus = serde_json::from_str(&text).ok()?;
+            Some(status)
+        }
+        Either::Right((_, _)) => return None,
+    }
+}
 
 pub static PINGER_ACTIVATED: Lazy<Arc<atomic::AtomicBool>> =
     Lazy::new(|| Arc::new(atomic::AtomicBool::new(false)));
@@ -33,6 +76,7 @@ fn start_pinger(state: State) {
         loop {
             state.send_message(SocketMessage::ping());
             gloo_timers::future::sleep(std::time::Duration::from_secs(5)).await;
+            //log_to_console(get_status().await);
         }
     });
 }

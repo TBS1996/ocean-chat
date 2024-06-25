@@ -39,6 +39,15 @@ impl WaitingUsers {
         self.0.lock().await.len()
     }
 
+    pub async fn contains(&self, id: &str) -> bool {
+        self.0
+            .lock()
+            .await
+            .iter()
+            .position(|x| &x.id == id)
+            .is_some()
+    }
+
     /// If 2 or more users are present, it'll pop the longest-waiting user along with
     /// another user who has the closest personality.
     pub async fn pop_pair(&self) -> Option<(User, User)> {

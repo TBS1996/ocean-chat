@@ -281,24 +281,29 @@ pub async fn connect_to_peer(
         if let Ok(txt) = e.data().dyn_into::<js_sys::JsString>() {
             let txt = txt.as_string().unwrap();
 
+            use SocketMessage as SM;
             let message = match serde_json::from_str(&txt).unwrap() {
-                SocketMessage::User(msg) => Message::new(Origin::Peer, msg),
-                SocketMessage::Info(msg) => Message::new(Origin::Info, msg),
-                SocketMessage::Ping => {
-                    let msg = SocketMessage::pong();
+                SM::User(msg) => Message::new(Origin::Peer, msg),
+                SM::Info(msg) => Message::new(Origin::Info, msg),
+                SM::UserStatus(status) => {
+                    log_to_console(status);
+                    return;
+                }
+                SM::Ping => {
+                    let msg = SM::pong();
                     state.send_message(msg);
                     return;
                 }
-                SocketMessage::Pong => {
+                SM::Pong => {
                     log_to_console("unexpected pong!");
                     return;
                 }
-                SocketMessage::ConnectionClosed => {
+                SM::ConnectionClosed => {
                     log_to_console("received 'connection closed' from server");
                     state.clear_socket();
                     return;
                 }
-                SocketMessage::PeerScores(peer_scores) => {
+                SM::PeerScores(peer_scores) => {
                     log_to_console(("peer score received", &peer_scores));
                     *peer_score_signal.write_unchecked() = Some(peer_scores);
                     state.set_peer_scores(peer_scores);

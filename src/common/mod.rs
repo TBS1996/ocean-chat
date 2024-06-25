@@ -17,9 +17,17 @@ pub use sloan::*;
 #[cfg(feature = "server")]
 use axum::extract::ws::Message;
 
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub enum UserStatus {
+    Disconnected,
+    Connected,
+    Waiting,
+}
+
 /// The type that gets sent from server to client through socket.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SocketMessage {
+    UserStatus(UserStatus),
     User(String),
     Info(String),
     PeerScores(Scores),
