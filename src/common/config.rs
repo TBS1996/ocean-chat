@@ -41,6 +41,14 @@ impl Config {
         toml::from_str(&config_str).unwrap()
     }
 
+    pub fn http_address(&self) -> &'static str {
+        if self.local {
+            "http://127.0.0.1:3000"
+        } else {
+            "https://oceanchat.app"
+        }
+    }
+
     pub fn server_address(&self) -> &'static str {
         if self.local {
             "ws://127.0.0.1:3000"
