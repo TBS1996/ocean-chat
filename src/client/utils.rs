@@ -285,10 +285,6 @@ pub async fn connect_to_peer(
             let message = match serde_json::from_str(&txt).unwrap() {
                 SM::User(msg) => Message::new(Origin::Peer, msg),
                 SM::Info(msg) => Message::new(Origin::Info, msg),
-                SM::UserStatus(status) => {
-                    log_to_console(status);
-                    return;
-                }
                 SM::Ping => {
                     let msg = SM::pong();
                     state.send_message(msg);
