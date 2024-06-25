@@ -25,6 +25,8 @@ impl ToString for Answer {
 }
 
 impl Answer {
+    pub const MAX_POINTS: usize = 5;
+
     pub const ALL: [Answer; 5] = [
         Answer::Disagree,
         Answer::SlightlyDisagree,
@@ -240,6 +242,65 @@ impl Question {
             Question::O8 => "I use difficult words.",
             Question::O9 => "I spend time reflecting on things.",
             Question::O10 => "I am full of ideas.",
+        }
+    }
+
+    pub fn short_version(&self) -> bool {
+        match self {
+            Question::E1 => false,
+            Question::E2 => true,
+            Question::E3 => false,
+            Question::E4 => false,
+            Question::E5 => false,
+            Question::E6 => false,
+            Question::E7 => true,
+            Question::E8 => false,
+            Question::E9 => true,
+            Question::E10 => true,
+
+            Question::N1 => true,
+            Question::N2 => false,
+            Question::N3 => false,
+            Question::N4 => false,
+            Question::N5 => false,
+            Question::N6 => true,
+            Question::N7 => false,
+            Question::N8 => true,
+            Question::N9 => false,
+            Question::N10 => true,
+
+            Question::A1 => true,
+            Question::A2 => false,
+            Question::A3 => true,
+            Question::A4 => false,
+            Question::A5 => true,
+            Question::A6 => false,
+            Question::A7 => true,
+            Question::A8 => false,
+            Question::A9 => false,
+            Question::A10 => false,
+
+            Question::C1 => false,
+            Question::C2 => true,
+            Question::C3 => false,
+            Question::C4 => false,
+            Question::C5 => true,
+            Question::C6 => true,
+            Question::C7 => false,
+            Question::C8 => false,
+            Question::C9 => true,
+            Question::C10 => false,
+
+            Question::O1 => true,
+            Question::O2 => true,
+            Question::O3 => false,
+            Question::O4 => true,
+            Question::O5 => false,
+            Question::O6 => false,
+            Question::O7 => false,
+            Question::O8 => true,
+            Question::O9 => false,
+            Question::O10 => false,
         }
     }
 

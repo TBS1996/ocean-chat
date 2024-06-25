@@ -5,6 +5,7 @@ use common::Scores;
 
 use dioxus::prelude::*;
 use futures::executor::block_on;
+use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 use wasm_bindgen::prelude::*;
@@ -12,7 +13,7 @@ use web_sys::WebSocket;
 
 mod components;
 mod pages;
-mod utils;
+pub mod utils;
 
 use pages::chat::*;
 use pages::getstarted::*;
@@ -130,6 +131,14 @@ impl InnerState {
     }
 }
 
+pub static LAST_NOTIF: Lazy<Arc<Mutex<f64>>> = Lazy::new(|| Arc::new(Mutex::new(0.)));
+
+#[wasm_bindgen]
+extern "C" {
+    fn playSound(filePath: &str);
+    fn currTime() -> f64;
+}
+
 impl State {
     pub fn load() -> Self {
         let id = match block_on(fetch_id_storage()) {
@@ -171,9 +180,24 @@ impl State {
     }
 
     pub fn insert_message(&self, message: Message) {
-        log_to_console("inserting msg");
-        log_to_console(&message);
-        self.inner.lock().unwrap().chat.messages.push(message);
+        log_to_console(("inserting msg:", &message));
+
+        self.inner
+            .lock()
+            .unwrap()
+            .chat
+            .messages
+            .push(message.clone());
+
+        if let Origin::Peer = message.origin {
+            let last_notif = *LAST_NOTIF.lock().unwrap();
+            let current = currTime();
+
+            if last_notif + 5. < current {
+                playSound("newmessage.mp3");
+                *LAST_NOTIF.lock().unwrap() = current;
+            }
+        }
     }
 
     pub fn input(&self) -> Signal<String> {
