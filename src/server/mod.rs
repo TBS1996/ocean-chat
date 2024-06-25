@@ -113,6 +113,8 @@ async fn user_status(
     Extension(state): Extension<Arc<State>>,
 ) -> impl IntoResponse {
     use crate::common::UserStatus;
+    tracing::info!("user status!: {}", &id);
+
     let status = if state.waiting_users.contains(&id).await {
         state.connections.clear_user(&id).await;
 

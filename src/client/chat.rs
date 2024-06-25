@@ -22,18 +22,16 @@ use once_cell::sync::Lazy;
 use std::sync::atomic;
 use std::sync::Arc;
 
-pub async fn get_status() -> Option<UserStatus> {
+pub async fn get_status(state: &State) -> Option<UserStatus> {
     use futures::future::{select, Either};
     use gloo_timers::future::TimeoutFuture;
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::JsFuture;
     use web_sys::{Request, RequestInit, RequestMode, Response};
 
-    let state = use_context::<State>();
-
     let url = format!(
         "{}/status/{}",
-        CONFIG.server_address(),
+        CONFIG.http_address(),
         state.id().simple().to_string()
     );
 
@@ -52,6 +50,7 @@ pub async fn get_status() -> Option<UserStatus> {
     };
 
     let result = select(fetch_future, TimeoutFuture::new(5000)).await;
+
     match result {
         Either::Left((fetch_result, _)) => {
             let resp: Response = fetch_result.ok()?.dyn_into().ok()?;
@@ -76,7 +75,7 @@ fn start_pinger(state: State) {
         loop {
             state.send_message(SocketMessage::ping());
             gloo_timers::future::sleep(std::time::Duration::from_secs(5)).await;
-            //log_to_console(get_status().await);
+            log_to_console(("status: ", get_status(&state).await));
         }
     });
 }
