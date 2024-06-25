@@ -19,21 +19,6 @@
       }
     }
 
-    function currTime() {
-	return Math.floor(Date.now() / 1000);
-    }
-
-    function playSound(filePath) {
-      if (document.hidden) {
-        var audio = new Audio(filePath);
-        audio.play().catch(function(error) {
-          console.log('Playback prevented:', error);
-        });
-      } 
-    }
-
-    window.playSound = playSound;
-    window.currTime = currTime;
 
     window.addEventListener('resize', adjustChatHeight);
     window.addEventListener('load', adjustChatHeight);
