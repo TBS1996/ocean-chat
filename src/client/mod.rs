@@ -10,9 +10,9 @@ use uuid::Uuid;
 use wasm_bindgen::prelude::*;
 use web_sys::WebSocket;
 
-mod utils;
 mod components;
 mod pages;
+mod utils;
 
 use pages::chat::*;
 use pages::getstarted::*;

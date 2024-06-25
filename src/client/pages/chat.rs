@@ -87,10 +87,12 @@ fn form_group(
     enabled: bool,
 ) -> Element {
     rsx! {
-        div { class: "form-group",
+        div {
+            class: "form-group",
             margin_bottom: "30px",
 
-            div { class: "input-group",
+            div {
+                class: "input-group",
                 input {
                     r#type: "text",
                     name: "msg",
@@ -301,7 +303,6 @@ fn disabled_chat(
             }
 
             { form_group(state.clone(), input, peer_score, scores, messages, false ) }
-
         }
     }
 }

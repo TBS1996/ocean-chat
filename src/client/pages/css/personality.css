@@ -3,12 +3,10 @@ h1 {
     margin-bottom: 40px;
 }
 
-
 .label {
     width: 150px; 
     padding-right: 10px; 
 }
-
 
 @media (max-width: 600px) {
     .trait-bar, .percentile-bar-raw {

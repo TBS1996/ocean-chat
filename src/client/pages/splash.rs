@@ -22,7 +22,6 @@ pub fn Splash() -> Element {
         div {
             class: "content",
 
-
             div {
                 max_width: "700px",
                 display: "flex",
