@@ -59,6 +59,11 @@ impl State {
             return x;
         }
 
+        let x = self.connection.take(&id).await;
+        if x.is_some() {
+            return x;
+        }
+
         None
     }
 

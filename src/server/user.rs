@@ -74,6 +74,7 @@ fn handle_socket(
     (x_sender, receiver)
 }
 
+#[derive(Debug)]
 pub struct User {
     pub scores: Scores,
     pub id: String,

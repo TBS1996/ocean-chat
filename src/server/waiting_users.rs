@@ -37,7 +37,7 @@ impl WaitingUsers {
 
     pub async fn take(&self, id: &str) -> Option<User> {
         let pos = {
-            let mut lock = self.0.lock().await;
+            let lock = self.0.lock().await;
 
             lock.iter().position(|user| user.id == id)?
         };

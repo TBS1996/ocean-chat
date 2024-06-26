@@ -1,7 +1,9 @@
 use crate::common::SocketMessage;
 use crate::server::User;
+
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::oneshot;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
@@ -17,7 +19,7 @@ pub struct ConnectionManager {
 #[derive(Default, Debug)]
 struct Inner {
     user_to_connection: HashMap<UserId, ConnectionId>,
-    id_to_handle: HashMap<ConnectionId, JoinHandle<()>>,
+    id_to_handle: HashMap<ConnectionId, UserExtractor>,
 }
 
 impl Inner {
@@ -34,7 +36,9 @@ impl Inner {
 
         // Removes the connection and aborts the thread.
         if let Some(handle) = self.id_to_handle.remove(&connection_id) {
-            handle.abort();
+            tokio::spawn(async move {
+                handle.get().await;
+            });
         }
 
         // The connection id consists of the two user ids.
@@ -43,6 +47,26 @@ impl Inner {
         let (left_id, right_id) = connection_id;
         self.user_to_connection.remove(&left_id);
         self.user_to_connection.remove(&right_id);
+    }
+
+    fn take(&self, id: &str) -> Option<User> {
+        let con_id = self.user_to_connection.remove(id)?;
+        let extractor = self.id_to_handle.remove(&con_id)?;
+        if let Some((left, right)) = extractor.get() {
+            if left.id == id {
+                return Some(left);
+            }
+
+            if right.id == id {
+                return Some(right);
+            }
+
+            tracing::error!("user didnt match: {}", id);
+        } else {
+            tracing::error!("extractor not found: {}", id);
+        }
+
+        None
     }
 
     fn debug(&self) {
@@ -72,6 +96,10 @@ impl ConnectionManager {
         self.inner.lock().await.clear_user(id);
     }
 
+    pub async fn take(&self, id: &str) -> Option<User> {
+        self.inner.lock().await.take(id)
+    }
+
     pub async fn contains(&self, id: &str) -> bool {
         self.inner.lock().await.user_to_connection.contains_key(id)
     }
@@ -89,11 +117,22 @@ impl ConnectionManager {
         lock.user_to_connection
             .insert(right.id.clone(), con_id.clone());
 
-        let handle = tokio::spawn(async move {
-            Connection::new(left, right).run().await;
-        });
-        lock.id_to_handle.insert(con_id, handle);
+        let extractor = Connection::new(left, right).run();
+        lock.id_to_handle.insert(con_id, extractor);
         lock.invariant();
+    }
+}
+
+#[derive(Debug)]
+pub struct UserExtractor {
+    handle: JoinHandle<(User, User)>,
+    sender: oneshot::Sender<()>,
+}
+
+impl UserExtractor {
+    pub async fn get(self) -> Option<(User, User)> {
+        self.sender.send(()).ok()?;
+        self.handle.await.ok()
     }
 }
 
@@ -109,7 +148,14 @@ impl Connection {
     }
 
     /// Handles sending messages from one peer to another.
-    async fn run(mut self) {
+    fn run(self) -> UserExtractor {
+        let (t, r) = oneshot::channel();
+        let handle = tokio::spawn(async move { self.inner(r).await });
+        let f = UserExtractor { handle, sender: t };
+        f
+    }
+
+    async fn inner(mut self, mut stop_signal: oneshot::Receiver<()>) -> (User, User) {
         tracing::info!("communication starting between a pair");
         let msg = "connected to peer!".to_string();
         let _ = self.right.send(SocketMessage::Info(msg.clone())).await;
@@ -125,6 +171,9 @@ impl Connection {
 
         loop {
             tokio::select! {
+                _ = &mut stop_signal => {
+                    break;
+                },
                 Some(msg) = self.left.receive() => {
                     tracing::info!("{}: {:?}", &self.left.id, &msg);
                     match msg {
@@ -167,6 +216,9 @@ impl Connection {
                 }
             }
         }
+
         tracing::info!("closing connection");
+
+        (self.left, self.right)
     }
 }
