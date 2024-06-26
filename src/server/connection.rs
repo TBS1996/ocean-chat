@@ -49,24 +49,10 @@ impl Inner {
         self.user_to_connection.remove(&right_id);
     }
 
-    fn take(&self, id: &str) -> Option<User> {
+    pub fn take_pair(&self, id: &str) -> Option<(User, User)> {
         let con_id = self.user_to_connection.remove(id)?;
         let extractor = self.id_to_handle.remove(&con_id)?;
-        if let Some((left, right)) = extractor.get() {
-            if left.id == id {
-                return Some(left);
-            }
-
-            if right.id == id {
-                return Some(right);
-            }
-
-            tracing::error!("user didnt match: {}", id);
-        } else {
-            tracing::error!("extractor not found: {}", id);
-        }
-
-        None
+        extractor.get()
     }
 
     fn debug(&self) {

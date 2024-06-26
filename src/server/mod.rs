@@ -59,9 +59,15 @@ impl State {
             return x;
         }
 
-        let x = self.connection.take(&id).await;
-        if x.is_some() {
-            return x;
+        let x = self.connection.take_pair(&id).await;
+        if let Some((left, right)) = x {
+            if left.id == id {
+                return Some(left);
+            }
+
+            if right.id == id {
+                return Some(right);
+            }
         }
 
         None
