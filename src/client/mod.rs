@@ -176,9 +176,14 @@ impl State {
     }
 
     pub fn insert_message(&self, message: Message) {
-        log_to_console("inserting msg");
-        log_to_console(&message);
-        self.inner.lock().unwrap().chat.messages.push(message);
+        log_to_console(("inserting msg:", &message));
+
+        self.inner
+            .lock()
+            .unwrap()
+            .chat
+            .messages
+            .push(message.clone());
     }
 
     pub fn input(&self) -> Signal<String> {

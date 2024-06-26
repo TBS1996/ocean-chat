@@ -25,12 +25,12 @@ impl Inner {
     ///
     /// Ensures that when a user is removed, also the connection is closed, and
     /// the other user in the connection is also removed.
-    fn clear_user(&mut self, user: &User) {
-        let Some(connection_id) = self.user_to_connection.remove(&user.id) else {
+    pub fn clear_user(&mut self, id: &str) {
+        let Some(connection_id) = self.user_to_connection.remove(id) else {
             return;
         };
 
-        tracing::info!("User connecting twice: {}", &user.id);
+        tracing::info!("User connecting twice: {}", id);
 
         // Removes the connection and aborts the thread.
         if let Some(handle) = self.id_to_handle.remove(&connection_id) {
@@ -87,11 +87,19 @@ impl ConnectionManager {
         self.inner.lock().await.id_to_handle.len()
     }
 
+    pub async fn clear_user(&self, id: &str) {
+        self.inner.lock().await.clear_user(id);
+    }
+
+    pub async fn contains(&self, id: &str) -> bool {
+        self.inner.lock().await.user_to_connection.contains_key(id)
+    }
+
     /// Connects two users together for chatting.
     pub async fn connect(&self, left: User, right: User) {
         let mut lock = self.inner.lock().await;
-        lock.clear_user(&left);
-        lock.clear_user(&right);
+        lock.clear_user(&left.id);
+        lock.clear_user(&right.id);
 
         let con_id = (left.id.clone(), right.id.clone());
 

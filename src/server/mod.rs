@@ -112,6 +112,26 @@ async fn pair_handler(
     })
 }
 
+async fn user_status(
+    Path(id): Path<String>,
+    Extension(state): Extension<Arc<State>>,
+) -> impl IntoResponse {
+    use crate::common::UserStatus;
+    tracing::info!("user status!: {}", &id);
+
+    let status = if state.waiting_users.contains(&id).await {
+        state.connections.clear_user(&id).await;
+
+        UserStatus::Waiting
+    } else if state.connections.contains(&id).await {
+        UserStatus::Connected
+    } else {
+        UserStatus::Disconnected
+    };
+
+    serde_json::to_string(&status).unwrap()
+}
+
 pub async fn run(port: u16) {
     #[cfg(not(test))]
     {
@@ -143,7 +163,9 @@ pub async fn run(port: u16) {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let router = Router::new().route("/pair/:scores/:id", get(pair_handler));
+    let router = Router::new()
+        .route("/pair/:scores/:id", get(pair_handler))
+        .route("/status/:id", get(user_status));
 
     #[cfg(test)]
     let router = router.route("/queue", get(queue)).route("/cons", get(cons));
