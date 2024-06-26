@@ -9,10 +9,12 @@ use axum::{
 
 use crate::common;
 
+use crate::common::ChangeState;
 use crate::server::ConnectionManager;
 use common::Scores;
 use common::CONFIG;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -25,27 +27,75 @@ use connection::*;
 use user::*;
 use waiting_users::*;
 
+pub struct UpMsg {
+    id: String,
+    msg: MsgStuff,
+}
+
+pub enum MsgStuff {
+    StateChange(ChangeState),
+}
+
 #[derive(Default, Clone)]
 struct IdleUsers(Arc<Mutex<HashMap<String, User>>>);
-
-enum StateChange {
-    Idle,
-    Waiting,
-}
 
 use std::collections::HashMap;
 use tokio::sync::Mutex;
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 struct State {
     idle_users: IdleUsers,
     waiting_users: WaitingUsers,
     connections: ConnectionManager,
+    tx: mpsc::Sender<UpMsg>,
 }
 
 impl State {
     fn new() -> Self {
-        Self::default()
+        let (tx, rx) = mpsc::channel(32);
+
+        let selv = Self {
+            tx,
+            idle_users: Default::default(),
+            waiting_users: Default::default(),
+            connections: Default::default(),
+        };
+
+        let s = selv.clone();
+
+        tokio::spawn(async move {
+            s.receive_stuff(rx).await;
+        });
+
+        selv
+    }
+
+    async fn receive_stuff(self, mut rx: mpsc::Receiver<UpMsg>) {
+        loop {
+            let x = rx.recv().await;
+            let id = x.id;
+
+            match x.msg {
+                MsgStuff::StateChange(state) => {
+                    self.change_state(state, id).await;
+                }
+            }
+        }
+    }
+
+    async fn change_state(&self, new_state: ChangeState, id: String) {
+        let Some(user) = self.take_user(id).await else {
+            return;
+        };
+
+        match new_state {
+            ChangeState::Idle => {
+                self.idle_users.0.lock().await.insert(id, user);
+            }
+            ChangeState::Waiting => {
+                self.waiting_users.queue(user).await;
+            }
+        }
     }
 
     async fn take_user(&self, id: String) -> Option<User> {
@@ -59,7 +109,7 @@ impl State {
             return x;
         }
 
-        let x = self.connection.take_pair(&id).await;
+        let x = self.connections.take(&id).await;
         if let Some((left, right)) = x {
             if left.id == id {
                 return Some(left);

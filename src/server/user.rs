@@ -76,11 +76,11 @@ fn handle_socket(
 
 #[derive(Debug)]
 pub struct User {
-    pub scores: Scores,
     pub id: String,
+    pub scores: Scores,
     pub con_time: SystemTime,
-    pub receiver: Receiver<SocketMessage>,
     pub sender: Sender<SocketMessage>,
+    pub receiver: Receiver<SocketMessage>,
 }
 
 impl User {

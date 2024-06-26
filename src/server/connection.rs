@@ -49,10 +49,10 @@ impl Inner {
         self.user_to_connection.remove(&right_id);
     }
 
-    pub fn take_pair(&self, id: &str) -> Option<(User, User)> {
+    pub async fn take_pair(&mut self, id: &str) -> Option<(User, User)> {
         let con_id = self.user_to_connection.remove(id)?;
         let extractor = self.id_to_handle.remove(&con_id)?;
-        extractor.get()
+        extractor.get().await
     }
 
     fn debug(&self) {
@@ -82,8 +82,8 @@ impl ConnectionManager {
         self.inner.lock().await.clear_user(id);
     }
 
-    pub async fn take(&self, id: &str) -> Option<User> {
-        self.inner.lock().await.take(id)
+    pub async fn take(&self, id: &str) -> Option<(User, User)> {
+        self.inner.lock().await.take_pair(id).await
     }
 
     pub async fn contains(&self, id: &str) -> bool {

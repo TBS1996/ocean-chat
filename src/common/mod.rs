@@ -24,9 +24,16 @@ pub enum UserStatus {
     Waiting,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ChangeState {
+    Waiting,
+    Idle,
+}
+
 /// The type that gets sent from server to client through socket.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SocketMessage {
+    StateChange(ChangeState),
     User(String),
     Info(String),
     PeerScores(Scores),
@@ -45,6 +52,11 @@ impl SocketMessage {
 
     pub fn info_msg(msg: String) -> Message {
         let s = serde_json::to_string(&Self::Info(msg)).unwrap();
+        Message::Text(s)
+    }
+
+    pub fn state_change(state: ChangeState) -> Message {
+        let s = serde_json::to_string(&Self::StateChange(state)).unwrap();
         Message::Text(s)
     }
 
