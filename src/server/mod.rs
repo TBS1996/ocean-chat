@@ -26,8 +26,19 @@ use user::*;
 use waiting_users::*;
 
 #[derive(Default, Clone)]
+struct IdleUsers(Arc<Mutex<HashMap<String, User>>>);
+
+enum StateChange {
+    Idle,
+    Waiting,
+}
+
+use std::collections::HashMap;
+use tokio::sync::Mutex;
+
+#[derive(Default, Clone)]
 struct State {
-    // Users waiting to be matched with a peer.
+    idle_users: IdleUsers,
     waiting_users: WaitingUsers,
     connections: ConnectionManager,
 }
@@ -35,6 +46,20 @@ struct State {
 impl State {
     fn new() -> Self {
         Self::default()
+    }
+
+    async fn take_user(&self, id: String) -> Option<User> {
+        let x = self.idle_users.0.lock().await.remove(&id);
+        if x.is_some() {
+            return x;
+        }
+
+        let x = self.waiting_users.take(&id).await;
+        if x.is_some() {
+            return x;
+        }
+
+        None
     }
 
     /// Queues a user for pairing. Await the oneshot receiver and
