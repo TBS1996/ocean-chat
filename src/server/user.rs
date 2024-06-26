@@ -1,6 +1,10 @@
 use crate::common;
 
+use crate::server::MsgStuff;
+use crate::server::UpMsg;
 use axum::extract::ws::{Message, WebSocket};
+use tokio::sync::mpsc;
+
 use common::CONFIG;
 use common::{Scores, SocketMessage};
 use futures_util::StreamExt;
@@ -15,6 +19,7 @@ use tokio::time::{sleep, Duration, Instant};
 fn handle_socket(
     socket: WebSocket,
     id: String,
+    upsender: mpsc::Sender<UpMsg>,
 ) -> (Sender<SocketMessage>, Receiver<SocketMessage>) {
     let (x_sender, mut x_receiver) = channel::<SocketMessage>(32);
     let (sender, receiver) = channel(32);
@@ -49,6 +54,10 @@ fn handle_socket(
                             }
 
                             match serde_json::from_slice(&bytes) {
+                                Ok(SocketMessage::StateChange(new_state)) => {
+                                    let upmsg = UpMsg {id: id.clone(), msg: MsgStuff::StateChange(new_state)};
+                                    upsender.send(upmsg).await.ok();
+                                },
                                 Ok(SocketMessage::Ping) => {
                                     timeout.as_mut().reset(Instant::now() + timeout_duration);
                                 },
@@ -84,11 +93,11 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(scores: Scores, id: String, socket: WebSocket) -> Self {
+    pub fn new(scores: Scores, id: String, socket: WebSocket, tx: mpsc::Sender<UpMsg>) -> Self {
         tracing::info!("user queued ");
         let con_time = SystemTime::now();
 
-        let (sender, receiver) = handle_socket(socket, id.clone());
+        let (sender, receiver) = handle_socket(socket, id.clone(), tx);
 
         User {
             scores,

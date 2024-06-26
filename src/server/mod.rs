@@ -28,8 +28,8 @@ use user::*;
 use waiting_users::*;
 
 pub struct UpMsg {
-    id: String,
-    msg: MsgStuff,
+    pub id: String,
+    pub msg: MsgStuff,
 }
 
 pub enum MsgStuff {
@@ -72,7 +72,11 @@ impl State {
 
     async fn receive_stuff(self, mut rx: mpsc::Receiver<UpMsg>) {
         loop {
-            let x = rx.recv().await;
+            let Some(x) = rx.recv().await else {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                continue;
+            };
+
             let id = x.id;
 
             match x.msg {
@@ -84,7 +88,7 @@ impl State {
     }
 
     async fn change_state(&self, new_state: ChangeState, id: String) {
-        let Some(user) = self.take_user(id).await else {
+        let Some(user) = self.take_user(id.clone()).await else {
             return;
         };
 
@@ -126,7 +130,8 @@ impl State {
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
     async fn queue(&self, scores: Scores, id: String, socket: WebSocket) {
-        let user = User::new(scores, id, socket);
+        let tx = self.tx.clone();
+        let user = User::new(scores, id, socket, tx);
         self.waiting_users.queue(user).await;
     }
 
