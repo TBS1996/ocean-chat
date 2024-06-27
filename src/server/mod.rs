@@ -134,9 +134,8 @@ pub async fn run() {
 
     let subscriber = tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                "ocean_chat=debug,tower_http=debug,axum::rejection=trace".into()
-            }),
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "warn,ocean_chat=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .with(tracing_subscriber::fmt::layer().with_writer(non_blocking));
