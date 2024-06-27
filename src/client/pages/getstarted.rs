@@ -1,3 +1,5 @@
+use components::nav_bar::top_bar;
+
 use super::*;
 
 pub fn Pretest() -> Element {
