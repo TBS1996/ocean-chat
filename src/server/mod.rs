@@ -101,19 +101,17 @@ impl State {
         }
     }
 
+    /// Extract user from any state
     async fn take_user(&self, id: String) -> Option<User> {
-        let x = self.idle_users.0.lock().await.remove(&id);
-        if x.is_some() {
-            return x;
+        if let Some(user) = self.idle_users.0.lock().await.remove(&id) {
+            return Some(user);
         }
 
-        let x = self.waiting_users.take(&id).await;
-        if x.is_some() {
-            return x;
+        if let Some(user) = self.waiting_users.take(&id).await {
+            return Some(user);
         }
 
-        let x = self.connections.take(&id).await;
-        if let Some((left, right)) = x {
+        if let Some((left, right)) = self.connections.take(&id).await {
             if left.id == id {
                 return Some(left);
             }
