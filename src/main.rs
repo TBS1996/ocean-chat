@@ -24,7 +24,6 @@ fn enforce_release() {
         eprintln!("Server should be run in release mode while in production:");
         eprintln!("`cargo run --features server --profile release-server`");
         eprintln!("Do not build with the release profile, you could lose out on some performance");
-        std::process::exit(1);
     }
 }
 
