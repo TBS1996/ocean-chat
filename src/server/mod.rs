@@ -185,6 +185,7 @@ pub async fn run(port: u16) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::UserStatus;
     use tokio_tungstenite::connect_async;
     use tokio_tungstenite::MaybeTlsStream;
     use tokio_tungstenite::WebSocketStream;
@@ -192,14 +193,31 @@ mod tests {
 
     type WebSocket = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
 
-    struct TestFramework {
-        port: u16,
+    fn start_server(port: u16) {
+        tokio::spawn(async move {
+            run(port).await;
+        });
     }
 
-    impl TestFramework {
-        fn new(port: u16) -> Self {
-            Self::start_server(port);
-            Self { port }
+    struct TestSocket {
+        port: u16,
+        id: String,
+        ws: WebSocket,
+    }
+
+    impl TestSocket {
+        async fn new(id: impl Into<String>, port: u16) -> Self {
+            let id = id.into();
+            let ws = Self::queue_user(&id, port).await;
+
+            Self { ws, port, id }
+        }
+
+        async fn get_status(&self) -> UserStatus {
+            let url = format!("http://127.0.0.1:{}/status/{}", self.port, &self.id);
+            let response = reqwest::get(url).await.unwrap().text().await.unwrap();
+            dbg!(&response);
+            serde_json::from_str(&response).unwrap()
         }
 
         async fn get_pairs(&self) -> Vec<(String, String)> {
@@ -214,13 +232,12 @@ mod tests {
             serde_json::from_str(&response).unwrap()
         }
 
-        async fn queue_user(&self, id: impl Into<String>) -> WebSocket {
-            self.queue_user_with_score(Scores::mid(), id).await
+        async fn queue_user(id: impl Into<String>, port: u16) -> WebSocket {
+            Self::queue_user_with_score(Scores::mid(), id, port).await
         }
 
-        async fn queue_user_with_score(&self, s: Scores, id: impl Into<String>) -> WebSocket {
+        async fn queue_user_with_score(s: Scores, id: impl Into<String>, port: u16) -> WebSocket {
             let id = id.into();
-            let port = self.port;
 
             tokio::spawn(async move {
                 let f = format!("ws://127.0.0.1:{}", port);
@@ -255,38 +272,34 @@ mod tests {
                 assert!(waiting_users.contains(&user.to_string()));
             }
         }
-
-        fn start_server(port: u16) {
-            tokio::spawn(async move {
-                run(port).await;
-            });
-        }
     }
 
     #[tokio::test]
     async fn test_queue_user() {
-        let tfw = TestFramework::new(3000);
+        let port = 3000;
+
+        start_server(port);
 
         let id = "heythere";
-        let _ws = tfw.queue_user(id).await;
-
+        let ws = TestSocket::new(id, port).await;
         std::thread::sleep(std::time::Duration::from_secs(1));
 
-        tfw.assert_waiting_users(vec![id]).await;
+        ws.assert_waiting_users(vec![id]).await;
     }
 
     #[tokio::test]
     async fn test_connect_pair() {
-        let tfw = TestFramework::new(3001);
+        let port = 3001;
+        start_server(port);
+
         let id = "foo";
         let id2 = "bar";
 
-        let _ws = tfw.queue_user(id).await;
-        let _ws2 = tfw.queue_user(id2).await;
+        let ws = TestSocket::new(id, port).await;
+        assert_eq!(ws.get_status().await, UserStatus::Waiting);
+        let ws2 = TestSocket::new(id2, port).await;
         std::thread::sleep(std::time::Duration::from_secs(3));
-
-        // They should have paired up and thus nobody in waiting quue.
-        tfw.assert_waiting_users(vec![]).await;
-        tfw.assert_pair(id, id2).await;
+        assert_eq!(ws.get_status().await, UserStatus::Connected);
+        assert_eq!(ws2.get_status().await, UserStatus::Connected);
     }
 }

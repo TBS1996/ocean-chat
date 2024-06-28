@@ -25,7 +25,7 @@ pub enum UserStatus {
 }
 
 /// The type that gets sent from server to client through socket.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum SocketMessage {
     User(String),
     Info(String),
