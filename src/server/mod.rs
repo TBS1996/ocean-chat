@@ -327,7 +327,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn closed_stuff() {
+    async fn test_close_connection_when_same_connects() {
         let port = 3002;
         start_server(port);
         let id = "foo";
