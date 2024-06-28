@@ -185,9 +185,7 @@ mod tests {
     use super::*;
     use crate::common::SocketMessage;
     use crate::common::UserStatus;
-    use axum::extract::ws;
     use futures_util::SinkExt;
-    use futures_util::StreamExt;
     use futures_util::TryStreamExt;
     use tokio_tungstenite::connect_async;
     use tokio_tungstenite::MaybeTlsStream;
@@ -218,8 +216,8 @@ mod tests {
         }
 
         async fn get_message(&mut self) -> Option<SocketMessage> {
-            let x = self.ws.try_next().await.ok()??;
-            Some(serde_json::from_str(&x.to_string()).unwrap())
+            let msg = self.ws.try_next().await.ok()??;
+            Some(serde_json::from_str(&msg.to_string()).unwrap())
         }
 
         async fn is_closed(&mut self) -> bool {
@@ -227,7 +225,10 @@ mod tests {
             let res = self
                 .ws
                 .send(tokio_tungstenite::tungstenite::Message::Binary(s))
-                .await;
+                .await
+                .unwrap();
+
+            dbg!(res);
 
             self.get_message().await.is_none()
         }
