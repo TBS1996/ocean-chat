@@ -10,22 +10,17 @@ use uuid::Uuid;
 use wasm_bindgen::prelude::*;
 use web_sys::WebSocket;
 
-mod chat;
-mod getstarted;
-mod manual;
-mod personality;
-mod privacypolicy;
-mod splash;
-mod test;
+mod components;
+mod pages;
 pub mod utils;
 
-use chat::*;
-use getstarted::*;
-use manual::*;
-use personality::*;
-use privacypolicy::*;
-use splash::*;
-use test::*;
+use pages::chat::*;
+use pages::getstarted::*;
+use pages::manual::*;
+use pages::personality::*;
+use pages::privacypolicy::*;
+use pages::splash::*;
+use pages::test::*;
 use utils::*;
 
 #[wasm_bindgen(start)]
