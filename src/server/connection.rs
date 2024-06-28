@@ -61,18 +61,37 @@ impl Inner {
     }
 
     // There should be exactly twice as many users as connections.
-    fn invariant(&self) {
+    fn invariant(&self) -> bool {
         if self.user_to_connection.len() != self.id_to_handle.len() * 2 {
             tracing::error!(
                 "INVALID STATE: user_to_connection: {}, id_to_handle: {}",
                 self.user_to_connection.len(),
                 self.id_to_handle.len()
             );
+            return true;
         }
+
+        false
     }
 }
 
 impl ConnectionManager {
+    #[cfg(test)]
+    pub async fn pairs(&self) -> Vec<(UserId, UserId)> {
+        let lock = self.inner.lock().await;
+
+        let mut pairs = vec![];
+
+        for (_, con) in &lock.user_to_connection {
+            let contains = pairs.contains(con);
+            if !contains {
+                pairs.push(con.clone());
+            }
+        }
+
+        pairs
+    }
+
     /// Returns the quantity of users currently connected.
     pub async fn connected_users_qty(&self) -> usize {
         self.inner.lock().await.id_to_handle.len()

@@ -2,52 +2,14 @@ use super::*;
 
 use crate::client;
 use client::Route;
-
-pub fn top_bar() -> Element {
-    rsx! {
-        div {
-            background_color: "#0a5f98",
-            width: "100%",
-            margin: "0",
-            padding: "20px 0",
-            height: "100px",
-            display: "flex",
-            align_items: "center",
-            justify_content: "center",
-
-            div {
-                display: "flex",
-                align_items: "center",
-                justify_content: "center",
-
-                Link {
-                    to: Route::Home {},
-                    img {
-                        src: "logo.svg",
-                        alt: "Oceanchat Logo",
-                        width: "80px",
-                        height: "80px",
-                        margin_right: "20px",
-                    }
-                }
-
-                div {
-                    font_size: "2.5em",
-                    color: "white",
-                    margin: "0",
-                    "OceanChat"
-                }
-            }
-        }
-    }
-}
+use components::nav_bar::top_bar;
 
 #[component]
 pub fn Splash() -> Element {
     let navigator = use_navigator();
 
     rsx! {
-    style { { include_str!("splash.css") } }
+    style { { include_str!("css/splash.css") } }
     div {
         display: "flex",
         flex_direction: "column",
@@ -59,7 +21,6 @@ pub fn Splash() -> Element {
 
         div {
             class: "content",
-
 
             div {
                 max_width: "700px",
