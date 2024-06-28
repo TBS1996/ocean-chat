@@ -1,13 +1,14 @@
 #![allow(non_snake_case)]
 
+use crate::client;
 use crate::common;
 
 use common::Scores;
 
-use crate::client::Route;
-
-use crate::client::State;
+use client::Route;
+use client::State;
 use common::SocketMessage;
+use common::Trait;
 use dioxus::prelude::*;
 use futures::executor::block_on;
 use once_cell::sync::Lazy;
@@ -282,9 +283,9 @@ pub async fn connect_to_peer(
             let txt = txt.as_string().unwrap();
 
             use SocketMessage as SM;
-            let message = match serde_json::from_str(&txt).unwrap() {
-                SM::User(msg) => Message::new(Origin::Peer, msg),
-                SM::Info(msg) => Message::new(Origin::Info, msg),
+            let messages = match serde_json::from_str(&txt).unwrap() {
+                SM::User(msg) => vec![Message::new(Origin::Peer, msg)],
+                SM::Info(msg) => vec![Message::new(Origin::Info, msg)],
                 SM::Ping => {
                     let msg = SM::pong();
                     state.send_message(msg);
@@ -310,11 +311,18 @@ pub async fn connect_to_peer(
                         more_similar
                     );
 
-                    Message::new(Origin::Info, s)
+                    let mut msgs = vec![Message::new(Origin::Info, s)];
+                    for msg in diff_messages(scores, peer_scores) {
+                        msgs.push(Message::new(Origin::Info, msg));
+                    }
+
+                    msgs
                 }
             };
 
-            state.insert_message(message);
+            for message in messages {
+                state.insert_message(message);
+            }
 
             log_to_console(&format!("Received message: {}", txt));
         }
@@ -423,5 +431,47 @@ pub fn MessageList(mut msgs: MessageListProps) -> Element {
                 Message {class: msg.origin.class(), sender: msg.origin.str(), content: msg.content}
             }
         }
+    )
+}
+
+pub fn diff_messages(me: Scores, peer: Scores) -> Vec<String> {
+    let ts = 10.;
+
+    let mut msgs = vec![];
+
+    let mut diffs = vec![
+        (Trait::Open, peer.o - me.o),
+        (Trait::Con, peer.c - me.c),
+        (Trait::Extro, peer.e - me.e),
+        (Trait::Agree, peer.a - me.a),
+        (Trait::Neurotic, peer.n - me.n),
+    ];
+
+    diffs.sort_by_key(|(_, diff)| diff.abs() as u32);
+    diffs.reverse();
+
+    for (tr, diff) in diffs {
+        if diff.abs() > ts {
+            msgs.push(diff_message(tr, diff));
+        }
+    }
+
+    msgs
+}
+
+fn diff_message(tr: Trait, diff: f32) -> String {
+    let (arrow, dir) = if diff > 0. {
+        ("⬆️ ", "higher")
+    } else {
+        ("⬇️ ", "lower")
+    };
+
+    format!(
+        "{} {} peer is {:.0}% {} in {}",
+        tr.emoji(),
+        arrow,
+        diff.abs(),
+        dir,
+        tr
     )
 }
