@@ -16,7 +16,7 @@ mod common;
 async fn main() {
     enforce_release();
     generate_files();
-    server::run().await;
+    server::run(3000).await;
 }
 
 fn enforce_release() {
