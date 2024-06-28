@@ -1,7 +1,7 @@
 use crate::common;
 
-use crate::server::MsgStuff;
-use crate::server::UpMsg;
+use crate::server::StateAction;
+use crate::server::StateMessage;
 use axum::extract::ws::{Message, WebSocket};
 use tokio::sync::mpsc;
 
@@ -20,7 +20,7 @@ use tokio::time::{sleep, Duration, Instant};
 fn handle_socket(
     socket: WebSocket,
     id: String,
-    upsender: mpsc::Sender<UpMsg>,
+    upsender: mpsc::Sender<StateMessage>,
     mut close_signal: oneshot::Receiver<()>,
 ) -> (Sender<SocketMessage>, Receiver<SocketMessage>) {
     let (x_sender, mut x_receiver) = channel::<SocketMessage>(32);
@@ -64,7 +64,7 @@ fn handle_socket(
 
                             match serde_json::from_slice(&bytes) {
                                 Ok(SocketMessage::StateChange(new_state)) => {
-                                    let upmsg = UpMsg {id: id.clone(), msg: MsgStuff::StateChange(new_state)};
+                                    let upmsg = StateMessage {id: id.clone(), action: StateAction::StateChange(new_state)};
                                     upsender.send(upmsg).await.ok();
                                 },
                                 Ok(SocketMessage::Ping) => {
@@ -120,7 +120,12 @@ impl Drop for User {
 }
 
 impl User {
-    pub fn new(scores: Scores, id: String, socket: WebSocket, tx: mpsc::Sender<UpMsg>) -> Self {
+    pub fn new(
+        scores: Scores,
+        id: String,
+        socket: WebSocket,
+        tx: mpsc::Sender<StateMessage>,
+    ) -> Self {
         tracing::info!("user queued ");
         let con_time = SystemTime::now();
 

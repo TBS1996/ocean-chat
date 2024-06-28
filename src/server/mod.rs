@@ -26,12 +26,12 @@ use connection::*;
 use user::*;
 use waiting_users::*;
 
-pub struct UpMsg {
+pub struct StateMessage {
     pub id: String,
-    pub msg: MsgStuff,
+    pub action: StateAction,
 }
 
-pub enum MsgStuff {
+pub enum StateAction {
     StateChange(ChangeState),
 }
 
@@ -46,7 +46,7 @@ struct State {
     idle_users: IdleUsers,
     waiting_users: WaitingUsers,
     connections: ConnectionManager,
-    tx: mpsc::Sender<UpMsg>,
+    tx: mpsc::Sender<StateMessage>,
 }
 
 impl State {
@@ -60,27 +60,26 @@ impl State {
             connections: Default::default(),
         };
 
-        let s = selv.clone();
+        let state = selv.clone();
 
         tokio::spawn(async move {
-            s.receive_stuff(rx).await;
+            state.upmsg_handler(rx).await;
         });
 
         selv
     }
 
-    async fn receive_stuff(self, mut rx: mpsc::Receiver<UpMsg>) {
+    /// Receive messages from [`User`] that changes the [`State`].
+    async fn upmsg_handler(self, mut rx: mpsc::Receiver<StateMessage>) {
         loop {
-            let Some(x) = rx.recv().await else {
+            let Some(msg) = rx.recv().await else {
                 std::thread::sleep(std::time::Duration::from_secs(5));
                 continue;
             };
 
-            let id = x.id;
-
-            match x.msg {
-                MsgStuff::StateChange(state) => {
-                    self.change_state(state, id).await;
+            match msg.action {
+                StateAction::StateChange(state) => {
+                    self.change_state(state, msg.id).await;
                 }
             }
         }
