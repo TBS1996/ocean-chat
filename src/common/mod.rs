@@ -39,18 +39,15 @@ pub enum SocketMessage {
 #[cfg(feature = "server")]
 impl SocketMessage {
     pub fn user_msg(msg: String) -> Message {
-        let s = serde_json::to_string(&Self::User(msg)).unwrap();
-        Message::Text(s)
+        Message::Text(SocketMessage::User(msg).to_string())
     }
 
     pub fn info_msg(msg: String) -> Message {
-        let s = serde_json::to_string(&Self::Info(msg)).unwrap();
-        Message::Text(s)
+        Message::Text(SocketMessage::Info(msg).to_string())
     }
 
     pub fn peer_scores(scores: Scores) -> Message {
-        let s = serde_json::to_string(&Self::PeerScores(scores)).unwrap();
-        Message::Text(s)
+        Message::Text(SocketMessage::PeerScores(scores).to_string())
     }
 
     pub fn into_message(self) -> Message {
