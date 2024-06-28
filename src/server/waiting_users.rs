@@ -24,7 +24,6 @@ impl WaitingUsers {
         match pos {
             Some(pos) => {
                 let _ = lock.remove(pos);
-
                 tracing::error!("User already in queue: {}", &user.id);
             }
             None => {

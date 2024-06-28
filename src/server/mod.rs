@@ -134,6 +134,7 @@ async fn user_status(
 
 pub async fn run(port: u16) {
     #[cfg(not(test))]
+    //#[cfg(test)]
     {
         use tracing_subscriber::layer::SubscriberExt;
 
@@ -185,7 +186,12 @@ pub async fn run(port: u16) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::common::SocketMessage;
     use crate::common::UserStatus;
+    use axum::extract::ws;
+    use futures_util::SinkExt;
+    use futures_util::StreamExt;
+    use futures_util::TryStreamExt;
     use tokio_tungstenite::connect_async;
     use tokio_tungstenite::MaybeTlsStream;
     use tokio_tungstenite::WebSocketStream;
@@ -197,6 +203,7 @@ mod tests {
         tokio::spawn(async move {
             run(port).await;
         });
+        std::thread::sleep(std::time::Duration::from_millis(250));
     }
 
     struct TestSocket {
@@ -211,6 +218,22 @@ mod tests {
             let ws = Self::queue_user(&id, port).await;
 
             Self { ws, port, id }
+        }
+
+        async fn get_message(&mut self) -> Option<SocketMessage> {
+            let x = self.ws.try_next().await.ok()??;
+            dbg!(&x);
+            Some(serde_json::from_str(&x.to_string()).unwrap())
+        }
+
+        async fn is_closed(&mut self) -> bool {
+            let s = SocketMessage::Ping.to_string().into_bytes();
+            let res = self
+                .ws
+                .send(tokio_tungstenite::tungstenite::Message::Binary(s))
+                .await;
+
+            self.get_message().await.is_none()
         }
 
         async fn get_status(&self) -> UserStatus {
@@ -301,5 +324,20 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_secs(3));
         assert_eq!(ws.get_status().await, UserStatus::Connected);
         assert_eq!(ws2.get_status().await, UserStatus::Connected);
+    }
+
+    #[tokio::test]
+    async fn closed_stuff() {
+        let port = 3002;
+        start_server(port);
+        let id = "foo";
+
+        let mut ws = TestSocket::new(id, port).await;
+        assert!(!ws.is_closed().await);
+        let mut other_ws = TestSocket::new(id, port).await;
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        dbg!(ws.get_waiting_users().await);
+        assert!(ws.is_closed().await);
+        assert!(other_ws.is_closed().await);
     }
 }

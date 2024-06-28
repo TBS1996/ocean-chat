@@ -54,18 +54,19 @@ impl SocketMessage {
     }
 
     pub fn into_message(self) -> Message {
-        let s = serde_json::to_string(&self).unwrap();
-        Message::Text(s)
+        Message::Text(self.to_string())
     }
 
     pub fn close_connection() -> Message {
-        let s = serde_json::to_string(&Self::ConnectionClosed).unwrap();
-        Message::Text(s)
+        Message::Text(SocketMessage::ConnectionClosed.to_string())
     }
 
     pub fn ping() -> Message {
-        let s = serde_json::to_string(&Self::Ping).unwrap();
-        Message::Text(s)
+        Message::Text(SocketMessage::Ping.to_string())
+    }
+
+    pub fn to_string(&self) -> String {
+        serde_json::to_string(self).unwrap()
     }
 }
 
