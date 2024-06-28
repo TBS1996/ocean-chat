@@ -235,7 +235,6 @@ mod tests {
         async fn get_status(&self) -> UserStatus {
             let url = format!("http://127.0.0.1:{}/status/{}", self.port, &self.id);
             let response = reqwest::get(url).await.unwrap().text().await.unwrap();
-            dbg!(&response);
             serde_json::from_str(&response).unwrap()
         }
 
