@@ -47,7 +47,7 @@ url = "2.2.2"
 
 
 [features]
-default = ["server"]
+#default = ["server"]
 server = ["axum", "tokio"]
 
 [profile.release]
