@@ -67,6 +67,16 @@ pub enum Trait {
 }
 
 impl Trait {
+    pub fn emoji(&self) -> &'static str {
+        match self {
+            Self::Open => "🔭",
+            Self::Con => "📝",
+            Self::Extro => "🎉",
+            Self::Agree => "🤝",
+            Self::Neurotic => "🌧️",
+        }
+    }
+
     pub fn color(&self) -> &'static str {
         match self {
             Self::Open => "#1E90FF",

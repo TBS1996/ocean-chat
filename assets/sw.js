@@ -1,6 +1,6 @@
 "use strict";
 
-var version = 'v1.0.0::';
+var version = 'v1.0.1::oceanchat';
 console.log('Service Worker: Version', version, 'starting.');
 
 const updateInterval = 4 * 60 * 60 * 1000 // 4 hours in ms
@@ -11,6 +11,7 @@ var offlineFundamentals = [
 ];
 
 function checkForUpdates() {
+  console.log("Service Worker: Checking for updates")
   self.registration.update();
 }
 
@@ -37,7 +38,7 @@ self.addEventListener("install", function(event) {
 self.addEventListener("fetch", function(event) {
   console.log('Service Worker: Fetch event in progress.');
 
-  if (event.request.method !== 'GET') {
+  if (event.request.method !== 'GET' || event.request.url.includes("status")) {
     console.log('Service Worker: Fetch event ignored.', event.request.method, event.request.url);
     return;
   }
@@ -98,4 +99,3 @@ self.addEventListener("activate", function(event) {
       })
   );
 });
-

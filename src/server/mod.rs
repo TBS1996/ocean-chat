@@ -134,18 +134,15 @@ async fn user_status(
 
 pub async fn run(port: u16) {
     #[cfg(not(test))]
-    //#[cfg(test)]
     {
         use tracing_subscriber::layer::SubscriberExt;
 
         let file_appender = tracing_appender::rolling::daily("log", "ocean-chat.log");
         let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-
         let subscriber = tracing_subscriber::registry()
             .with(
-                tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                    "ocean_chat=debug,tower_http=debug,axum::rejection=trace".into()
-                }),
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "warn,ocean_chat=debug".into()),
             )
             .with(tracing_subscriber::fmt::layer())
             .with(tracing_subscriber::fmt::layer().with_writer(non_blocking));
@@ -222,7 +219,6 @@ mod tests {
 
         async fn get_message(&mut self) -> Option<SocketMessage> {
             let x = self.ws.try_next().await.ok()??;
-            dbg!(&x);
             Some(serde_json::from_str(&x.to_string()).unwrap())
         }
 

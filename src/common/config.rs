@@ -62,8 +62,14 @@ fn default_pair_interval_millis() -> u64 {
     1000
 }
 
+#[cfg(not(debug_assertions))]
 fn default_local() -> bool {
     false
+}
+
+#[cfg(debug_assertions)]
+fn default_local() -> bool {
+    true
 }
 
 fn default_timeout() -> u64 {
