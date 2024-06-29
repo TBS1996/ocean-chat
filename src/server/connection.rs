@@ -1,11 +1,13 @@
 use crate::common::SocketMessage;
 use crate::server::User;
+
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::oneshot;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
-type UserId = String;
+pub type UserId = String;
 type ConnectionId = (UserId, UserId);
 
 /// Ensures the same user is not connected multiple times.
@@ -17,7 +19,7 @@ pub struct ConnectionManager {
 #[derive(Default, Debug)]
 struct Inner {
     user_to_connection: HashMap<UserId, ConnectionId>,
-    id_to_handle: HashMap<ConnectionId, JoinHandle<()>>,
+    id_to_handle: HashMap<ConnectionId, UserExtractor>,
 }
 
 impl Inner {
@@ -25,24 +27,39 @@ impl Inner {
     ///
     /// Ensures that when a user is removed, also the connection is closed, and
     /// the other user in the connection is also removed.
-    pub fn clear_user(&mut self, id: &str) {
-        let Some(connection_id) = self.user_to_connection.remove(id) else {
-            return;
-        };
-
-        tracing::info!("User connecting twice: {}", id);
-
-        // Removes the connection and aborts the thread.
-        if let Some(handle) = self.id_to_handle.remove(&connection_id) {
-            handle.abort();
+    async fn clear_user(&mut self, id: &str) {
+        let users = self.take_pair(id).await;
+        if users.is_some() {
+            tracing::error!("users removed unexpectedly: {:?}", users);
         }
+    }
 
-        // The connection id consists of the two user ids.
-        // So to ensure the other user is also removed we simply call remove
-        // on both the IDs that make up the tuple.
-        let (left_id, right_id) = connection_id;
-        self.user_to_connection.remove(&left_id);
-        self.user_to_connection.remove(&right_id);
+    fn get_extractor(&mut self, id: &str) -> Option<UserExtractor> {
+        let con_id = self.user_to_connection.remove(id)?;
+        let _ = self.user_to_connection.remove(&con_id.0);
+        let _ = self.user_to_connection.remove(&con_id.1);
+        self.id_to_handle.remove(&con_id)
+    }
+
+    /// Connects two users together for chatting.
+    async fn connect(&mut self, left: User, right: User) {
+        self.clear_user(&left.id).await;
+        self.clear_user(&right.id).await;
+
+        let con_id = (left.id.clone(), right.id.clone());
+
+        self.user_to_connection
+            .insert(left.id.clone(), con_id.clone());
+        self.user_to_connection
+            .insert(right.id.clone(), con_id.clone());
+
+        let extractor = Connection::new(left, right).run();
+        self.id_to_handle.insert(con_id, extractor);
+        self.invariant();
+    }
+
+    async fn take_pair(&mut self, id: &str) -> Option<(User, User)> {
+        self.get_extractor(id)?.get().await
     }
 
     fn debug(&self) {
@@ -66,6 +83,15 @@ impl Inner {
 }
 
 impl ConnectionManager {
+    /// Connects two users together for chatting.
+    pub async fn connect(&self, left: User, right: User) {
+        self.inner.lock().await.connect(left, right).await;
+    }
+
+    pub async fn take(&self, id: &str) -> Option<(User, User)> {
+        self.inner.lock().await.take_pair(id).await
+    }
+
     #[cfg(test)]
     pub async fn pairs(&self) -> Vec<(UserId, UserId)> {
         let lock = self.inner.lock().await;
@@ -87,32 +113,25 @@ impl ConnectionManager {
         self.inner.lock().await.id_to_handle.len()
     }
 
-    pub async fn clear_user(&self, id: &str) {
-        self.inner.lock().await.clear_user(id);
-    }
-
     pub async fn contains(&self, id: &str) -> bool {
         self.inner.lock().await.user_to_connection.contains_key(id)
     }
+}
 
-    /// Connects two users together for chatting.
-    pub async fn connect(&self, left: User, right: User) {
-        let mut lock = self.inner.lock().await;
-        lock.clear_user(&left.id);
-        lock.clear_user(&right.id);
+/// A struct to retrieve the two users in a connection.
+///
+/// Works by using a oneshot to signal the connection to return the two users
+/// which will make it possible to get it through the joinhandle.
+#[derive(Debug)]
+pub struct UserExtractor {
+    handle: JoinHandle<(User, User)>,
+    sender: oneshot::Sender<()>,
+}
 
-        let con_id = (left.id.clone(), right.id.clone());
-
-        lock.user_to_connection
-            .insert(left.id.clone(), con_id.clone());
-        lock.user_to_connection
-            .insert(right.id.clone(), con_id.clone());
-
-        let handle = tokio::spawn(async move {
-            Connection::new(left, right).run().await;
-        });
-        lock.id_to_handle.insert(con_id, handle);
-        lock.invariant();
+impl UserExtractor {
+    pub async fn get(self) -> Option<(User, User)> {
+        self.sender.send(()).ok()?;
+        self.handle.await.ok()
     }
 }
 
@@ -128,7 +147,14 @@ impl Connection {
     }
 
     /// Handles sending messages from one peer to another.
-    async fn run(mut self) {
+    fn run(self) -> UserExtractor {
+        let (t, r) = oneshot::channel();
+        let handle = tokio::spawn(async move { self.inner(r).await });
+        let f = UserExtractor { handle, sender: t };
+        f
+    }
+
+    async fn inner(mut self, mut stop_signal: oneshot::Receiver<()>) -> (User, User) {
         tracing::info!("communication starting between a pair");
         let msg = "connected to peer!".to_string();
         let _ = self.right.send(SocketMessage::Info(msg.clone())).await;
@@ -144,6 +170,9 @@ impl Connection {
 
         loop {
             tokio::select! {
+                _ = &mut stop_signal => {
+                    break;
+                },
                 Some(msg) = self.left.receive() => {
                     tracing::info!("{}: {:?}", &self.left.id, &msg);
                     match msg {
@@ -186,6 +215,9 @@ impl Connection {
                 }
             }
         }
+
         tracing::info!("closing connection");
+
+        (self.left, self.right)
     }
 }

@@ -9,10 +9,12 @@ use axum::{
 
 use crate::common;
 
+use crate::common::ChangeState;
 use crate::server::ConnectionManager;
 use common::Scores;
 use common::CONFIG;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
@@ -24,22 +26,140 @@ use connection::*;
 use user::*;
 use waiting_users::*;
 
-#[derive(Default, Clone)]
+pub struct StateMessage {
+    pub id: UserId,
+    pub action: StateAction,
+}
+
+impl StateMessage {
+    pub fn new(id: UserId, action: StateAction) -> Self {
+        Self { id, action }
+    }
+}
+
+pub enum StateAction {
+    StateChange(ChangeState),
+    RemoveUser,
+}
+
+#[derive(Default, Clone, Debug)]
+struct IdleUsers(Arc<Mutex<HashMap<String, User>>>);
+
+impl IdleUsers {
+    async fn contains(&self, id: &str) -> bool {
+        self.0.lock().await.contains_key(id)
+    }
+
+    async fn insert(&self, user: User) {
+        let id = user.id.clone();
+        self.0.lock().await.insert(id, user);
+    }
+}
+
+use std::collections::HashMap;
+use tokio::sync::Mutex;
+
+#[derive(Clone, Debug)]
 struct State {
-    // Users waiting to be matched with a peer.
+    idle_users: IdleUsers,
     waiting_users: WaitingUsers,
     connections: ConnectionManager,
+    tx: mpsc::Sender<StateMessage>,
 }
 
 impl State {
     fn new() -> Self {
-        Self::default()
+        let (tx, rx) = mpsc::channel(32);
+
+        let selv = Self {
+            tx,
+            idle_users: Default::default(),
+            waiting_users: Default::default(),
+            connections: Default::default(),
+        };
+
+        let state = selv.clone();
+
+        tokio::spawn(async move {
+            state.state_message_handler(rx).await;
+        });
+
+        selv
+    }
+
+    /// Receive messages from [`User`] that changes the [`State`].
+    async fn state_message_handler(self, mut rx: mpsc::Receiver<StateMessage>) {
+        loop {
+            let Some(msg) = rx.recv().await else {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                continue;
+            };
+
+            let id = msg.id;
+
+            match msg.action {
+                StateAction::StateChange(state) => {
+                    self.change_state(state, id).await;
+                }
+                StateAction::RemoveUser => match self.take_user(id.clone()).await {
+                    Some(user) => {
+                        tracing::info!("{}: Removed user", user.id);
+                    }
+                    None => {
+                        tracing::error!("{}: Failed to remove user. User not found.", id);
+                    }
+                },
+            }
+        }
+    }
+
+    async fn change_state(&self, new_state: ChangeState, id: String) {
+        let Some(user) = self.take_user(id.clone()).await else {
+            return;
+        };
+
+        match new_state {
+            ChangeState::Idle => {
+                self.idle_users.0.lock().await.insert(id, user);
+            }
+            ChangeState::Waiting => {
+                self.waiting_users.queue(user).await;
+            }
+        }
+    }
+
+    /// Extract user from any state
+    async fn take_user(&self, id: String) -> Option<User> {
+        if let Some(user) = self.idle_users.0.lock().await.remove(&id) {
+            return Some(user);
+        }
+
+        if let Some(user) = self.waiting_users.take(&id).await {
+            return Some(user);
+        }
+
+        if let Some((left, right)) = self.connections.take(&id).await {
+            if left.id == id {
+                tracing::info!("{}: inserting to idle", &right.id);
+                self.idle_users.insert(right).await;
+                return Some(left);
+            }
+
+            if right.id == id {
+                tracing::info!("{}: inserting to idle", &left.id);
+                self.idle_users.insert(left).await;
+                return Some(right);
+            }
+        }
+
+        None
     }
 
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
     async fn queue(&self, scores: Scores, id: String, socket: WebSocket) {
-        let user = User::new(scores, id, socket);
+        let tx = self.tx.clone();
+        let user = User::new(scores, id, socket, tx);
         self.waiting_users.queue(user).await;
     }
 
@@ -118,21 +238,29 @@ async fn user_status(
 ) -> impl IntoResponse {
     use crate::common::UserStatus;
     tracing::info!("user status!: {}", &id);
+    //  tracing::info!("state: {:?}", &state);
 
-    let status = if state.waiting_users.contains(&id).await {
-        state.connections.clear_user(&id).await;
+    let is_waiting = state.waiting_users.contains(&id).await;
+    let is_idle = state.idle_users.contains(&id).await;
+    let is_connected = state.connections.contains(&id).await;
 
-        UserStatus::Waiting
-    } else if state.connections.contains(&id).await {
-        UserStatus::Connected
-    } else {
-        UserStatus::Disconnected
+    let status = match (is_waiting, is_idle, is_connected) {
+        (true, false, false) => UserStatus::Waiting,
+        (false, true, false) => UserStatus::Idle,
+        (false, false, true) => UserStatus::Connected,
+        (false, false, false) => UserStatus::Disconnected,
+        invalid => {
+            tracing::error!("{}: Invalid user status: {:?}", id, invalid);
+
+            UserStatus::Disconnected
+        }
     };
 
     serde_json::to_string(&status).unwrap()
 }
 
 pub async fn run(port: u16) {
+    // #[cfg(test)]
     #[cfg(not(test))]
     {
         use tracing_subscriber::layer::SubscriberExt;
@@ -188,6 +316,7 @@ mod tests {
     use futures_util::SinkExt;
     use futures_util::TryStreamExt;
     use tokio_tungstenite::connect_async;
+    use tokio_tungstenite::tungstenite::Message;
     use tokio_tungstenite::MaybeTlsStream;
     use tokio_tungstenite::WebSocketStream;
     use url::Url;
@@ -215,18 +344,23 @@ mod tests {
             Self { ws, port, id }
         }
 
+        async fn close_connection(&mut self) {
+            self.ws.close(None).await.unwrap();
+        }
+
         async fn get_message(&mut self) -> Option<SocketMessage> {
             let msg = self.ws.try_next().await.ok()??;
             Some(serde_json::from_str(&msg.to_string()).unwrap())
         }
 
+        async fn send_message(&mut self, msg: SocketMessage) {
+            self.ws.send(Message::Binary(msg.to_bytes())).await.unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+
         async fn is_closed(&mut self) -> bool {
             let s = SocketMessage::Ping.to_string().into_bytes();
-            let res = self
-                .ws
-                .send(tokio_tungstenite::tungstenite::Message::Binary(s))
-                .await
-                .unwrap();
+            let res = self.ws.send(Message::Binary(s)).await.unwrap();
 
             dbg!(res);
 
@@ -237,6 +371,11 @@ mod tests {
             let url = format!("http://127.0.0.1:{}/status/{}", self.port, &self.id);
             let response = reqwest::get(url).await.unwrap().text().await.unwrap();
             serde_json::from_str(&response).unwrap()
+        }
+
+        async fn assert_status(&self, status: UserStatus) {
+            let current_status = self.get_status().await;
+            assert_eq!(current_status, status);
         }
 
         async fn get_pairs(&self) -> Vec<(String, String)> {
@@ -335,5 +474,58 @@ mod tests {
         dbg!(ws.get_waiting_users().await);
         assert!(ws.is_closed().await);
         assert!(other_ws.is_closed().await);
+    }
+
+    #[tokio::test]
+    async fn test_state_change() {
+        let port = 3003;
+        start_server(port);
+
+        // Assert new connections are put in waiting queue.
+        let mut ws = TestSocket::new("foo", port).await;
+        assert_eq!(ws.get_status().await, UserStatus::Waiting);
+
+        // Show we can change them to idle.
+        ws.send_message(SocketMessage::StateChange(ChangeState::Idle))
+            .await;
+        assert_eq!(ws.get_status().await, UserStatus::Idle);
+
+        // .. and back to waiting
+        ws.send_message(SocketMessage::StateChange(ChangeState::Waiting))
+            .await;
+        assert_eq!(ws.get_status().await, UserStatus::Waiting);
+
+        // If another user then connects, theyre both connected.
+        let other_ws = TestSocket::new("bar", port).await;
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        assert_eq!(ws.get_status().await, UserStatus::Connected);
+        assert_eq!(other_ws.get_status().await, UserStatus::Connected);
+
+        // If one goes to waiting, the other is set to idle.
+        ws.send_message(SocketMessage::StateChange(ChangeState::Waiting))
+            .await;
+        std::thread::sleep(std::time::Duration::from_secs(3));
+
+        assert_eq!(ws.get_status().await, UserStatus::Waiting);
+        assert_eq!(other_ws.get_status().await, UserStatus::Idle);
+    }
+
+    /// Test that other user is set to idle if one close connection.
+    #[tokio::test]
+    async fn test_close_connection() {
+        let port = 3004;
+        start_server(port);
+        let mut aws = TestSocket::new("foo", port).await;
+        let bws = TestSocket::new("bar", port).await;
+        std::thread::sleep(std::time::Duration::from_secs(3));
+
+        aws.assert_status(UserStatus::Connected).await;
+        bws.assert_status(UserStatus::Connected).await;
+
+        aws.close_connection().await;
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
+        aws.assert_status(UserStatus::Disconnected).await;
+        bws.assert_status(UserStatus::Idle).await;
     }
 }

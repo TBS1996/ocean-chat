@@ -2,7 +2,7 @@ use crate::server::User;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
@@ -33,6 +33,17 @@ impl WaitingUsers {
                 tracing::info!("users waiting for peer: {}", lock.len());
             }
         }
+    }
+
+    pub async fn take(&self, id: &str) -> Option<User> {
+        let pos = {
+            let lock = self.0.lock().await;
+
+            lock.iter().position(|user| user.id == id)?
+        };
+        let user = self.0.lock().await.remove(pos);
+
+        Some(user)
     }
 
     pub async fn len(&self) -> usize {

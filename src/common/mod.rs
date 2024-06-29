@@ -22,17 +22,37 @@ pub enum UserStatus {
     Disconnected,
     Connected,
     Waiting,
+    Idle,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub enum ChangeState {
+    Waiting,
+    Idle,
 }
 
 /// The type that gets sent from server to client through socket.
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum SocketMessage {
+    StateChange(ChangeState),
     User(String),
     Info(String),
     PeerScores(Scores),
     ConnectionClosed,
     Ping,
     Pong,
+}
+
+impl SocketMessage {
+    pub fn to_string(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut writer: Vec<u8> = vec![];
+        serde_json::to_writer(&mut writer, &self).unwrap();
+        writer
+    }
 }
 
 /// Messages being sent from the server to the client.
@@ -44,6 +64,11 @@ impl SocketMessage {
 
     pub fn info_msg(msg: String) -> Message {
         Message::Text(SocketMessage::Info(msg).to_string())
+    }
+
+    pub fn state_change(state: ChangeState) -> Message {
+        let s = serde_json::to_string(&Self::StateChange(state)).unwrap();
+        Message::Text(s)
     }
 
     pub fn peer_scores(scores: Scores) -> Message {
@@ -61,20 +86,13 @@ impl SocketMessage {
     pub fn ping() -> Message {
         Message::Text(SocketMessage::Ping.to_string())
     }
-
-    pub fn to_string(&self) -> String {
-        serde_json::to_string(self).unwrap()
-    }
 }
 
 /// Messages being sent from the client to the server.
 #[cfg(not(feature = "server"))]
 impl SocketMessage {
     pub fn user_msg(msg: String) -> Vec<u8> {
-        let mut writer: Vec<u8> = vec![];
-        let val = Self::User(msg);
-        serde_json::to_writer(&mut writer, &val).unwrap();
-        writer
+        Self::User(msg).to_bytes()
     }
 
     pub fn ping() -> Vec<u8> {

@@ -1,6 +1,10 @@
 use crate::common;
 
+use crate::server::StateAction;
+use crate::server::StateMessage;
 use axum::extract::ws::{Message, WebSocket};
+use tokio::sync::mpsc;
+
 use common::CONFIG;
 use common::{Scores, SocketMessage};
 use futures_util::StreamExt;
@@ -16,12 +20,11 @@ use tokio::time::{sleep, Duration, Instant};
 fn handle_socket(
     socket: WebSocket,
     id: String,
+    upsender: mpsc::Sender<StateMessage>,
     mut close_signal: oneshot::Receiver<()>,
 ) -> (Sender<SocketMessage>, Receiver<SocketMessage>) {
     let (x_sender, mut x_receiver) = channel::<SocketMessage>(32);
     let (sender, receiver) = channel(32);
-
-    let mut closed = false;
 
     tokio::spawn(async move {
         let (mut tx, mut rx) = socket.split();
@@ -46,18 +49,17 @@ fn handle_socket(
                     match msg {
                         Message::Close(_) => {
                             tracing::info!("{}: client closed connection", &id);
-                            closed = true;
-
-                           // let _ = sender.send(SocketMessage::ConnectionClosed).await;
-                           // break;
+                            let msg = StateMessage::new(id.clone(), StateAction::RemoveUser);
+                            upsender.send(msg).await.ok();
                         },
                         Message::Binary(bytes) => {
-                            if closed {
-                                // This shouldn't be possible.
-                                tracing::error!("{}: received message after closed client", &id);
-                            }
+                            let msg = serde_json::from_slice(&bytes);
 
-                            match serde_json::from_slice(&bytes) {
+                            match msg {
+                                Ok(SocketMessage::StateChange(new_state)) => {
+                                    let upmsg = StateMessage {id: id.clone(), action: StateAction::StateChange(new_state)};
+                                    upsender.send(upmsg).await.ok();
+                                },
                                 Ok(SocketMessage::Ping) => {
                                     timeout.as_mut().reset(Instant::now() + timeout_duration);
                                     let x = tx.send(SocketMessage::Ping.into_message()).await;
@@ -75,8 +77,8 @@ fn handle_socket(
 
                 _ = &mut timeout => {
                     tracing::info!("{}: Timeout occurred, closing connection", &id);
-                    let _ = sender.send(SocketMessage::ConnectionClosed).await;
-                    break;
+                    let msg = StateMessage::new(id.clone(), StateAction::RemoveUser);
+                    upsender.send(msg).await.ok();
                 }
             }
         }
@@ -85,12 +87,13 @@ fn handle_socket(
     (x_sender, receiver)
 }
 
+#[derive(Debug)]
 pub struct User {
-    pub scores: Scores,
     pub id: String,
+    pub scores: Scores,
     pub con_time: SystemTime,
-    pub receiver: Receiver<SocketMessage>,
     pub sender: Sender<SocketMessage>,
+    pub receiver: Receiver<SocketMessage>,
     close_signal: Option<oneshot::Sender<()>>,
 }
 
@@ -110,13 +113,18 @@ impl Drop for User {
 }
 
 impl User {
-    pub fn new(scores: Scores, id: String, socket: WebSocket) -> Self {
+    pub fn new(
+        scores: Scores,
+        id: String,
+        socket: WebSocket,
+        tx: mpsc::Sender<StateMessage>,
+    ) -> Self {
         tracing::info!("user queued ");
         let con_time = SystemTime::now();
 
         let (onesend, onerecv) = oneshot::channel();
 
-        let (sender, receiver) = handle_socket(socket, id.clone(), onerecv);
+        let (sender, receiver) = handle_socket(socket, id.clone(), tx, onerecv);
 
         User {
             scores,

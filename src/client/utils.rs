@@ -295,6 +295,10 @@ pub async fn connect_to_peer(
                     log_to_console("unexpected pong!");
                     return;
                 }
+                SM::StateChange(st) => {
+                    log_to_console(("unexpected message:", st));
+                    return;
+                }
                 SM::ConnectionClosed => {
                     log_to_console("received 'connection closed' from server");
                     state.clear_socket();
