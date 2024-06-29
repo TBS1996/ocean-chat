@@ -50,9 +50,17 @@ impl Inner {
     }
 
     pub async fn take_pair(&mut self, id: &str) -> Option<(User, User)> {
+        tracing::info!("{:?}", id);
         let con_id = self.user_to_connection.remove(id)?;
         let extractor = self.id_to_handle.remove(&con_id)?;
-        extractor.get().await
+        {
+            let (left, right) = con_id;
+            self.user_to_connection.remove(&left);
+            self.user_to_connection.remove(&right);
+        }
+        let res = extractor.get().await;
+        tracing::info!("{:?}", self);
+        res
     }
 
     fn debug(&self) {

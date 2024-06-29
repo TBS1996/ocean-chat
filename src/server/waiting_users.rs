@@ -2,7 +2,7 @@ use crate::server::User;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {

@@ -35,13 +35,24 @@ pub enum StateAction {
     StateChange(ChangeState),
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 struct IdleUsers(Arc<Mutex<HashMap<String, User>>>);
+
+impl IdleUsers {
+    async fn contains(&self, id: &str) -> bool {
+        self.0.lock().await.contains_key(id)
+    }
+
+    async fn insert(&self, user: User) {
+        let id = user.id.clone();
+        self.0.lock().await.insert(id, user);
+    }
+}
 
 use std::collections::HashMap;
 use tokio::sync::Mutex;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct State {
     idle_users: IdleUsers,
     waiting_users: WaitingUsers,
@@ -63,14 +74,14 @@ impl State {
         let state = selv.clone();
 
         tokio::spawn(async move {
-            state.upmsg_handler(rx).await;
+            state.state_message_handler(rx).await;
         });
 
         selv
     }
 
     /// Receive messages from [`User`] that changes the [`State`].
-    async fn upmsg_handler(self, mut rx: mpsc::Receiver<StateMessage>) {
+    async fn state_message_handler(self, mut rx: mpsc::Receiver<StateMessage>) {
         loop {
             let Some(msg) = rx.recv().await else {
                 std::thread::sleep(std::time::Duration::from_secs(5));
@@ -112,10 +123,14 @@ impl State {
 
         if let Some((left, right)) = self.connections.take(&id).await {
             if left.id == id {
+                tracing::info!("{}: inserting to idle", &right.id);
+                self.idle_users.insert(right).await;
                 return Some(left);
             }
 
             if right.id == id {
+                tracing::info!("{}: inserting to idle", &left.id);
+                self.idle_users.insert(left).await;
                 return Some(right);
             }
         }
@@ -206,22 +221,35 @@ async fn user_status(
 ) -> impl IntoResponse {
     use crate::common::UserStatus;
     tracing::info!("user status!: {}", &id);
+    //  tracing::info!("state: {:?}", &state);
 
-    let status = if state.waiting_users.contains(&id).await {
+    let is_waiting = if state.waiting_users.contains(&id).await {
         state.connections.clear_user(&id).await;
-
-        UserStatus::Waiting
-    } else if state.connections.contains(&id).await {
-        UserStatus::Connected
+        true
     } else {
-        UserStatus::Disconnected
+        false
+    };
+    let is_idle = state.idle_users.contains(&id).await;
+    let is_connected = state.connections.contains(&id).await;
+
+    let status = match (is_waiting, is_idle, is_connected) {
+        (true, false, false) => UserStatus::Waiting,
+        (false, true, false) => UserStatus::Idle,
+        (false, false, true) => UserStatus::Connected,
+        (false, false, false) => UserStatus::Disconnected,
+        invalid => {
+            tracing::error!("{}: Invalid user status: {:?}", id, invalid);
+
+            UserStatus::Disconnected
+        }
     };
 
     serde_json::to_string(&status).unwrap()
 }
 
 pub async fn run(port: u16) {
-    #[cfg(not(test))]
+    #[cfg(test)]
+    //#[cfg(not(test))]
     {
         use tracing_subscriber::layer::SubscriberExt;
 
@@ -276,6 +304,7 @@ mod tests {
     use futures_util::SinkExt;
     use futures_util::TryStreamExt;
     use tokio_tungstenite::connect_async;
+    use tokio_tungstenite::tungstenite::Message;
     use tokio_tungstenite::MaybeTlsStream;
     use tokio_tungstenite::WebSocketStream;
     use url::Url;
@@ -308,13 +337,14 @@ mod tests {
             Some(serde_json::from_str(&msg.to_string()).unwrap())
         }
 
+        async fn send_message(&mut self, msg: SocketMessage) {
+            self.ws.send(Message::Binary(msg.to_bytes())).await.unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+
         async fn is_closed(&mut self) -> bool {
             let s = SocketMessage::Ping.to_string().into_bytes();
-            let res = self
-                .ws
-                .send(tokio_tungstenite::tungstenite::Message::Binary(s))
-                .await
-                .unwrap();
+            let res = self.ws.send(Message::Binary(s)).await.unwrap();
 
             dbg!(res);
 
@@ -423,5 +453,39 @@ mod tests {
         dbg!(ws.get_waiting_users().await);
         assert!(ws.is_closed().await);
         assert!(other_ws.is_closed().await);
+    }
+
+    #[tokio::test]
+    async fn test_state_change() {
+        let port = 3003;
+        start_server(port);
+
+        // Assert new connections are put in waiting queue.
+        let mut ws = TestSocket::new("foo", port).await;
+        assert_eq!(ws.get_status().await, UserStatus::Waiting);
+
+        // Show we can change them to idle.
+        ws.send_message(SocketMessage::StateChange(ChangeState::Idle))
+            .await;
+        assert_eq!(ws.get_status().await, UserStatus::Idle);
+
+        // .. and back to waiting
+        ws.send_message(SocketMessage::StateChange(ChangeState::Waiting))
+            .await;
+        assert_eq!(ws.get_status().await, UserStatus::Waiting);
+
+        // If another user then connects, theyre both connected.
+        let other_ws = TestSocket::new("bar", port).await;
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        assert_eq!(ws.get_status().await, UserStatus::Connected);
+        assert_eq!(other_ws.get_status().await, UserStatus::Connected);
+
+        // If one goes to waiting, the other is set to idle.
+        ws.send_message(SocketMessage::StateChange(ChangeState::Waiting))
+            .await;
+        std::thread::sleep(std::time::Duration::from_secs(3));
+
+        assert_eq!(ws.get_status().await, UserStatus::Waiting);
+        assert_eq!(other_ws.get_status().await, UserStatus::Idle);
     }
 }

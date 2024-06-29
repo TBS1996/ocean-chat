@@ -62,7 +62,9 @@ fn handle_socket(
                                 tracing::error!("{}: received message after closed client", &id);
                             }
 
-                            match serde_json::from_slice(&bytes) {
+                            let msg = serde_json::from_slice(&bytes);
+
+                            match msg {
                                 Ok(SocketMessage::StateChange(new_state)) => {
                                     let upmsg = StateMessage {id: id.clone(), action: StateAction::StateChange(new_state)};
                                     upsender.send(upmsg).await.ok();
