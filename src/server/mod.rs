@@ -243,8 +243,8 @@ async fn user_status(
 }
 
 pub async fn run(port: u16) {
-    #[cfg(test)]
-    //#[cfg(not(test))]
+    // #[cfg(test)]
+    #[cfg(not(test))]
     {
         use tracing_subscriber::layer::SubscriberExt;
 

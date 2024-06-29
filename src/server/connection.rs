@@ -42,9 +42,9 @@ impl Inner {
     }
 
     /// Connects two users together for chatting.
-    async fn connect(&self, left: User, right: User) {
-        self.clear_user(&left.id);
-        self.clear_user(&right.id);
+    async fn connect(&mut self, left: User, right: User) {
+        self.clear_user(&left.id).await;
+        self.clear_user(&right.id).await;
 
         let con_id = (left.id.clone(), right.id.clone());
 
