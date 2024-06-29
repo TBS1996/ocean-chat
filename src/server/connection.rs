@@ -7,7 +7,7 @@ use tokio::sync::oneshot;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
-type UserId = String;
+pub type UserId = String;
 type ConnectionId = (UserId, UserId);
 
 /// Ensures the same user is not connected multiple times.

@@ -26,8 +26,6 @@ fn handle_socket(
     let (x_sender, mut x_receiver) = channel::<SocketMessage>(32);
     let (sender, receiver) = channel(32);
 
-    let mut closed = false;
-
     tokio::spawn(async move {
         let (mut tx, mut rx) = socket.split();
         let timeout_duration = Duration::from_secs(CONFIG.timeout_secs);
@@ -51,17 +49,10 @@ fn handle_socket(
                     match msg {
                         Message::Close(_) => {
                             tracing::info!("{}: client closed connection", &id);
-                            closed = true;
-
-                           // let _ = sender.send(SocketMessage::ConnectionClosed).await;
-                           // break;
+                            let msg = StateMessage::new(id.clone(), StateAction::RemoveUser);
+                            upsender.send(msg).await.ok();
                         },
                         Message::Binary(bytes) => {
-                            if closed {
-                                // This shouldn't be possible.
-                                tracing::error!("{}: received message after closed client", &id);
-                            }
-
                             let msg = serde_json::from_slice(&bytes);
 
                             match msg {
@@ -86,8 +77,8 @@ fn handle_socket(
 
                 _ = &mut timeout => {
                     tracing::info!("{}: Timeout occurred, closing connection", &id);
-                    let _ = sender.send(SocketMessage::ConnectionClosed).await;
-                    break;
+                    let msg = StateMessage::new(id.clone(), StateAction::RemoveUser);
+                    upsender.send(msg).await.ok();
                 }
             }
         }

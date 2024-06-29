@@ -27,12 +27,19 @@ use user::*;
 use waiting_users::*;
 
 pub struct StateMessage {
-    pub id: String,
+    pub id: UserId,
     pub action: StateAction,
+}
+
+impl StateMessage {
+    pub fn new(id: UserId, action: StateAction) -> Self {
+        Self { id, action }
+    }
 }
 
 pub enum StateAction {
     StateChange(ChangeState),
+    RemoveUser,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -88,10 +95,20 @@ impl State {
                 continue;
             };
 
+            let id = msg.id;
+
             match msg.action {
                 StateAction::StateChange(state) => {
-                    self.change_state(state, msg.id).await;
+                    self.change_state(state, id).await;
                 }
+                StateAction::RemoveUser => match self.take_user(id.clone()).await {
+                    Some(user) => {
+                        tracing::info!("{}: Removed user", user.id);
+                    }
+                    None => {
+                        tracing::error!("{}: Failed to remove user. User not found.", id);
+                    }
+                },
             }
         }
     }
@@ -327,6 +344,10 @@ mod tests {
             Self { ws, port, id }
         }
 
+        async fn close_connection(&mut self) {
+            self.ws.close(None).await.unwrap();
+        }
+
         async fn get_message(&mut self) -> Option<SocketMessage> {
             let msg = self.ws.try_next().await.ok()??;
             Some(serde_json::from_str(&msg.to_string()).unwrap())
@@ -350,6 +371,11 @@ mod tests {
             let url = format!("http://127.0.0.1:{}/status/{}", self.port, &self.id);
             let response = reqwest::get(url).await.unwrap().text().await.unwrap();
             serde_json::from_str(&response).unwrap()
+        }
+
+        async fn assert_status(&self, status: UserStatus) {
+            let current_status = self.get_status().await;
+            assert_eq!(current_status, status);
         }
 
         async fn get_pairs(&self) -> Vec<(String, String)> {
@@ -482,5 +508,24 @@ mod tests {
 
         assert_eq!(ws.get_status().await, UserStatus::Waiting);
         assert_eq!(other_ws.get_status().await, UserStatus::Idle);
+    }
+
+    /// Test that other user is set to idle if one close connection.
+    #[tokio::test]
+    async fn test_close_connection() {
+        let port = 3004;
+        start_server(port);
+        let mut aws = TestSocket::new("foo", port).await;
+        let bws = TestSocket::new("bar", port).await;
+        std::thread::sleep(std::time::Duration::from_secs(3));
+
+        aws.assert_status(UserStatus::Connected).await;
+        bws.assert_status(UserStatus::Connected).await;
+
+        aws.close_connection().await;
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
+        aws.assert_status(UserStatus::Disconnected).await;
+        bws.assert_status(UserStatus::Idle).await;
     }
 }
