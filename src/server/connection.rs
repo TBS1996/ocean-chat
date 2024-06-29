@@ -118,6 +118,10 @@ impl ConnectionManager {
     }
 }
 
+/// A struct to retrieve the two users in a connection.
+///
+/// Works by using a oneshot to signal the connection to return the two users
+/// which will make it possible to get it through the joinhandle.
 #[derive(Debug)]
 pub struct UserExtractor {
     handle: JoinHandle<(User, User)>,
