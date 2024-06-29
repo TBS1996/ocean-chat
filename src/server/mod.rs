@@ -223,12 +223,7 @@ async fn user_status(
     tracing::info!("user status!: {}", &id);
     //  tracing::info!("state: {:?}", &state);
 
-    let is_waiting = if state.waiting_users.contains(&id).await {
-        state.connections.clear_user(&id).await;
-        true
-    } else {
-        false
-    };
+    let is_waiting = state.waiting_users.contains(&id).await;
     let is_idle = state.idle_users.contains(&id).await;
     let is_connected = state.connections.contains(&id).await;
 

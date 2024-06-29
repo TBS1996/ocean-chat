@@ -27,40 +27,39 @@ impl Inner {
     ///
     /// Ensures that when a user is removed, also the connection is closed, and
     /// the other user in the connection is also removed.
-    pub fn clear_user(&mut self, id: &str) {
-        let Some(connection_id) = self.user_to_connection.remove(id) else {
-            return;
-        };
-
-        tracing::info!("User connecting twice: {}", id);
-
-        // Removes the connection and aborts the thread.
-        if let Some(handle) = self.id_to_handle.remove(&connection_id) {
-            tokio::spawn(async move {
-                handle.get().await;
-            });
+    async fn clear_user(&mut self, id: &str) {
+        let users = self.take_pair(id).await;
+        if users.is_some() {
+            tracing::error!("users removed unexpectedly: {:?}", users);
         }
-
-        // The connection id consists of the two user ids.
-        // So to ensure the other user is also removed we simply call remove
-        // on both the IDs that make up the tuple.
-        let (left_id, right_id) = connection_id;
-        self.user_to_connection.remove(&left_id);
-        self.user_to_connection.remove(&right_id);
     }
 
-    pub async fn take_pair(&mut self, id: &str) -> Option<(User, User)> {
-        tracing::info!("{:?}", id);
+    fn get_extractor(&mut self, id: &str) -> Option<UserExtractor> {
         let con_id = self.user_to_connection.remove(id)?;
-        let extractor = self.id_to_handle.remove(&con_id)?;
-        {
-            let (left, right) = con_id;
-            self.user_to_connection.remove(&left);
-            self.user_to_connection.remove(&right);
-        }
-        let res = extractor.get().await;
-        tracing::info!("{:?}", self);
-        res
+        let _ = self.user_to_connection.remove(&con_id.0);
+        let _ = self.user_to_connection.remove(&con_id.1);
+        self.id_to_handle.remove(&con_id)
+    }
+
+    /// Connects two users together for chatting.
+    async fn connect(&self, left: User, right: User) {
+        self.clear_user(&left.id);
+        self.clear_user(&right.id);
+
+        let con_id = (left.id.clone(), right.id.clone());
+
+        self.user_to_connection
+            .insert(left.id.clone(), con_id.clone());
+        self.user_to_connection
+            .insert(right.id.clone(), con_id.clone());
+
+        let extractor = Connection::new(left, right).run();
+        self.id_to_handle.insert(con_id, extractor);
+        self.invariant();
+    }
+
+    async fn take_pair(&mut self, id: &str) -> Option<(User, User)> {
+        self.get_extractor(id)?.get().await
     }
 
     fn debug(&self) {
@@ -84,6 +83,15 @@ impl Inner {
 }
 
 impl ConnectionManager {
+    /// Connects two users together for chatting.
+    pub async fn connect(&self, left: User, right: User) {
+        self.inner.lock().await.connect(left, right).await;
+    }
+
+    pub async fn take(&self, id: &str) -> Option<(User, User)> {
+        self.inner.lock().await.take_pair(id).await
+    }
+
     #[cfg(test)]
     pub async fn pairs(&self) -> Vec<(UserId, UserId)> {
         let lock = self.inner.lock().await;
@@ -105,34 +113,8 @@ impl ConnectionManager {
         self.inner.lock().await.id_to_handle.len()
     }
 
-    pub async fn clear_user(&self, id: &str) {
-        self.inner.lock().await.clear_user(id);
-    }
-
-    pub async fn take(&self, id: &str) -> Option<(User, User)> {
-        self.inner.lock().await.take_pair(id).await
-    }
-
     pub async fn contains(&self, id: &str) -> bool {
         self.inner.lock().await.user_to_connection.contains_key(id)
-    }
-
-    /// Connects two users together for chatting.
-    pub async fn connect(&self, left: User, right: User) {
-        let mut lock = self.inner.lock().await;
-        lock.clear_user(&left.id);
-        lock.clear_user(&right.id);
-
-        let con_id = (left.id.clone(), right.id.clone());
-
-        lock.user_to_connection
-            .insert(left.id.clone(), con_id.clone());
-        lock.user_to_connection
-            .insert(right.id.clone(), con_id.clone());
-
-        let extractor = Connection::new(left, right).run();
-        lock.id_to_handle.insert(con_id, extractor);
-        lock.invariant();
     }
 }
 
