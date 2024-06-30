@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Default, Clone, Debug)]
-pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
+pub struct WaitingUsers(pub Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
     #[cfg(test)]

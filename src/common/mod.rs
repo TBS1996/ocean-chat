@@ -34,11 +34,13 @@ pub enum ChangeState {
 /// The type that gets sent from server to client through socket.
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum SocketMessage {
+    Status(UserStatus),
     StateChange(ChangeState),
     User(String),
     Info(String),
     PeerScores(Scores),
     ConnectionClosed,
+    GetStatus,
     Ping,
     Pong,
 }

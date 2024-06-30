@@ -56,6 +56,17 @@ fn handle_socket(
                             let msg = serde_json::from_slice(&bytes);
 
                             match msg {
+                                Ok(SocketMessage::GetStatus) => {
+                                    tracing::info!("cool, a status request!");
+                                    let (tx_, mut rx) = tokio::sync::oneshot::channel();
+                                    let msg = StateMessage::new(id.clone(), StateAction::GetStatus(tx_));
+                                     upsender.send(msg).await.unwrap();
+                                    let status = rx.await.unwrap();
+                                    tracing::info!("err status: {:?}", &status);
+                                    tx.send(SocketMessage::Status(status).into_message()).await.unwrap();
+                                    tracing::info!("ok i sent it");
+
+                                }
                                 Ok(SocketMessage::StateChange(new_state)) => {
                                     let upmsg = StateMessage {id: id.clone(), action: StateAction::StateChange(new_state)};
                                     upsender.send(upmsg).await.ok();

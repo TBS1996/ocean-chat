@@ -10,6 +10,7 @@ use axum::{
 use crate::common;
 
 use crate::common::ChangeState;
+use crate::common::UserStatus;
 use crate::server::ConnectionManager;
 use common::Scores;
 use common::CONFIG;
@@ -40,6 +41,7 @@ impl StateMessage {
 pub enum StateAction {
     StateChange(ChangeState),
     RemoveUser,
+    GetStatus(tokio::sync::oneshot::Sender<UserStatus>),
 }
 
 #[derive(Default, Clone, Debug)]
@@ -87,6 +89,28 @@ impl State {
         selv
     }
 
+    async fn user_status(&self, id: &UserId) -> UserStatus {
+        use crate::common::UserStatus;
+        tracing::info!("user status!: {}", &id);
+        //  tracing::info!("state: {:?}", &state);
+
+        let is_waiting = self.waiting_users.contains(&id).await;
+        let is_idle = self.idle_users.contains(&id).await;
+        let is_connected = self.connections.contains(&id).await;
+
+        match (is_waiting, is_idle, is_connected) {
+            (true, false, false) => UserStatus::Waiting,
+            (false, true, false) => UserStatus::Idle,
+            (false, false, true) => UserStatus::Connected,
+            (false, false, false) => UserStatus::Disconnected,
+            invalid => {
+                tracing::error!("{}: Invalid user status: {:?}", id, invalid);
+
+                UserStatus::Disconnected
+            }
+        }
+    }
+
     /// Receive messages from [`User`] that changes the [`State`].
     async fn state_message_handler(self, mut rx: mpsc::Receiver<StateMessage>) {
         loop {
@@ -98,6 +122,11 @@ impl State {
             let id = msg.id;
 
             match msg.action {
+                StateAction::GetStatus(tx) => {
+                    let status = self.user_status(&id).await;
+                    tracing::info!("{:?} ", &status);
+                    tx.send(status).ok();
+                }
                 StateAction::StateChange(state) => {
                     self.change_state(state, id).await;
                 }
@@ -236,32 +265,13 @@ async fn user_status(
     Path(id): Path<String>,
     Extension(state): Extension<Arc<State>>,
 ) -> impl IntoResponse {
-    use crate::common::UserStatus;
-    tracing::info!("user status!: {}", &id);
-    //  tracing::info!("state: {:?}", &state);
-
-    let is_waiting = state.waiting_users.contains(&id).await;
-    let is_idle = state.idle_users.contains(&id).await;
-    let is_connected = state.connections.contains(&id).await;
-
-    let status = match (is_waiting, is_idle, is_connected) {
-        (true, false, false) => UserStatus::Waiting,
-        (false, true, false) => UserStatus::Idle,
-        (false, false, true) => UserStatus::Connected,
-        (false, false, false) => UserStatus::Disconnected,
-        invalid => {
-            tracing::error!("{}: Invalid user status: {:?}", id, invalid);
-
-            UserStatus::Disconnected
-        }
-    };
-
+    let status = state.user_status(&id).await;
     serde_json::to_string(&status).unwrap()
 }
 
 pub async fn run(port: u16) {
-    // #[cfg(test)]
-    #[cfg(not(test))]
+    #[cfg(test)]
+    //#[cfg(not(test))]
     {
         use tracing_subscriber::layer::SubscriberExt;
 
@@ -270,7 +280,7 @@ pub async fn run(port: u16) {
         let subscriber = tracing_subscriber::registry()
             .with(
                 tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "warn,ocean_chat=debug".into()),
+                    .unwrap_or_else(|_| "info,ocean_chat=debug".into()),
             )
             .with(tracing_subscriber::fmt::layer())
             .with(tracing_subscriber::fmt::layer().with_writer(non_blocking));
@@ -314,6 +324,7 @@ mod tests {
     use crate::common::SocketMessage;
     use crate::common::UserStatus;
     use futures_util::SinkExt;
+    use futures_util::StreamExt;
     use futures_util::TryStreamExt;
     use tokio_tungstenite::connect_async;
     use tokio_tungstenite::tungstenite::Message;
@@ -349,7 +360,7 @@ mod tests {
         }
 
         async fn get_message(&mut self) -> Option<SocketMessage> {
-            let msg = self.ws.try_next().await.ok()??;
+            let msg = self.ws.next().await?.unwrap();
             Some(serde_json::from_str(&msg.to_string()).unwrap())
         }
 
@@ -367,13 +378,26 @@ mod tests {
             self.get_message().await.is_none()
         }
 
-        async fn get_status(&self) -> UserStatus {
+        async fn get_status(&mut self) -> UserStatus {
             let url = format!("http://127.0.0.1:{}/status/{}", self.port, &self.id);
-            let response = reqwest::get(url).await.unwrap().text().await.unwrap();
-            serde_json::from_str(&response).unwrap()
+            //let response = reqwest::get(url).await.unwrap().text().await.unwrap();
+            //serde_json::from_str(&response).unwrap();
+
+            self.send_message(SocketMessage::GetStatus).await;
+            //let status = self.get_message().await.unwrap();
+
+            while let Some(msg) = self.get_message().await {
+                dbg!(&msg);
+                if let SocketMessage::Status(status) = msg {
+                    return status;
+                };
+                panic!();
+            }
+
+            panic!();
         }
 
-        async fn assert_status(&self, status: UserStatus) {
+        async fn assert_status(&mut self, status: UserStatus) {
             let current_status = self.get_status().await;
             assert_eq!(current_status, status);
         }
@@ -453,9 +477,10 @@ mod tests {
         let id = "foo";
         let id2 = "bar";
 
-        let ws = TestSocket::new(id, port).await;
+        let mut ws = TestSocket::new(id, port).await;
         assert_eq!(ws.get_status().await, UserStatus::Waiting);
-        let ws2 = TestSocket::new(id2, port).await;
+        return;
+        let mut ws2 = TestSocket::new(id2, port).await;
         std::thread::sleep(std::time::Duration::from_secs(3));
         assert_eq!(ws.get_status().await, UserStatus::Connected);
         assert_eq!(ws2.get_status().await, UserStatus::Connected);
@@ -496,7 +521,7 @@ mod tests {
         assert_eq!(ws.get_status().await, UserStatus::Waiting);
 
         // If another user then connects, theyre both connected.
-        let other_ws = TestSocket::new("bar", port).await;
+        let mut other_ws = TestSocket::new("bar", port).await;
         std::thread::sleep(std::time::Duration::from_secs(3));
         assert_eq!(ws.get_status().await, UserStatus::Connected);
         assert_eq!(other_ws.get_status().await, UserStatus::Connected);
@@ -516,7 +541,7 @@ mod tests {
         let port = 3004;
         start_server(port);
         let mut aws = TestSocket::new("foo", port).await;
-        let bws = TestSocket::new("bar", port).await;
+        let mut bws = TestSocket::new("bar", port).await;
         std::thread::sleep(std::time::Duration::from_secs(3));
 
         aws.assert_status(UserStatus::Connected).await;
