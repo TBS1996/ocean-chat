@@ -286,17 +286,12 @@ pub async fn connect_to_peer(
             let messages = match serde_json::from_str(&txt).unwrap() {
                 SM::User(msg) => vec![Message::new(Origin::Peer, msg)],
                 SM::Info(msg) => vec![Message::new(Origin::Info, msg)],
-                SM::Ping => {
-                    let msg = SM::pong();
-                    state.send_message(msg);
+                SM::Status(status) => {
+                    log_to_console(("status: ", status));
                     return;
                 }
-                SM::Pong => {
-                    log_to_console("unexpected pong!");
-                    return;
-                }
-                SM::StateChange(st) => {
-                    log_to_console(("unexpected message:", st));
+                SM::Ping | SM::Pong | SM::StateChange(_) | SM::GetStatus => {
+                    log_to_console(("unexpected socketmessage", txt));
                     return;
                 }
                 SM::ConnectionClosed => {

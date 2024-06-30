@@ -97,6 +97,10 @@ impl SocketMessage {
         Self::User(msg).to_bytes()
     }
 
+    pub fn get_status() -> Vec<u8> {
+        Self::GetStatus.to_bytes()
+    }
+
     pub fn ping() -> Vec<u8> {
         let mut writer: Vec<u8> = vec![];
         let val = Self::Ping;

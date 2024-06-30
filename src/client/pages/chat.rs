@@ -73,9 +73,8 @@ fn start_pinger(state: State) {
 
         log_to_console("Start pinging loop");
         loop {
-            state.send_message(SocketMessage::ping());
+            state.send_message(SocketMessage::get_status());
             gloo_timers::future::sleep(std::time::Duration::from_secs(5)).await;
-            log_to_console(("status: ", get_status(&state).await));
         }
     });
 }

@@ -13,7 +13,6 @@ use std::time::SystemTime;
 use futures_util::SinkExt;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::oneshot;
 use tokio::time::{sleep, Duration, Instant};
 
 /// Takes care of sending to and receiving from a websocket.
@@ -33,7 +32,7 @@ fn handle_socket(
         tokio::pin!(timeout);
 
         loop {
-            let mut close_signal_recv = close_signal.recv();
+            let close_signal_recv = close_signal.recv();
             tokio::pin!(close_signal_recv);
 
             tokio::select! {
@@ -48,7 +47,6 @@ fn handle_socket(
                 },
 
                 Some(Ok(msg)) = rx.next() => {
-                    //tracing::info!("{:?}", &msg);
 
                     match msg {
                         Message::Close(_) => {
@@ -61,12 +59,10 @@ fn handle_socket(
 
                             match msg {
                                 Ok(SocketMessage::GetStatus) => {
-                                    tracing::info!("{}: requesting status", &id);
-                                    let (tx_, mut rx) = tokio::sync::oneshot::channel();
+                                    let (tx_, rx) = tokio::sync::oneshot::channel();
                                     let msg = StateMessage::new(id.clone(), StateAction::GetStatus(tx_));
                                      upsender.send(msg).await.unwrap();
                                     let status = rx.await.unwrap();
-                                    tracing::info!("{}: {:?}", &id, &status);
                                     tx.send(SocketMessage::Status(status).into_message()).await.unwrap();
 
                                 }
@@ -113,18 +109,11 @@ pub struct User {
 
 impl Drop for User {
     fn drop(&mut self) {
-        tracing::info!(
-            "debug: {}, {:?}",
-            self.close_signal.is_some(),
-            &self.con_time
-        );
-
         if self.close_signal.is_some() {
             tracing::error!(
                 "{}: user dropped without having been closed properly!",
                 &self.id
             );
-            //self.close();
         }
     }
 }
@@ -164,7 +153,6 @@ impl User {
     pub fn close(&mut self) {
         let id = self.id.clone();
         if let Some(sender) = self.close_signal.take() {
-            tracing::info!("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
             tokio::spawn(async move {
                 let res = sender.send(()).await;
                 if res.is_err() {
@@ -172,12 +160,6 @@ impl User {
                 }
             });
         };
-
-        tracing::info!(
-            "debug: {}, {:?}",
-            self.close_signal.is_some(),
-            &self.con_time
-        );
     }
 
     pub fn is_closed(&mut self) -> bool {
