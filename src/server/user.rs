@@ -40,6 +40,7 @@ fn handle_socket(
                     tracing::info!("{}: closing socket", id);
                     let msg = StateMessage::new(id.clone(), StateAction::RemoveUser);
                     upsender.send(msg).await.ok();
+                    break;
                 }
                 Some(socketmessage) = x_receiver.recv() => {
                     match socketmessage {
@@ -68,7 +69,6 @@ fn handle_socket(
                         },
                         Message::Binary(bytes) => {
                             let msg = serde_json::from_slice(&bytes);
-                            tracing::info!("{}:  msg received: {:?}", &id, &msg);
 
                             match msg {
                                 Ok(SocketMessage::GetStatus) => {
@@ -77,7 +77,6 @@ fn handle_socket(
                                      upsender.send(msg).await.unwrap();
                                     let status = rx.await.unwrap();
                                     tx.send(SocketMessage::Status(status).into_message()).await.unwrap();
-                                    tracing::info!("{}: status!!: {:?}", &id, &status);
 
                                 }
                                 Ok(SocketMessage::StateChange(new_state)) => {
@@ -103,6 +102,7 @@ fn handle_socket(
                     tracing::info!("{}: Timeout occurred, closing connection", &id);
                     let msg = StateMessage::new(id.clone(), StateAction::RemoveUser);
                     upsender.send(msg).await.ok();
+                    break;
                 }
             }
         }
@@ -119,17 +119,6 @@ pub struct User {
     pub sender: Sender<SocketMessage>,
     pub receiver: Receiver<SocketMessage>,
     close_signal: Option<mpsc::Sender<()>>,
-}
-
-impl Drop for User {
-    fn drop(&mut self) {
-        if self.close_signal.is_some() {
-            tracing::error!(
-                "{}: user dropped without having been closed properly!",
-                &self.id
-            );
-        }
-    }
 }
 
 impl User {
