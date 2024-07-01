@@ -10,12 +10,12 @@ use tokio::{
 
 use crate::common::SocketMessage;
 
-struct Handler {
+pub struct Handler {
     message_sender: Sender<Message>,
 }
 
 impl Handler {
-    pub async fn start<F>(
+    pub async fn start(
         socket: WebSocket,
         handle_socket_read: impl Fn(SocketMessage) -> BoxFuture<'static, ()> + Send + 'static,
     ) -> Self {
