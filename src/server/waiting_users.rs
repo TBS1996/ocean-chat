@@ -79,7 +79,6 @@ impl WaitingUsers {
     /// If 2 or more users are present, it'll pop the longest-waiting user along with
     /// another user who has the closest personality.
     pub async fn pop_pair(&self) -> Option<(User, User)> {
-        tracing::info!("pop pair called!");
         let mut users = self.0.lock().await;
 
         users.retain_mut(|user| !user.is_closed());

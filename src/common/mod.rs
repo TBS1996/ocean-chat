@@ -17,8 +17,9 @@ pub use sloan::*;
 #[cfg(feature = "server")]
 use axum::extract::ws::Message;
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub enum UserStatus {
+    #[default]
     Disconnected,
     Connected,
     Waiting,

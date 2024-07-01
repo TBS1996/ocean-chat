@@ -42,11 +42,23 @@ fn handle_socket(
                     upsender.send(msg).await.ok();
                 }
                 Some(socketmessage) = x_receiver.recv() => {
-                    tracing::info!("{:?}", &socketmessage);
-                    let _ = tx.send(socketmessage.into_message()).await;
+                    match socketmessage {
+                        SocketMessage::GetStatus => {
+                            let (tx_, rx) = tokio::sync::oneshot::channel();
+                            let msg = StateMessage::new(id.clone(), StateAction::GetStatus(tx_));
+                             upsender.send(msg).await.unwrap();
+                            let status = rx.await.unwrap();
+                            tx.send(SocketMessage::Status(status).into_message()).await.unwrap();
+                        },
+                        socketmessage => {
+                            tracing::info!("{:?}", &socketmessage);
+                            let _ = tx.send(socketmessage.into_message()).await;
+                        }
+                    }
                 },
 
                 Some(Ok(msg)) = rx.next() => {
+                    timeout.as_mut().reset(Instant::now() + timeout_duration);
 
                     match msg {
                         Message::Close(_) => {
@@ -140,6 +152,14 @@ impl User {
             con_time,
             close_signal: Some(onesend),
         }
+    }
+
+    /// Notifies the client of the status of the user.
+    ///
+    /// Client will ask periodically but this should be called when a new status is registered
+    /// just to speed things up.
+    pub async fn refresh_status(&mut self) -> Result<(), SendError<SocketMessage>> {
+        self.sender.send(SocketMessage::GetStatus).await
     }
 
     pub async fn send(&mut self, msg: SocketMessage) -> Result<(), SendError<SocketMessage>> {

@@ -4,12 +4,10 @@ use crate::client::components::nav_bar::Navbar;
 use crate::client::Splash;
 use crate::common;
 
-use client::connect_to_peer;
 use client::log_to_console;
 use client::score_cmp;
 use client::Message;
 use client::MessageList;
-use client::Origin;
 use client::State;
 use common::Scores;
 use common::SocketMessage;
@@ -73,7 +71,7 @@ fn start_pinger(state: State) {
 
         log_to_console("Start pinging loop");
         loop {
-            state.send_message(SocketMessage::get_status());
+            state.send_socket_message(SocketMessage::GetStatus);
             gloo_timers::future::sleep(std::time::Duration::from_secs(5)).await;
         }
     });
@@ -88,15 +86,16 @@ pub fn Chat() -> Element {
 
     let input = state.input();
     let messages = state.messages();
-    let is_init = state.is_init();
-    let is_init = use_signal(move || is_init);
-    log_to_console(("chat refresh, is_init: ", &is_init));
     let peer_score = use_signal(|| state.peer_scores());
     let popup = state.popup();
+    let status = state.status();
 
     log_to_console(&popup);
 
     start_pinger(state.clone());
+
+    let is_enabled = status() != UserStatus::Disconnected;
+    log_to_console(("is enabled: ", is_enabled));
 
     rsx! {
         div {
@@ -108,11 +107,11 @@ pub fn Chat() -> Element {
             div {
                 class: "navmargin",
 
-                if is_init() {
+                if is_enabled {
                     { enabled_chat(state, input, peer_score, scores, messages, popup.clone()) }
                 }
                 else {
-                    { disabled_chat(state, is_init, peer_score, scores, messages, input) }
+                    { disabled_chat(state, peer_score, scores, input) }
                 }
             }
         }
@@ -124,7 +123,6 @@ fn form_group(
     mut input: Signal<String>,
     peer_score: Signal<Option<Scores>>,
     scores: Scores,
-    mut messages: Signal<Vec<Message>>,
     enabled: bool,
 ) -> Element {
     rsx! {
@@ -157,21 +155,14 @@ fn form_group(
                         if !enabled {
                             return;
                         }
+                        log_to_console("yo wtf");
 
                         let thestate = state.clone();
-                        messages.write().clear();
-                        state.clear_peer();
+                        let status = thestate.inner.lock().unwrap().chat.inner.lock().unwrap().status.clone();
+                        let is_disconnected = status() == UserStatus::Disconnected;
                         spawn_local(async move {
-                            let socket = connect_to_peer(scores, thestate.clone(), peer_score.clone())
-                                .await
-                                .unwrap();
-                            thestate.set_socket(socket);
+                            thestate.new_peer(scores, peer_score.clone(), is_disconnected).await.unwrap();
                         });
-                        let msg = Message {
-                            origin: Origin::Info,
-                            content: "searching for peer...".to_string()};
-                        messages.write().push(msg);
-                        input.set(String::new());
                     },
                     background_color: if !enabled {"gray"} else {""},
                     "New peer"
@@ -183,7 +174,7 @@ fn form_group(
 
 fn enabled_chat(
     state: State,
-    mut input: Signal<String>,
+    input: Signal<String>,
     peer_score: Signal<Option<Scores>>,
     scores: Scores,
     messages: Signal<Vec<Message>>,
@@ -234,15 +225,10 @@ fn enabled_chat(
                     onsubmit: move |event| {
                         let state = state2.clone();
                         let msg = event.data().values().get("msg").unwrap().as_value();
-                        input.set(String::new());
-                        state.insert_message(Message::new(Origin::Me, msg.clone()));
-                        let msg = SocketMessage::user_msg(msg);
-                        if state.send_message(msg) {
-                            log_to_console("message submitted");
-                        }
+                        state.send_chat_message(msg);
                     },
                     div {
-                        { form_group(state.clone(), input, peer_score, scores, messages, true) }
+                        { form_group(state.clone(), input, peer_score, scores , true) }
                     }
                 }
             }
@@ -292,10 +278,8 @@ fn enabled_chat(
 
 fn disabled_chat(
     state: State,
-    mut is_init: Signal<bool>,
     peer_score: Signal<Option<Scores>>,
     scores: Scores,
-    mut messages: Signal<Vec<Message>>,
     input: Signal<String>,
 ) -> Element {
     rsx! {
@@ -319,31 +303,24 @@ fn disabled_chat(
                     height: "200px",
                     margin: "auto",
                     onclick: move |_| {
-                        is_init.toggle();
-                        state.set_init(true);
-                        use_effect({
-                            let state = state.clone();
-                            move || {
                                 let state = state.clone();
+                                let state = state.clone();
+                                let mut status = state.inner.lock().unwrap().chat.inner.lock().unwrap().status.clone();
+                                let is_disconnected = status() == UserStatus::Disconnected;
+                                *status.write() = UserStatus::Waiting;
+                            //    *status.write() = UserStatus::Waiting;
+                                log_to_console("bruh wtf");
+
                                 spawn_local(async move {
-                                    if !state.has_socket() {
-                                        let msg = Message {
-                                            origin: Origin::Info,
-                                            content: "searching for peer...".to_string(),
-                                        };
-                                        messages.write().push(msg);
-                                        let socket = connect_to_peer(scores, state.clone(), peer_score.clone()).await.unwrap();
-                                        state.set_socket(socket);
-                                    }
+                                    state.new_peer(scores, peer_score.clone(), is_disconnected).await.unwrap();
+                                    log_to_console("bruh wtf");
                                 });
-                            }
-                        });
                     },
                     "Start chatting!"
                 }
             }
 
-            { form_group(state.clone(), input, peer_score, scores, messages, false ) }
+            { form_group(state.clone(), input, peer_score, scores, false ) }
         }
     }
 }

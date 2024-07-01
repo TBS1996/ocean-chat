@@ -6,7 +6,6 @@ use crate::common;
 use common::Scores;
 
 use client::Route;
-use client::State;
 use common::SocketMessage;
 use common::Trait;
 use dioxus::prelude::*;
@@ -247,9 +246,11 @@ pub fn markdown_converter(s: &str) -> Element {
     }
 }
 
+use super::ChatState;
+
 pub async fn connect_to_peer(
     scores: Scores,
-    state: State,
+    mut state: ChatState,
     peer_score_signal: Signal<Option<Scores>>,
 ) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
@@ -257,7 +258,7 @@ pub async fn connect_to_peer(
         "{}/pair/{}/{}",
         CONFIG.server_address(),
         scores,
-        state.id().simple().to_string()
+        crate::client::get_id().simple().to_string()
     );
 
     // Attempt to create the WebSocket
@@ -287,6 +288,7 @@ pub async fn connect_to_peer(
                 SM::User(msg) => vec![Message::new(Origin::Peer, msg)],
                 SM::Info(msg) => vec![Message::new(Origin::Info, msg)],
                 SM::Status(status) => {
+                    state.set_status(status.clone());
                     log_to_console(("status: ", status));
                     return;
                 }
@@ -329,7 +331,7 @@ pub async fn connect_to_peer(
     ws.set_onmessage(Some(onmessage_callback.as_ref().unchecked_ref()));
     onmessage_callback.forget();
 
-    let the_state = state.clone();
+    let mut the_state = state.clone();
     // Handle WebSocket error event
     let onerror_callback = Closure::wrap(Box::new(move |e: web_sys::ErrorEvent| {
         let err_msg = format!(
@@ -340,10 +342,7 @@ pub async fn connect_to_peer(
             e.lineno(),
             e.colno()
         );
-        the_state.insert_message(Message::new(
-            Origin::Info,
-            "unexpected error occured".into(),
-        ));
+        the_state.send_info("unexpected error occured".into());
         log_to_console(&err_msg);
     }) as Box<dyn FnMut(_)>);
     ws.set_onerror(Some(onerror_callback.as_ref().unchecked_ref()));
@@ -353,7 +352,7 @@ pub async fn connect_to_peer(
     let onclose_callback = Closure::wrap(Box::new(move |_| {
         state.clear_socket();
         log_to_console("WebSocket connection closed");
-        state.insert_message(Message::new(Origin::Info, "Connection closed".into()));
+        state.send_info("Connection closed".to_string());
     }) as Box<dyn FnMut(JsValue)>);
     ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
     onclose_callback.forget();
@@ -394,6 +393,14 @@ pub struct Message {
 impl Message {
     pub fn new(origin: Origin, content: String) -> Self {
         Self { origin, content }
+    }
+
+    pub fn new_from_me(content: impl Into<String>) -> Self {
+        Self::new(Origin::Me, content.into())
+    }
+
+    pub fn new_info(content: impl Into<String>) -> Self {
+        Self::new(Origin::Info, content.into())
     }
 }
 

@@ -53,7 +53,8 @@ impl IdleUsers {
         self.0.lock().await.contains_key(id)
     }
 
-    async fn insert(&self, user: User) {
+    async fn insert(&self, mut user: User) {
+        let _ = user.refresh_status().await;
         let id = user.id.clone();
         self.0.lock().await.insert(id, user);
     }
@@ -92,8 +93,6 @@ impl State {
 
     async fn user_status(&self, id: &UserId) -> UserStatus {
         use crate::common::UserStatus;
-        tracing::info!("{} fetching user status!", &id);
-        //  tracing::info!("state: {:?}", &state);
 
         let is_waiting = self.waiting_users.contains(&id).await;
         let is_idle = self.idle_users.contains(&id).await;
@@ -283,8 +282,8 @@ async fn user_status(
 }
 
 pub async fn run(port: u16) {
-    //#[cfg(test)]
-    #[cfg(not(test))]
+    #[cfg(test)]
+    //#[cfg(not(test))]
     {
         use tracing_subscriber::layer::SubscriberExt;
 
@@ -341,7 +340,6 @@ mod tests {
     use crate::common::UserStatus;
     use futures_util::SinkExt;
     use futures_util::StreamExt;
-    use futures_util::TryStreamExt;
     use tokio_tungstenite::connect_async;
     use tokio_tungstenite::tungstenite::Message;
     use tokio_tungstenite::MaybeTlsStream;
@@ -350,63 +348,26 @@ mod tests {
 
     type WebSocket = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
 
-    fn start_server(port: u16) {
-        tokio::spawn(async move {
-            run(port).await;
-        });
-        std::thread::sleep(std::time::Duration::from_millis(250));
-    }
-
-    struct TestSocket {
+    struct Server {
         port: u16,
-        id: String,
-        ws: WebSocket,
     }
 
-    impl TestSocket {
-        async fn new(id: impl Into<String>, port: u16) -> Self {
+    impl Server {
+        fn new(port: u16) -> Self {
+            tokio::spawn(async move {
+                run(port).await;
+            });
+            std::thread::sleep(std::time::Duration::from_millis(250));
+
+            Self { port }
+        }
+
+        async fn connect(&self, id: impl Into<String>) -> TestSocket {
             let id = id.into();
-            let ws = Self::queue_user(&id, port).await;
+            let ws = self.queue_user(&id).await;
+            sleep(0.1).await;
 
-            Self { ws, port, id }
-        }
-
-        async fn close_connection(&mut self) {
-            self.ws.close(None).await.unwrap();
-        }
-
-        async fn get_message(&mut self) -> Option<SocketMessage> {
-            let msg = self.ws.next().await?.unwrap();
-            Some(serde_json::from_str(&msg.to_string()).unwrap())
-        }
-
-        async fn send_message(&mut self, msg: SocketMessage) {
-            self.ws.send(Message::Binary(msg.to_bytes())).await.unwrap();
-            std::thread::sleep(std::time::Duration::from_millis(100));
-        }
-
-        async fn get_status(&mut self) -> UserStatus {
-            let url = format!("http://127.0.0.1:{}/status/{}", self.port, &self.id);
-            //let response = reqwest::get(url).await.unwrap().text().await.unwrap();
-            //serde_json::from_str(&response).unwrap();
-
-            self.send_message(SocketMessage::GetStatus).await;
-            sleep(5.0).await;
-            //let status = self.get_message().await.unwrap();
-
-            while let Some(msg) = self.get_message().await {
-                tracing::info!("{:?}", &msg);
-                if let SocketMessage::Status(status) = msg {
-                    return status;
-                };
-            }
-
-            panic!();
-        }
-
-        async fn assert_status(&mut self, status: UserStatus) {
-            let current_status = self.get_status().await;
-            assert_eq!(current_status, status);
+            TestSocket { ws, id }
         }
 
         async fn get_idle(&self) -> Vec<UserId> {
@@ -427,10 +388,6 @@ mod tests {
             serde_json::from_str(&response).unwrap()
         }
 
-        async fn queue_user(id: impl Into<String>, port: u16) -> WebSocket {
-            Self::queue_user_with_score(Scores::mid(), id, port).await
-        }
-
         async fn empty_state(&self) -> bool {
             self.connected_users().await == 0
         }
@@ -441,8 +398,13 @@ mod tests {
                 + (self.get_pairs().await.len() * 2)
         }
 
-        async fn queue_user_with_score(s: Scores, id: impl Into<String>, port: u16) -> WebSocket {
+        async fn queue_user(&self, id: impl Into<String>) -> WebSocket {
+            self.queue_user_with_score(Scores::mid(), id).await
+        }
+
+        async fn queue_user_with_score(&self, s: Scores, id: impl Into<String>) -> WebSocket {
             let id = id.into();
+            let port = self.port;
 
             tokio::spawn(async move {
                 let f = format!("ws://127.0.0.1:{}", port);
@@ -457,6 +419,15 @@ mod tests {
             .unwrap()
         }
 
+        async fn assert_waiting_users(&self, expected: Vec<&str>) {
+            let waiting_users = self.get_waiting_users().await;
+            assert_eq!(expected.len(), waiting_users.len());
+
+            for user in expected {
+                assert!(waiting_users.contains(&user.to_string()));
+            }
+        }
+
         async fn assert_pair(&self, left: &str, right: &str) {
             let mut pair_found = false;
 
@@ -468,15 +439,51 @@ mod tests {
 
             assert!(pair_found);
         }
+    }
 
-        async fn assert_waiting_users(&self, expected: Vec<&str>) {
-            let waiting_users = self.get_waiting_users().await;
-            assert_eq!(expected.len(), waiting_users.len());
+    struct TestSocket {
+        id: String,
+        ws: WebSocket,
+    }
 
-            for user in expected {
-                assert!(waiting_users.contains(&user.to_string()));
-            }
+    impl TestSocket {
+        async fn close_connection(&mut self) {
+            self.ws.close(None).await.unwrap();
         }
+
+        async fn get_message(&mut self) -> Option<SocketMessage> {
+            let msg = self.ws.next().await?.unwrap();
+            Some(serde_json::from_str(&msg.to_string()).unwrap())
+        }
+
+        async fn send_message(&mut self, msg: SocketMessage) {
+            self.ws.send(Message::Binary(msg.to_bytes())).await.unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+
+        async fn get_status(&mut self) -> UserStatus {
+            self.send_message(SocketMessage::GetStatus).await;
+            sleep(0.1).await;
+
+            while let Some(msg) = self.get_message().await {
+                tracing::info!("{:?}", &msg);
+                if let SocketMessage::Status(status) = msg {
+                    return status;
+                };
+            }
+
+            panic!();
+        }
+
+        async fn assert_status(&mut self, status: UserStatus) {
+            let current_status = self.get_status().await;
+            assert_eq!(current_status, status);
+        }
+    }
+
+    async fn sleep_pair_interval() {
+        let secs = CONFIG.pair_interval_millis as f32 / 1000.;
+        sleep(secs + 0.1).await;
     }
 
     async fn sleep(secs: f32) {
@@ -486,94 +493,94 @@ mod tests {
 
     #[tokio::test]
     async fn test_queue_user() {
-        let port = 3000;
-
-        start_server(port);
+        let server = Server::new(3000);
 
         let id = "heythere";
-        let ws = TestSocket::new(id, port).await;
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        let _ws = server.connect(id).await;
+        sleep(1.0).await;
 
-        ws.assert_waiting_users(vec![id]).await;
+        server.assert_waiting_users(vec![id]).await;
     }
 
     #[tokio::test]
     async fn test_connect_pair() {
-        let port = 3001;
-        start_server(port);
+        let server = Server::new(3001);
 
         let id = "foo";
         let id2 = "bar";
 
-        let mut ws = TestSocket::new(id, port).await;
-        assert_eq!(ws.get_status().await, UserStatus::Waiting);
-        return;
-        let mut ws2 = TestSocket::new(id2, port).await;
-        std::thread::sleep(std::time::Duration::from_secs(3));
-        assert_eq!(ws.get_status().await, UserStatus::Connected);
-        assert_eq!(ws2.get_status().await, UserStatus::Connected);
+        let mut ws = server.connect(id).await;
+        ws.assert_status(UserStatus::Waiting).await;
+        let mut ws2 = server.connect(id2).await;
+        sleep_pair_interval().await;
+        ws.assert_status(UserStatus::Connected).await;
+        ws2.assert_status(UserStatus::Connected).await;
     }
 
     #[tokio::test]
     async fn test_close_connection_when_same_connects() {
-        let port = 3002;
-        start_server(port);
+        let server = Server::new(3002);
         let id = "foo";
-        let mut ws = TestSocket::new(id, port).await;
+        let _ws = server.connect(id).await;
         sleep(0.1).await;
-        assert_eq!(ws.connected_users().await, 1);
-        let mut other_ws = TestSocket::new(id, port).await;
-        sleep(0.1).await;
-        assert_eq!(ws.connected_users().await, 1);
+        assert_eq!(server.connected_users().await, 1);
+        let mut other_ws = server.connect(id).await;
+        sleep_pair_interval().await;
+
+        // Only one user meaning the two sockets did not pair up.
+        assert_eq!(server.connected_users().await, 1);
+
+        // The second one connected is now waiting.
         other_ws.assert_status(UserStatus::Waiting).await;
     }
 
     #[tokio::test]
     async fn test_state_change() {
-        let port = 3003;
-        start_server(port);
+        let server = Server::new(3003);
+        dbg!("X");
 
         // Assert new connections are put in waiting queue.
-        let mut ws = TestSocket::new("foo", port).await;
-        assert_eq!(ws.get_status().await, UserStatus::Waiting);
+        let mut ws = server.connect("foo").await;
+        ws.assert_status(UserStatus::Waiting).await;
 
         // Show we can change them to idle.
         ws.send_message(SocketMessage::StateChange(ChangeState::Idle))
             .await;
-        assert_eq!(ws.get_status().await, UserStatus::Idle);
+        ws.assert_status(UserStatus::Idle).await;
+        dbg!("X");
 
         // .. and back to waiting
         ws.send_message(SocketMessage::StateChange(ChangeState::Waiting))
             .await;
-        tracing::info!("1 @@@@@@@@@@@@@@@");
-        assert_eq!(ws.get_status().await, UserStatus::Waiting);
-        tracing::info!("2 @@@@@@@@@@@@@@@");
+        ws.assert_status(UserStatus::Waiting).await;
+        dbg!("X");
 
-        sleep(3.).await;
-        tracing::info!("3 @@@@@@@@@@@@@@@");
+        sleep(1.).await;
         // If another user then connects, theyre both connected.
-        let mut other_ws = TestSocket::new("bar", port).await;
-        sleep(8.).await;
-        tracing::info!("4 status !! @@@@@@@@@@@@@@@");
-        assert_eq!(ws.get_status().await, UserStatus::Connected);
-        assert_eq!(other_ws.get_status().await, UserStatus::Connected);
+        let mut other_ws = server.connect("bar").await;
+        sleep(1.).await;
+        dbg!("X");
+        ws.assert_status(UserStatus::Connected).await;
+        dbg!("X");
+        other_ws.assert_status(UserStatus::Connected).await;
 
         // If one goes to waiting, the other is set to idle.
         ws.send_message(SocketMessage::StateChange(ChangeState::Waiting))
             .await;
-        sleep(3.).await;
+        sleep(4.).await;
 
-        assert_eq!(ws.get_status().await, UserStatus::Waiting);
-        assert_eq!(other_ws.get_status().await, UserStatus::Idle);
+        dbg!("X");
+        ws.assert_status(UserStatus::Waiting).await;
+        dbg!("X");
+        other_ws.assert_status(UserStatus::Idle).await;
     }
 
     /// Test that other user is set to idle if one close connection.
     #[tokio::test]
-    async fn xtest_close_connection() {
-        let port = 3004;
-        start_server(port);
-        let mut aws = TestSocket::new("foo", port).await;
-        let mut bws = TestSocket::new("bar", port).await;
+    async fn test_close_connection() {
+        let server = Server::new(3004);
+        let mut aws = server.connect("foo").await;
+        let mut bws = server.connect("bar").await;
         sleep(3.).await;
 
         aws.assert_status(UserStatus::Connected).await;
