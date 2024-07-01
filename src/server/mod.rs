@@ -282,8 +282,8 @@ async fn user_status(
 }
 
 pub async fn run(port: u16) {
-    #[cfg(test)]
-    //#[cfg(not(test))]
+    //#[cfg(test)]
+    #[cfg(not(test))]
     {
         use tracing_subscriber::layer::SubscriberExt;
 
@@ -452,7 +452,11 @@ mod tests {
         }
 
         async fn get_message(&mut self) -> Option<SocketMessage> {
-            let msg = self.ws.next().await?.unwrap();
+            let msg = tokio::time::timeout(tokio::time::Duration::from_secs(1), self.ws.next())
+                .await
+                .ok()??
+                .ok()?;
+
             Some(serde_json::from_str(&msg.to_string()).unwrap())
         }
 
@@ -465,14 +469,14 @@ mod tests {
             self.send_message(SocketMessage::GetStatus).await;
             sleep(0.1).await;
 
+            let mut statuses = vec![];
             while let Some(msg) = self.get_message().await {
-                tracing::info!("{:?}", &msg);
                 if let SocketMessage::Status(status) = msg {
-                    return status;
+                    statuses.push(status);
                 };
             }
 
-            panic!();
+            statuses.last().unwrap().to_owned()
         }
 
         async fn assert_status(&mut self, status: UserStatus) {
@@ -537,7 +541,6 @@ mod tests {
     #[tokio::test]
     async fn test_state_change() {
         let server = Server::new(3003);
-        dbg!("X");
 
         // Assert new connections are put in waiting queue.
         let mut ws = server.connect("foo").await;
@@ -547,32 +550,26 @@ mod tests {
         ws.send_message(SocketMessage::StateChange(ChangeState::Idle))
             .await;
         ws.assert_status(UserStatus::Idle).await;
-        dbg!("X");
 
         // .. and back to waiting
         ws.send_message(SocketMessage::StateChange(ChangeState::Waiting))
             .await;
         ws.assert_status(UserStatus::Waiting).await;
-        dbg!("X");
 
         sleep(1.).await;
         // If another user then connects, theyre both connected.
         let mut other_ws = server.connect("bar").await;
         sleep(1.).await;
-        dbg!("X");
         ws.assert_status(UserStatus::Connected).await;
-        dbg!("X");
         other_ws.assert_status(UserStatus::Connected).await;
 
         // If one goes to waiting, the other is set to idle.
         ws.send_message(SocketMessage::StateChange(ChangeState::Waiting))
             .await;
-        sleep(4.).await;
+        sleep(1.).await;
 
-        dbg!("X");
-        ws.assert_status(UserStatus::Waiting).await;
-        dbg!("X");
         other_ws.assert_status(UserStatus::Idle).await;
+        ws.assert_status(UserStatus::Waiting).await;
     }
 
     /// Test that other user is set to idle if one close connection.

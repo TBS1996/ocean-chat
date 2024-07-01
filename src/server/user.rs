@@ -68,6 +68,7 @@ fn handle_socket(
                         },
                         Message::Binary(bytes) => {
                             let msg = serde_json::from_slice(&bytes);
+                            tracing::info!("{}:  msg received: {:?}", &id, &msg);
 
                             match msg {
                                 Ok(SocketMessage::GetStatus) => {
@@ -76,6 +77,7 @@ fn handle_socket(
                                      upsender.send(msg).await.unwrap();
                                     let status = rx.await.unwrap();
                                     tx.send(SocketMessage::Status(status).into_message()).await.unwrap();
+                                    tracing::info!("{}: status!!: {:?}", &id, &status);
 
                                 }
                                 Ok(SocketMessage::StateChange(new_state)) => {
