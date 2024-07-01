@@ -155,7 +155,6 @@ fn form_group(
                         if !enabled {
                             return;
                         }
-                        log_to_console("yo wtf");
 
                         let thestate = state.clone();
                         let status = thestate.inner.lock().unwrap().chat.inner.lock().unwrap().status.clone();
@@ -308,12 +307,9 @@ fn disabled_chat(
                                 let mut status = state.inner.lock().unwrap().chat.inner.lock().unwrap().status.clone();
                                 let is_disconnected = status() == UserStatus::Disconnected;
                                 *status.write() = UserStatus::Waiting;
-                            //    *status.write() = UserStatus::Waiting;
-                                log_to_console("bruh wtf");
 
                                 spawn_local(async move {
                                     state.new_peer(scores, peer_score.clone(), is_disconnected).await.unwrap();
-                                    log_to_console("bruh wtf");
                                 });
                     },
                     "Start chatting!"
