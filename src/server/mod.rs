@@ -125,7 +125,6 @@ impl State {
             match msg.action {
                 StateAction::GetStatus(tx) => {
                     let status = self.user_status(&id).await;
-                    tracing::info!("{:?} ", &status);
                     tx.send(status).ok();
                 }
                 StateAction::StateChange(state) => {
@@ -218,7 +217,6 @@ impl State {
         let users = self.waiting_users.clone();
         let connections = self.connections.clone();
         tokio::spawn(async move {
-            tracing::info!("xxxxxxxx looooop");
             loop {
                 {
                     while let Some((left, right)) = users.pop_pair().await {
@@ -295,7 +293,7 @@ pub async fn run(port: u16) {
         let subscriber = tracing_subscriber::registry()
             .with(
                 tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "info,ocean_chat=debug".into()),
+                    .unwrap_or_else(|_| "warn,ocean_chat=debug".into()),
             )
             .with(tracing_subscriber::fmt::layer())
             .with(tracing_subscriber::fmt::layer().with_writer(non_blocking));
@@ -320,9 +318,9 @@ pub async fn run(port: u16) {
 
     #[cfg(test)]
     let router = router
+        .route("/idle", get(idle))
         .route("/queue", get(queue))
-        .route("/cons", get(cons))
-        .route("/idle", get(idle));
+        .route("/cons", get(cons));
 
     let app = router
         .layer(cors)
@@ -517,6 +515,20 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_close_connection_when_same_connects() {
+        let port = 3002;
+        start_server(port);
+        let id = "foo";
+        let mut ws = TestSocket::new(id, port).await;
+        sleep(0.1).await;
+        assert_eq!(ws.connected_users().await, 1);
+        let mut other_ws = TestSocket::new(id, port).await;
+        sleep(0.1).await;
+        assert_eq!(ws.connected_users().await, 1);
+        other_ws.assert_status(UserStatus::Waiting).await;
+    }
+
+    #[tokio::test]
     async fn test_state_change() {
         let port = 3003;
         start_server(port);
@@ -571,18 +583,5 @@ mod tests {
         sleep(1.).await;
 
         bws.assert_status(UserStatus::Idle).await;
-    }
-
-    #[tokio::test]
-    async fn test_close_connection_when_same_connects() {
-        let port = 3002;
-        start_server(port);
-        let id = "foo";
-        let mut ws = TestSocket::new(id, port).await;
-        assert_eq!(ws.connected_users().await, 1);
-        let mut other_ws = TestSocket::new(id, port).await;
-        sleep(1.0).await;
-        assert_eq!(ws.connected_users().await, 1);
-        other_ws.assert_status(UserStatus::Waiting).await;
     }
 }

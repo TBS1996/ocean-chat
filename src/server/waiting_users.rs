@@ -24,7 +24,7 @@ impl WaitingUsers {
 
         let pos = lock.iter().position(|waiters| waiters.id == user.id);
         if let Some(pos) = pos {
-            lock[pos].close();
+            lock[pos].close().await;
             tracing::warn!("User already in queue: {}", &user.id);
         }
 

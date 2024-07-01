@@ -150,15 +150,13 @@ impl User {
         self.receiver.recv().await
     }
 
-    pub fn close(&mut self) {
+    pub async fn close(&mut self) {
         let id = self.id.clone();
         if let Some(sender) = self.close_signal.take() {
-            tokio::spawn(async move {
-                let res = sender.send(()).await;
-                if res.is_err() {
-                    tracing::error!("{}: failed to send close signal: {:?}", id, res);
-                }
-            });
+            let res = sender.send(()).await;
+            if res.is_err() {
+                tracing::error!("{}: failed to send close signal: {:?}", id, res);
+            }
         };
     }
 
