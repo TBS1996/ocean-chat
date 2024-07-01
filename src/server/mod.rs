@@ -18,6 +18,7 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 
 mod connection;
+mod socket_handler;
 mod user;
 mod waiting_users;
 

@@ -69,6 +69,25 @@ impl SocketMessage {
     }
 }
 
+#[cfg(feature = "server")]
+impl Into<Message> for SocketMessage {
+    fn into(self) -> Message {
+        Message::Text(serde_json::to_string(&self).unwrap())
+    }
+}
+
+#[cfg(feature = "server")]
+impl From<Message> for SocketMessage {
+    fn from(value: Message) -> Self {
+        match value {
+            Message::Text(json) => serde_json::from_str(&json).unwrap(),
+            _ => {
+                panic!("Cannot convert to to value")
+            }
+        }
+    }
+}
+
 /// Messages being sent from the client to the server.
 #[cfg(not(feature = "server"))]
 impl SocketMessage {
