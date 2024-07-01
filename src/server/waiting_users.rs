@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Default, Clone, Debug)]
-pub struct WaitingUsers(Arc<Mutex<Vec<User>>>);
+pub struct WaitingUsers(pub Arc<Mutex<Vec<User>>>);
 
 impl WaitingUsers {
     #[cfg(test)]
@@ -16,23 +16,40 @@ impl WaitingUsers {
             .collect()
     }
 
+    /// Inserts a user into the queue. If user with same ID is already there, the previous one is
+    /// kicked out.
     pub async fn queue(&self, user: User) {
+        tracing::info!("{}: queue user", &user.id);
         let mut lock = self.0.lock().await;
 
         let pos = lock.iter().position(|waiters| waiters.id == user.id);
+        if let Some(pos) = pos {
+            lock[pos].close().await;
+            tracing::warn!("User already in queue: {}", &user.id);
+        }
 
-        match pos {
-            Some(pos) => {
-                let _ = lock.remove(pos);
+        drop(lock);
 
-                tracing::error!("User already in queue: {}", &user.id);
-            }
-            None => {
-                tracing::info!("queuing user: {}", &user.id);
-                lock.push(user);
-                tracing::info!("users waiting for peer: {}", lock.len());
+        // It takes some time from we call close() on the previous user until it's kicked out
+        for _ in 0..10 {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            {
+                let mut lock = self.0.lock().await;
+                if lock
+                    .iter()
+                    .position(|waiters| waiters.id == user.id)
+                    .is_none()
+                {
+                    lock.push(user);
+                    tracing::info!("users waiting for peer: {}", lock.len());
+                    return;
+                } else {
+                    tracing::info!("still there!");
+                }
             }
         }
+
+        tracing::error!("{}: failed to insert user.", &user.id);
     }
 
     pub async fn take(&self, id: &str) -> Option<User> {
@@ -86,7 +103,6 @@ impl WaitingUsers {
         }
 
         let right = users.remove(right_index);
-
         tracing::info!("two users paired up! {} and {}", &left.id, &right.id);
         tracing::info!("remaining users: {}", users.len());
 

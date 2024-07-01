@@ -17,8 +17,9 @@ pub use sloan::*;
 #[cfg(feature = "server")]
 use axum::extract::ws::Message;
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub enum UserStatus {
+    #[default]
     Disconnected,
     Connected,
     Waiting,
@@ -34,11 +35,13 @@ pub enum ChangeState {
 /// The type that gets sent from server to client through socket.
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum SocketMessage {
+    Status(UserStatus),
     StateChange(ChangeState),
     User(String),
     Info(String),
     PeerScores(Scores),
     ConnectionClosed,
+    GetStatus,
     Ping,
     Pong,
 }
@@ -93,6 +96,10 @@ impl SocketMessage {
 impl SocketMessage {
     pub fn user_msg(msg: String) -> Vec<u8> {
         Self::User(msg).to_bytes()
+    }
+
+    pub fn get_status() -> Vec<u8> {
+        Self::GetStatus.to_bytes()
     }
 
     pub fn ping() -> Vec<u8> {

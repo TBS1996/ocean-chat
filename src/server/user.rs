@@ -13,7 +13,6 @@ use std::time::SystemTime;
 use futures_util::SinkExt;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::oneshot;
 use tokio::time::{sleep, Duration, Instant};
 
 /// Takes care of sending to and receiving from a websocket.
@@ -21,7 +20,7 @@ fn handle_socket(
     socket: WebSocket,
     id: String,
     upsender: mpsc::Sender<StateMessage>,
-    mut close_signal: oneshot::Receiver<()>,
+    mut close_signal: mpsc::Receiver<()>,
 ) -> (Sender<SocketMessage>, Receiver<SocketMessage>) {
     let (x_sender, mut x_receiver) = channel::<SocketMessage>(32);
     let (sender, receiver) = channel(32);
@@ -33,18 +32,34 @@ fn handle_socket(
         tokio::pin!(timeout);
 
         loop {
+            let close_signal_recv = close_signal.recv();
+            tokio::pin!(close_signal_recv);
+
             tokio::select! {
-                Ok(()) = &mut close_signal => {
+                Some(()) = &mut close_signal_recv => {
                     tracing::info!("{}: closing socket", id);
+                    let msg = StateMessage::new(id.clone(), StateAction::RemoveUser);
+                    upsender.send(msg).await.ok();
                     break;
                 }
                 Some(socketmessage) = x_receiver.recv() => {
-                    tracing::info!("{:?}", &socketmessage);
-                    let _ = tx.send(socketmessage.into_message()).await;
+                    match socketmessage {
+                        SocketMessage::GetStatus => {
+                            let (tx_, rx) = tokio::sync::oneshot::channel();
+                            let msg = StateMessage::new(id.clone(), StateAction::GetStatus(tx_));
+                             upsender.send(msg).await.unwrap();
+                            let status = rx.await.unwrap();
+                            tx.send(SocketMessage::Status(status).into_message()).await.unwrap();
+                        },
+                        socketmessage => {
+                            tracing::info!("{:?}", &socketmessage);
+                            let _ = tx.send(socketmessage.into_message()).await;
+                        }
+                    }
                 },
 
                 Some(Ok(msg)) = rx.next() => {
-                    tracing::info!("{:?}", &msg);
+                    timeout.as_mut().reset(Instant::now() + timeout_duration);
 
                     match msg {
                         Message::Close(_) => {
@@ -56,6 +71,14 @@ fn handle_socket(
                             let msg = serde_json::from_slice(&bytes);
 
                             match msg {
+                                Ok(SocketMessage::GetStatus) => {
+                                    let (tx_, rx) = tokio::sync::oneshot::channel();
+                                    let msg = StateMessage::new(id.clone(), StateAction::GetStatus(tx_));
+                                     upsender.send(msg).await.unwrap();
+                                    let status = rx.await.unwrap();
+                                    tx.send(SocketMessage::Status(status).into_message()).await.unwrap();
+
+                                }
                                 Ok(SocketMessage::StateChange(new_state)) => {
                                     let upmsg = StateMessage {id: id.clone(), action: StateAction::StateChange(new_state)};
                                     upsender.send(upmsg).await.ok();
@@ -79,6 +102,7 @@ fn handle_socket(
                     tracing::info!("{}: Timeout occurred, closing connection", &id);
                     let msg = StateMessage::new(id.clone(), StateAction::RemoveUser);
                     upsender.send(msg).await.ok();
+                    break;
                 }
             }
         }
@@ -94,22 +118,7 @@ pub struct User {
     pub con_time: SystemTime,
     pub sender: Sender<SocketMessage>,
     pub receiver: Receiver<SocketMessage>,
-    close_signal: Option<oneshot::Sender<()>>,
-}
-
-impl Drop for User {
-    fn drop(&mut self) {
-        let id = self.id.clone();
-        let sender = self.close_signal.take();
-        tokio::spawn(async move {
-            if let Some(sender) = sender {
-                let res = sender.send(());
-                if res.is_err() {
-                    tracing::error!("{}: failed to send close signal: {:?}", id, res);
-                }
-            }
-        });
-    }
+    close_signal: Option<mpsc::Sender<()>>,
 }
 
 impl User {
@@ -122,7 +131,7 @@ impl User {
         tracing::info!("user queued ");
         let con_time = SystemTime::now();
 
-        let (onesend, onerecv) = oneshot::channel();
+        let (onesend, onerecv) = tokio::sync::mpsc::channel(1);
 
         let (sender, receiver) = handle_socket(socket, id.clone(), tx, onerecv);
 
@@ -136,12 +145,30 @@ impl User {
         }
     }
 
+    /// Notifies the client of the status of the user.
+    ///
+    /// Client will ask periodically but this should be called when a new status is registered
+    /// just to speed things up.
+    pub async fn refresh_status(&mut self) -> Result<(), SendError<SocketMessage>> {
+        self.sender.send(SocketMessage::GetStatus).await
+    }
+
     pub async fn send(&mut self, msg: SocketMessage) -> Result<(), SendError<SocketMessage>> {
         self.sender.send(msg).await
     }
 
     pub async fn receive(&mut self) -> Option<SocketMessage> {
         self.receiver.recv().await
+    }
+
+    pub async fn close(&mut self) {
+        let id = self.id.clone();
+        if let Some(sender) = self.close_signal.take() {
+            let res = sender.send(()).await;
+            if res.is_err() {
+                tracing::error!("{}: failed to send close signal: {:?}", id, res);
+            }
+        };
     }
 
     pub fn is_closed(&mut self) -> bool {

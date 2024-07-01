@@ -168,6 +168,9 @@ impl Connection {
             .send(SocketMessage::PeerScores(self.right.scores))
             .await;
 
+        let _ = self.left.refresh_status().await;
+        let _ = self.right.refresh_status().await;
+
         loop {
             tokio::select! {
                 _ = &mut stop_signal => {
