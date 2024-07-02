@@ -8,7 +8,6 @@ use futures_util::StreamExt;
 use std::time::SystemTime;
 
 use futures_util::SinkExt;
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{self, channel, Receiver, Sender};
 use tokio::time::{sleep, Duration, Instant};
 
