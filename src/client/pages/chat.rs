@@ -64,6 +64,7 @@ pub static PINGER_ACTIVATED: Lazy<Arc<atomic::AtomicBool>> =
     Lazy::new(|| Arc::new(atomic::AtomicBool::new(false)));
 
 fn start_pinger(state: State) {
+    let chat = state.chat();
     spawn_local(async move {
         if PINGER_ACTIVATED.swap(true, atomic::Ordering::SeqCst) {
             return;
@@ -71,7 +72,7 @@ fn start_pinger(state: State) {
 
         log_to_console("Start pinging loop");
         loop {
-            state.send_socket_message(SocketMessage::GetStatus);
+            chat.send_message(SocketMessage::GetStatus);
             gloo_timers::future::sleep(std::time::Duration::from_secs(5)).await;
         }
     });
@@ -84,11 +85,13 @@ pub fn Chat() -> Element {
         return Splash();
     };
 
-    let input = state.input();
-    let messages = state.messages();
-    let peer_score = use_signal(|| state.peer_scores());
-    let popup = state.popup();
-    let status = state.status();
+    let chat = state.chat();
+
+    let input = chat.input();
+    let messages = chat.messages();
+    let peer_score = use_signal(|| chat.peer_scores());
+    let popup = chat.popup();
+    let status = chat.status();
 
     log_to_console(&popup);
 
@@ -157,10 +160,11 @@ fn form_group(
                         }
 
                         let thestate = state.clone();
-                        let status = thestate.inner.lock().unwrap().chat.inner.lock().unwrap().status.clone();
+                        let chat = thestate.chat();
+                        let status = chat.status(); //thestate.inner.lock().unwrap().chat.inner.lock().unwrap().status.clone();
                         let is_disconnected = status() == UserStatus::Disconnected;
                         spawn_local(async move {
-                            thestate.new_peer(scores, peer_score.clone(), is_disconnected).await.unwrap();
+                            chat.new_peer(scores, peer_score.clone(), is_disconnected).await.unwrap();
                         });
                     },
                     background_color: if !enabled {"gray"} else {""},
@@ -223,8 +227,9 @@ fn enabled_chat(
                 form {
                     onsubmit: move |event| {
                         let state = state2.clone();
+                        let  chat = state.chat();
                         let msg = event.data().values().get("msg").unwrap().as_value();
-                        state.send_chat_message(msg);
+                        chat.send_chat_message(msg);
                     },
                     div {
                         { form_group(state.clone(), input, peer_score, scores , true) }
@@ -304,12 +309,13 @@ fn disabled_chat(
                     onclick: move |_| {
                                 let state = state.clone();
                                 let state = state.clone();
-                                let mut status = state.inner.lock().unwrap().chat.inner.lock().unwrap().status.clone();
+                                let chat = state.chat();
+                                let mut status = chat.status(); //state.inner.lock().unwrap().chat.inner.lock().unwrap().status.clone();
                                 let is_disconnected = status() == UserStatus::Disconnected;
                                 *status.write() = UserStatus::Waiting;
 
                                 spawn_local(async move {
-                                    state.new_peer(scores, peer_score.clone(), is_disconnected).await.unwrap();
+                                    chat.new_peer(scores, peer_score.clone(), is_disconnected).await.unwrap();
                                 });
                     },
                     "Start chatting!"
