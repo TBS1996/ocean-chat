@@ -98,6 +98,8 @@ impl ChatState {
             lock.send_message(SocketMessage::StateChange(ChangeState::Waiting));
         };
 
+        log_to_console("err");
+
         Ok(())
     }
 }

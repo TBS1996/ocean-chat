@@ -72,8 +72,10 @@ fn start_pinger(state: State) {
 
         log_to_console("Start pinging loop");
         loop {
+            log_to_console("pinggg");
             chat.send_message(SocketMessage::GetStatus);
             gloo_timers::future::sleep(std::time::Duration::from_secs(5)).await;
+            log_to_console("noice");
         }
     });
 }
@@ -161,7 +163,7 @@ fn form_group(
 
                         let thestate = state.clone();
                         let chat = thestate.chat();
-                        let status = chat.status(); //thestate.inner.lock().unwrap().chat.inner.lock().unwrap().status.clone();
+                        let status = chat.status();
                         let is_disconnected = status() == UserStatus::Disconnected;
                         spawn_local(async move {
                             chat.new_peer(scores, peer_score.clone(), is_disconnected).await.unwrap();
@@ -308,9 +310,8 @@ fn disabled_chat(
                     margin: "auto",
                     onclick: move |_| {
                                 let state = state.clone();
-                                let state = state.clone();
                                 let chat = state.chat();
-                                let mut status = chat.status(); //state.inner.lock().unwrap().chat.inner.lock().unwrap().status.clone();
+                                let mut status = chat.status();
                                 let is_disconnected = status() == UserStatus::Disconnected;
                                 *status.write() = UserStatus::Waiting;
 
