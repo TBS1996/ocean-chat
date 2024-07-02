@@ -3,12 +3,13 @@ use crate::common;
 use axum::extract::ws::{Message, WebSocket};
 use common::CONFIG;
 use common::{Scores, SocketMessage};
+use futures::stream::SplitStream;
 use futures_util::StreamExt;
 use std::time::SystemTime;
 
 use futures_util::SinkExt;
 use tokio::sync::mpsc::error::SendError;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{self, channel, Receiver, Sender};
 use tokio::time::{sleep, Duration, Instant};
 
 /// Takes care of sending to and receiving from a websocket.
@@ -78,42 +79,57 @@ pub struct User {
     pub scores: Scores,
     pub id: String,
     pub con_time: SystemTime,
-    pub receiver: Receiver<SocketMessage>,
-    pub sender: Sender<SocketMessage>,
+    message_sender: Sender<Message>,
+    socket_receiver: SplitStream<WebSocket>
 }
 
 impl User {
-    pub fn new(scores: Scores, id: String, socket: WebSocket) -> Self {
+    pub async fn new(scores: Scores, id: String, socket: WebSocket) -> Self {
         tracing::info!("user queued ");
         let con_time = SystemTime::now();
 
-        let (sender, receiver) = handle_socket(socket, id.clone());
+        let (mut socket_sender, socket_receiver) = socket.split();
+        let (message_sender, mut message_receiver) = mpsc::channel::<Message>(32);
+
+        // Writer
+        tokio::spawn(async move {
+            while let Some(msg) = message_receiver.recv().await {
+                socket_sender.feed(msg).await.unwrap();
+            }
+        });
+
+        let pinger_message_sender = message_sender.clone();
+        // Pinger
+        tokio::spawn(async move {
+            loop {
+                match pinger_message_sender.send(Message::Ping(vec![])).await {
+                    Ok(_) => {
+                        sleep(Duration::new(5, 0)).await;
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
 
         User {
             scores,
-            sender,
-            receiver,
             id,
             con_time,
+            message_sender,
+            socket_receiver,
         }
     }
 
-    pub async fn send(&mut self, msg: SocketMessage) -> Result<(), SendError<SocketMessage>> {
-        self.sender.send(msg).await
+    pub async fn send(&mut self, msg: SocketMessage) -> Result<(), SendError<Message>> {
+        self.message_sender.send(msg.into()).await
     }
 
     pub async fn receive(&mut self) -> Option<SocketMessage> {
-        self.receiver.recv().await
+        Some(self.socket_receiver.next().await.unwrap().unwrap().into())
     }
 
+    #[deprecated(note= "Please check for `Messaage::Close` instead")]
     pub fn is_closed(&mut self) -> bool {
-        while let Ok(msg) = self.receiver.try_recv() {
-            if matches!(msg, SocketMessage::ConnectionClosed) {
-                tracing::info!("user closed: {}", &self.id);
-                return true;
-            }
-        }
-
-        false
+        todo!()
     }
 }

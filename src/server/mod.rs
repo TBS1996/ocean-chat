@@ -41,7 +41,7 @@ impl State {
     /// Queues a user for pairing. Await the oneshot receiver and
     /// you will receive the peer ID when pairing has completed.
     async fn queue(&self, scores: Scores, id: String, socket: WebSocket) {
-        let user = User::new(scores, id, socket);
+        let user = User::new(scores, id, socket).await;
         self.waiting_users.queue(user).await;
     }
 
