@@ -72,10 +72,8 @@ fn start_pinger(state: State) {
 
         log_to_console("Start pinging loop");
         loop {
-            log_to_console("pinggg");
             chat.send_message(SocketMessage::GetStatus);
             gloo_timers::future::sleep(std::time::Duration::from_secs(5)).await;
-            log_to_console("noice");
         }
     });
 }

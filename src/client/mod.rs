@@ -120,7 +120,7 @@ impl InnerState {
     }
 }
 
-pub fn get_id() -> Uuid {
+fn get_id() -> Uuid {
     match block_on(fetch_id_storage()) {
         Some(id) => {
             log_to_console(("using id from storage:", &id));
