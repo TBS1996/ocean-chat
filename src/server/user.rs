@@ -79,8 +79,8 @@ pub struct User {
     pub scores: Scores,
     pub id: String,
     pub con_time: SystemTime,
-    message_sender: Sender<Message>,
-    socket_receiver: SplitStream<WebSocket>
+    pub message_sender: Sender<Message>,
+    pub socket_receiver: SplitStream<WebSocket>,
 }
 
 impl User {
@@ -120,15 +120,7 @@ impl User {
         }
     }
 
-    pub async fn send(&mut self, msg: SocketMessage) -> Result<(), SendError<Message>> {
-        self.message_sender.send(msg.into()).await
-    }
-
-    pub async fn receive(&mut self) -> Option<SocketMessage> {
-        Some(self.socket_receiver.next().await.unwrap().unwrap().into())
-    }
-
-    #[deprecated(note= "Please check for `Messaage::Close` instead")]
+    #[deprecated(note = "Please check for `Messaage::Close` instead")]
     pub fn is_closed(&mut self) -> bool {
         todo!()
     }

@@ -27,11 +27,21 @@ pub enum UserStatus {
 /// The type that gets sent from server to client through socket.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SocketMessage {
+    /// Send a message to the other user
     User(String),
+    /// Info that is sent by the server
     Info(String),
+    /// The scores of the peer
     PeerScores(Scores),
+    /// Let the client know that they have connected with a peer
+    PeerConnected,
+    /// Wrapper for `Message::Close`
     ConnectionClosed,
+    /// Peer has disconnected
+    PeerConnectionClosed,
+    /// Wrapper for `Message::Ping`
     Ping,
+    /// Wrapper for `Message::Pong`
     Pong,
 }
 
@@ -80,9 +90,12 @@ impl Into<Message> for SocketMessage {
 impl From<Message> for SocketMessage {
     fn from(value: Message) -> Self {
         match value {
+            Message::Ping(_) => SocketMessage::Ping,
+            Message::Pong(_) => SocketMessage::Pong,
+            Message::Close(_) => SocketMessage::ConnectionClosed,
             Message::Text(json) => serde_json::from_str(&json).unwrap(),
             _ => {
-                panic!("Cannot convert to to value")
+                panic!("Cannot convert to socketmessage")
             }
         }
     }

@@ -1,7 +1,11 @@
 use crate::common::SocketMessage;
 use crate::server::User;
+use axum::extract::ws::{Message, WebSocket};
+use futures::stream::SplitStream;
+use futures::StreamExt;
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
@@ -109,64 +113,59 @@ impl Connection {
     }
 
     /// Handles sending messages from one peer to another.
-    async fn run(mut self) {
+    async fn run(self) {
         tracing::info!("communication starting between a pair");
-        let msg = "connected to peer!".to_string();
-        let _ = self.right.send(SocketMessage::Info(msg.clone())).await;
-        let _ = self.left.send(SocketMessage::Info(msg)).await;
-        let _ = self
-            .right
-            .send(SocketMessage::PeerScores(self.left.scores))
-            .await;
-        let _ = self
-            .left
-            .send(SocketMessage::PeerScores(self.right.scores))
-            .await;
 
-        loop {
-            tokio::select! {
-                Some(msg) = self.left.receive() => {
-                    tracing::info!("{}: {:?}", &self.left.id, &msg);
-                    match msg {
-                        msg @ SocketMessage::User(_) => {
-                            if self.right.send(msg).await.is_err(){
-                                tracing::error!("error sending message to: {}", &self.right.id);
-                                break;
-                            };
-                        },
-                        msg @ SocketMessage::ConnectionClosed => {
-                            let _ = self.right.send(msg).await;
-                            break;
-                        },
-                        _ => {
-                            tracing::error!("unexpected message");
-                        }
-                    };
-                },
-                Some(msg) = self.right.receive() => {
-                    tracing::info!("{}: {:?}", &self.right.id, &msg);
-                    match msg {
-                        msg @ SocketMessage::User(_) => {
-                            if self.left.send(msg).await.is_err(){
-                                tracing::error!("error sending message to: {}", &self.left.id);
-                                break;
-                            };
-                        }
-                        msg @ SocketMessage::ConnectionClosed => {
-                            let _ = self.left.send(msg).await;
-                            break;
-                        },
-                        _ => {
-                            tracing::error!("unexpected message");
-                        }
-                    };
-                },
-                else => {
+        let left_message_sender = self.left.message_sender.clone();
+        let right_message_sender = self.right.message_sender.clone();
+
+        left_message_sender
+            .send(SocketMessage::PeerConnected.into())
+            .await
+            .unwrap();
+        right_message_sender
+            .send(SocketMessage::PeerConnected.into())
+            .await
+            .unwrap();
+
+        left_message_sender
+            .send(SocketMessage::peer_scores(self.right.scores))
+            .await
+            .unwrap();
+        right_message_sender
+            .send(SocketMessage::peer_scores(self.left.scores))
+            .await
+            .unwrap();
+
+        tokio::spawn(Self::process_messages(
+            self.left.socket_receiver,
+            right_message_sender,
+        ));
+        tokio::spawn(Self::process_messages(
+            self.right.socket_receiver,
+            left_message_sender,
+        ));
+    }
+
+    async fn process_messages(
+        mut user_socket: SplitStream<WebSocket>,
+        other_user: Sender<Message>,
+    ) {
+        while let Some(Ok(msg)) = user_socket.next().await {
+            match SocketMessage::from(msg) {
+                msg @ SocketMessage::User(_) => {
+                    other_user.send(msg.into()).await.unwrap();
+                }
+                SocketMessage::ConnectionClosed => {
+                    other_user
+                        .send(SocketMessage::PeerConnectionClosed.into())
+                        .await
+                        .unwrap();
+                }
+                _ => {
                     tracing::error!("weird error");
-                    break;
                 }
             }
         }
-        tracing::info!("closing connection");
     }
 }
