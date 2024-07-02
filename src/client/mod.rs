@@ -258,6 +258,7 @@ impl State {
         scores: Scores,
         peer_score_signal: Signal<Option<Scores>>,
         is_disconnected: bool,
+        id: Uuid,
     ) -> Result<(), String> {
         let chat = self.inner.lock().unwrap().chat.clone();
         let mut lock = chat.inner.lock().unwrap();
@@ -273,7 +274,7 @@ impl State {
         }
 
         if is_disconnected {
-            let ws = connect_to_peer(scores, chat.clone(), peer_score_signal).await?;
+            let ws = connect_to_peer(scores, chat.clone(), peer_score_signal, id).await?;
             lock.socket = Some(ws);
         } else {
             lock.send_message(SocketMessage::StateChange(ChangeState::Waiting));
