@@ -284,7 +284,7 @@ async fn user_status(
 pub async fn run(port: u16) {
     //#[cfg(test)]
     #[cfg(not(test))]
-    {
+    let _guard = {
         use tracing_subscriber::layer::SubscriberExt;
 
         let file_appender = tracing_appender::rolling::daily("log", "ocean-chat.log");
@@ -299,7 +299,8 @@ pub async fn run(port: u16) {
 
         tracing::subscriber::set_global_default(subscriber)
             .expect("Unable to set a global subscriber");
-    }
+        _guard
+    };
 
     tracing::info!("starting server ");
     let state = State::new();
