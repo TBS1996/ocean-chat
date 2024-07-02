@@ -33,7 +33,7 @@ impl Handler {
                 tokio::spawn(handle_socket_read(SocketMessage::from(msg)));
             }
         });
-        
+
         // Writer
         tokio::spawn(async move {
             while let Some(msg) = message_receiver.recv().await {
@@ -56,7 +56,10 @@ impl Handler {
         handler
     }
 
-    async fn write_socket_message(&self, message: SocketMessage) -> Result<(), SendError<Message>> {
+    pub async fn write_socket_message(
+        &self,
+        message: SocketMessage,
+    ) -> Result<(), SendError<Message>> {
         self.message_sender.send(message.into()).await
     }
 }
