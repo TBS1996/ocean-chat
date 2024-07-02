@@ -163,10 +163,11 @@ fn form_group(
 
                         let thestate = state.clone();
                         let chat = thestate.chat();
+                        let id = thestate.id();
                         let status = chat.status();
                         let is_disconnected = status() == UserStatus::Disconnected;
                         spawn_local(async move {
-                            chat.new_peer(scores, peer_score.clone(), is_disconnected).await.unwrap();
+                            chat.new_peer(scores, peer_score.clone(), is_disconnected, id).await.unwrap();
                         });
                     },
                     background_color: if !enabled {"gray"} else {""},
@@ -312,11 +313,12 @@ fn disabled_chat(
                                 let state = state.clone();
                                 let chat = state.chat();
                                 let mut status = chat.status();
+                                let id = state.id();
                                 let is_disconnected = status() == UserStatus::Disconnected;
                                 *status.write() = UserStatus::Waiting;
 
                                 spawn_local(async move {
-                                    chat.new_peer(scores, peer_score.clone(), is_disconnected).await.unwrap();
+                                    chat.new_peer(scores, peer_score.clone(), is_disconnected, id).await.unwrap();
                                 });
                     },
                     "Start chatting!"

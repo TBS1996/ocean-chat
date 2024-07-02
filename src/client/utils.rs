@@ -252,14 +252,10 @@ pub async fn connect_to_peer(
     scores: Scores,
     mut state: ChatState,
     peer_score_signal: Signal<Option<Scores>>,
+    id: Uuid,
 ) -> Result<WebSocket, String> {
     log_to_console("Starting to connect");
-    let url = format!(
-        "{}/pair/{}/{}",
-        CONFIG.server_address(),
-        scores,
-        crate::client::get_id().simple().to_string()
-    );
+    let url = format!("{}/pair/{}/{}", CONFIG.server_address(), scores, id,);
 
     // Attempt to create the WebSocket
     let ws = web_sys::WebSocket::new(&url).map_err(|err| {
