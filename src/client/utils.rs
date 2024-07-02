@@ -352,7 +352,6 @@ pub async fn connect_to_peer(
     }) as Box<dyn FnMut(JsValue)>);
     ws.set_onclose(Some(onclose_callback.as_ref().unchecked_ref()));
     onclose_callback.forget();
-    log_to_console("websocket initiated");
     Ok(ws)
 }
 
