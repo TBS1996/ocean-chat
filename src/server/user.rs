@@ -15,6 +15,18 @@ use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::time::{sleep, Duration, Instant};
 
+macro_rules! logerr {
+    ($result:expr, $action:tt) => {
+        match $result {
+            Ok(value) => value,
+            Err(e) => {
+                tracing::error!("{}: line {} -> {:?}", file!(), line!(), e);
+                $action;
+            }
+        }
+    };
+}
+
 /// Takes care of sending to and receiving from a websocket.
 fn handle_socket(
     socket: WebSocket,
@@ -47,9 +59,9 @@ fn handle_socket(
                         SocketMessage::GetStatus => {
                             let (tx_, rx) = tokio::sync::oneshot::channel();
                             let msg = StateMessage::new(id.clone(), StateAction::GetStatus(tx_));
-                             upsender.send(msg).await.unwrap();
-                            let status = rx.await.unwrap();
-                            tx.send(SocketMessage::Status(status).into_message()).await.unwrap();
+                            logerr!(upsender.send(msg).await, continue);
+                            let status = logerr!(rx.await, continue);
+                            logerr!(tx.send(SocketMessage::Status(status).into_message()).await, continue);
                         },
                         socketmessage => {
                             tracing::info!("{:?}", &socketmessage);
@@ -74,14 +86,14 @@ fn handle_socket(
                                 Ok(SocketMessage::GetStatus) => {
                                     let (tx_, rx) = tokio::sync::oneshot::channel();
                                     let msg = StateMessage::new(id.clone(), StateAction::GetStatus(tx_));
-                                     upsender.send(msg).await.unwrap();
-                                    let status = rx.await.unwrap();
-                                    tx.send(SocketMessage::Status(status).into_message()).await.unwrap();
+                                    logerr!(upsender.send(msg).await, continue);
+                                    let status = logerr!(rx.await, continue);
+                                    logerr!(tx.send(SocketMessage::Status(status).into_message()).await, continue);
 
                                 }
                                 Ok(SocketMessage::StateChange(new_state)) => {
                                     let upmsg = StateMessage {id: id.clone(), action: StateAction::StateChange(new_state)};
-                                    upsender.send(upmsg).await.ok();
+                                    logerr!(upsender.send(upmsg).await, continue);
                                 },
                                 Ok(SocketMessage::Ping) => {
                                     timeout.as_mut().reset(Instant::now() + timeout_duration);
@@ -182,3 +194,4 @@ impl User {
         false
     }
 }
+
