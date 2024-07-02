@@ -137,12 +137,12 @@ impl InnerChat {
         self.prev_status = Some(status);
     }
 
-    pub fn send_info_message(&mut self, msg: String) {
+    fn send_info_message(&mut self, msg: String) {
         let msg = Message::new_info(msg);
         self.messages.write().push(msg);
     }
 
-    pub fn send_chat_message(&mut self, msg: String) -> bool {
+    fn send_chat_message(&mut self, msg: String) -> bool {
         let data = SocketMessage::User(msg.clone());
         let msg = Message::new_from_me(msg);
         self.messages.write().push(msg);
@@ -150,7 +150,7 @@ impl InnerChat {
         self.send_message(data)
     }
 
-    pub fn send_message(&self, msg: SocketMessage) -> bool {
+    fn send_message(&self, msg: SocketMessage) -> bool {
         let msg = msg.to_bytes();
         if let Some(socket) = &self.socket {
             let res = socket.send_with_u8_array(&msg);
