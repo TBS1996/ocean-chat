@@ -42,8 +42,6 @@ pub enum SocketMessage {
     PeerScores(Scores),
     ConnectionClosed,
     GetStatus,
-    Ping,
-    Pong,
 }
 
 impl SocketMessage {
@@ -85,10 +83,6 @@ impl SocketMessage {
     pub fn close_connection() -> Message {
         Message::Text(SocketMessage::ConnectionClosed.to_string())
     }
-
-    pub fn ping() -> Message {
-        Message::Text(SocketMessage::Ping.to_string())
-    }
 }
 
 /// Messages being sent from the client to the server.
@@ -100,19 +94,5 @@ impl SocketMessage {
 
     pub fn get_status() -> Vec<u8> {
         Self::GetStatus.to_bytes()
-    }
-
-    pub fn ping() -> Vec<u8> {
-        let mut writer: Vec<u8> = vec![];
-        let val = Self::Ping;
-        serde_json::to_writer(&mut writer, &val).unwrap();
-        writer
-    }
-
-    pub fn pong() -> Vec<u8> {
-        let mut writer: Vec<u8> = vec![];
-        let val = Self::Pong;
-        serde_json::to_writer(&mut writer, &val).unwrap();
-        writer
     }
 }
