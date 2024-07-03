@@ -288,7 +288,8 @@ pub async fn connect_to_peer(
                     log_to_console(("status: ", status));
                     return;
                 }
-                SM::Ping | SM::Pong | SM::StateChange(_) | SM::GetStatus => {
+                // These are only supposed to go from the client to the server.
+                SM::StateChange(_) | SM::GetStatus => {
                     log_to_console(("unexpected socketmessage", txt));
                     return;
                 }

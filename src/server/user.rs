@@ -95,11 +95,6 @@ fn handle_socket(
                                     let upmsg = StateMessage {id: id.clone(), action: StateAction::StateChange(new_state)};
                                     logerr!(upsender.send(upmsg).await, continue);
                                 },
-                                Ok(SocketMessage::Ping) => {
-                                    timeout.as_mut().reset(Instant::now() + timeout_duration);
-                                    let x = tx.send(SocketMessage::Ping.into_message()).await;
-                                    tracing::info!("sending ping: {:?}", &x);
-                                },
                                 Ok(socket_message) => {
                                     let _ = sender.send(socket_message).await;
                                 },
@@ -194,4 +189,3 @@ impl User {
         false
     }
 }
-
