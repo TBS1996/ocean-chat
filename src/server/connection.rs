@@ -1,6 +1,6 @@
 use crate::common::SocketMessage;
 use crate::server::User;
-use axum::extract::ws::{Message, WebSocket};
+use axum::extract::ws::WebSocket;
 use futures::stream::SplitStream;
 use futures::StreamExt;
 use std::collections::HashMap;
@@ -120,20 +120,20 @@ impl Connection {
         let right_message_sender = self.right.message_sender.clone();
 
         left_message_sender
-            .send(SocketMessage::PeerConnected.into())
+            .send(SocketMessage::PeerConnected)
             .await
             .unwrap();
         right_message_sender
-            .send(SocketMessage::PeerConnected.into())
+            .send(SocketMessage::PeerConnected)
             .await
             .unwrap();
 
         left_message_sender
-            .send(SocketMessage::peer_scores(self.right.scores))
+            .send(SocketMessage::PeerScores(self.right.scores))
             .await
             .unwrap();
         right_message_sender
-            .send(SocketMessage::peer_scores(self.left.scores))
+            .send(SocketMessage::PeerScores(self.left.scores))
             .await
             .unwrap();
 
@@ -149,7 +149,7 @@ impl Connection {
 
     async fn process_messages(
         mut user_socket: SplitStream<WebSocket>,
-        other_user: Sender<Message>,
+        other_user: Sender<SocketMessage>,
     ) {
         while let Some(Ok(msg)) = user_socket.next().await {
             match SocketMessage::from(msg) {

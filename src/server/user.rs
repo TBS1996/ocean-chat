@@ -78,7 +78,7 @@ pub struct User {
     pub scores: Scores,
     pub id: String,
     pub con_time: SystemTime,
-    pub message_sender: Sender<Message>,
+    pub message_sender: Sender<SocketMessage>,
     pub socket_receiver: SplitStream<WebSocket>,
 }
 
@@ -88,12 +88,12 @@ impl User {
         let con_time = SystemTime::now();
 
         let (mut socket_sender, socket_receiver) = socket.split();
-        let (message_sender, mut message_receiver) = mpsc::channel::<Message>(32);
+        let (message_sender, mut message_receiver) = mpsc::channel::<SocketMessage>(32);
 
         // Writer
         tokio::spawn(async move {
             while let Some(msg) = message_receiver.recv().await {
-                socket_sender.feed(msg).await.unwrap();
+                socket_sender.feed(msg.into()).await.unwrap();
             }
         });
 
@@ -101,7 +101,7 @@ impl User {
         // Pinger
         tokio::spawn(async move {
             loop {
-                match pinger_message_sender.send(Message::Ping(vec![])).await {
+                match pinger_message_sender.send(SocketMessage::Ping).await {
                     Ok(_) => {
                         sleep(Duration::new(5, 0)).await;
                     }
