@@ -105,6 +105,7 @@ impl State {
             (false, false, false) => UserStatus::Disconnected,
             invalid => {
                 tracing::error!("{}: Invalid user status: {:?}", id, invalid);
+                self.take_user(id);
 
                 UserStatus::Disconnected
             }
@@ -159,10 +160,12 @@ impl State {
     /// Extract user from any state
     async fn take_user(&self, id: String) -> Option<User> {
         if let Some(user) = self.idle_users.0.lock().await.remove(&id) {
+            tracing::info!("{}: user taken from idle queue", &id);
             return Some(user);
         }
 
         if let Some(user) = self.waiting_users.take(&id).await {
+            tracing::info!("{}: user taken from waiting queue", &id);
             return Some(user);
         }
 
@@ -170,12 +173,14 @@ impl State {
             if left.id == id {
                 tracing::info!("{}: inserting to idle", &right.id);
                 self.idle_users.insert(right).await;
+                tracing::info!("{}: user taken from connection", &left.id);
                 return Some(left);
             }
 
             if right.id == id {
                 tracing::info!("{}: inserting to idle", &left.id);
                 self.idle_users.insert(left).await;
+                tracing::info!("{}: user taken from connection", &right.id);
                 return Some(right);
             }
         }
