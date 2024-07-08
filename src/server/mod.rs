@@ -19,6 +19,7 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
+use tracing::{error, info};
 
 mod connection;
 mod user;
@@ -54,6 +55,7 @@ impl IdleUsers {
     }
 
     async fn insert(&self, mut user: User) {
+        info!("{}: inserting user to idle", &user.id);
         let _ = user.refresh_status().await;
         let id = user.id.clone();
         self.0.lock().await.insert(id, user);
@@ -73,6 +75,7 @@ struct State {
 
 impl State {
     fn new() -> Self {
+        info!("initializing server state");
         let (tx, rx) = mpsc::channel(32);
 
         let selv = Self {
@@ -98,7 +101,7 @@ impl State {
         let is_idle = self.idle_users.contains(&id).await;
         let is_connected = self.connections.contains(&id).await;
 
-        match (is_waiting, is_idle, is_connected) {
+        let status = match (is_waiting, is_idle, is_connected) {
             (true, false, false) => UserStatus::Waiting,
             (false, true, false) => UserStatus::Idle,
             (false, false, true) => UserStatus::Connected,
@@ -109,18 +112,25 @@ impl State {
 
                 UserStatus::Disconnected
             }
-        }
+        };
+
+        info!("{}: status is: {:?}", &id, &status);
+        status
     }
 
     /// Receive messages from [`User`] that changes the [`State`].
     async fn state_message_handler(self, mut rx: mpsc::Receiver<StateMessage>) {
+        info!("starting message handler");
         loop {
             let Some(msg) = rx.recv().await else {
+                info!("message handler recv is None");
                 std::thread::sleep(std::time::Duration::from_secs(5));
                 continue;
             };
 
             let id = msg.id;
+
+            info!("{}: stateaction: {:?}", &id, &msg.action);
 
             match msg.action {
                 StateAction::GetStatus(tx) => {
@@ -128,6 +138,7 @@ impl State {
                     tx.send(status).ok();
                 }
                 StateAction::StateChange(state) => {
+                    info!("{}: changing state to: {:?}", &id, &state);
                     self.change_state(state, id).await;
                 }
                 StateAction::RemoveUser => match self.take_user(id.clone()).await {
@@ -144,12 +155,13 @@ impl State {
 
     async fn change_state(&self, new_state: ChangeState, id: String) {
         let Some(user) = self.take_user(id.clone()).await else {
+            error!("{}: unable to find user");
             return;
         };
 
         match new_state {
             ChangeState::Idle => {
-                self.idle_users.0.lock().await.insert(id, user);
+                self.idle_users.insert(user);
             }
             ChangeState::Waiting => {
                 self.waiting_users.queue(user).await;
@@ -173,7 +185,6 @@ impl State {
             if left.id == id {
                 tracing::info!("{}: inserting to idle", &right.id);
                 self.idle_users.insert(right).await;
-                tracing::info!("{}: user taken from connection", &left.id);
                 return Some(left);
             }
 
@@ -197,6 +208,7 @@ impl State {
     }
 
     fn stats_printer(&self) {
+        info!("starting stats printer");
         let waits = self.waiting_users.clone();
         let cons = self.connections.clone();
 
@@ -211,7 +223,7 @@ impl State {
                 let (waiting, connected) = stat;
                 tracing::info!("users waiting: {}, connected users: {}", waiting, connected);
 
-                tokio::time::sleep(std::time::Duration::from_secs(600)).await;
+                tokio::time::sleep(std::time::Duration::from_secs(180)).await;
             }
         });
     }
@@ -226,6 +238,7 @@ impl State {
                     while let Some((left, right)) = users.pop_pair().await {
                         let connections = connections.clone();
                         tokio::spawn(async move {
+                            info!("connecting two users: {} && {}", &left.id, &right.id);
                             connections.connect(left, right).await;
                         });
                     }
