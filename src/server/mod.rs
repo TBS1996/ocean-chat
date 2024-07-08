@@ -40,6 +40,7 @@ impl StateMessage {
     }
 }
 
+#[derive(Debug)]
 pub enum StateAction {
     StateChange(ChangeState),
     RemoveUser,
@@ -108,7 +109,7 @@ impl State {
             (false, false, false) => UserStatus::Disconnected,
             invalid => {
                 tracing::error!("{}: Invalid user status: {:?}", id, invalid);
-                self.take_user(id);
+                self.take_user(id.to_string()).await;
 
                 UserStatus::Disconnected
             }
@@ -155,13 +156,13 @@ impl State {
 
     async fn change_state(&self, new_state: ChangeState, id: String) {
         let Some(user) = self.take_user(id.clone()).await else {
-            error!("{}: unable to find user");
+            error!("{}: unable to find user", &id);
             return;
         };
 
         match new_state {
             ChangeState::Idle => {
-                self.idle_users.insert(user);
+                self.idle_users.insert(user).await;
             }
             ChangeState::Waiting => {
                 self.waiting_users.queue(user).await;
